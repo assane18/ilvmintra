@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-6">
+    <!-- Header -->
+    <div class="mb-8 flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Détail Ticket</h1>
+            <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Référence : <span class="font-mono text-blue-600">{{ ticket.uid_public }}</span></p>
+        </div>
+        {% if 'SOLVER' in current_user.role|string or 'ADMIN' in current_user.role|string %}
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard</a>
+        {% else %}
+            <a href="{{ url_for('main.user_portal') }}" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail</a>
+        {% endif %}
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="lg:col-span-1 space-y-6">
+            <div class="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                <!-- Info Ticket Standard -->
+                <div class="flex items-center gap-4 mb-6">
+                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg {% if ticket.target_service.value == 'DAF' %}bg-purple-600 text-white{% else %}bg-blue-600 text-white{% endif %}">
+                        {% if ticket.target_service.value == 'DAF' %}<i data-lucide="banknote" class="w-6 h-6"></i>{% else %}<i data-lucide="monitor" class="w-6 h-6"></i>{% endif %}
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black text-slate-900 uppercase tracking-wide">{{ ticket.target_service.value }}</h2>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    </div>
+                </div>
+                <h3 class="text-lg font-black text-slate-900 leading-tight uppercase mb-4">{{ ticket.title }}</h3>
+                <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm font-medium text-slate-600 mb-6">{{ ticket.description }}</div>
+                
+                <!-- COORDONNÉES -->
+                <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-100">
+                     <div><span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Service Demandeur</span><span class="text-xs font-bold text-slate-700 flex items-center gap-1"><i data-lucide="building" class="w-3 h-3 text-slate-400"></i> {{ ticket.service_demandeur or '-' }}</span></div>
+                     <div><span class="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1">Tél / Poste</span><span class="text-xs font-bold text-slate-700 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3 text-slate-400"></i> {{ ticket.tel_demandeur or '-' }}</span></div>
+                </div>
+
+                <!-- SPECIFIQUE DAF (DÉTAILS) -->
+                {% if ticket.target_service.value == 'DAF' %}
+                <div class="space-y-4 mb-4 bg-purple-50 p-4 rounded-xl border border-purple-100">
+                    <div class="flex justify-between items-center text-xs pb-2 border-b border-purple-200"><span class="font-bold text-purple-400 uppercase text-[10px]">Livraison</span><span class="font-black text-purple-900">{{ ticket.daf_lieu_livraison }}</span></div>
+                    <div class="space-y-2 pt-2">
+                        <p class="text-[10px] font-black text-purple-400 uppercase tracking-widest">Fournisseur</p>
+                        <div class="text-xs font-bold text-slate-700">
+                            <p>{{ ticket.daf_fournisseur_nom }}</p>
+                            <p class="font-normal text-slate-500">{{ ticket.daf_fournisseur_tel }}</p>
+                            <p class="font-normal text-slate-500">{{ ticket.daf_fournisseur_email }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tableau des articles (JSON) -->
+                {% set lignes = ticket.get_daf_lignes() %}
+                {% if lignes %}
+                <div class="border border-slate-200 rounded-xl overflow-hidden mb-4">
+                    <table class="w-full text-[10px]">
+                        <thead class="bg-slate-50 font-black uppercase text-slate-500"><tr><th class="p-2 text-left">Désignation</th><th class="p-2 text-center">Qté</th><th class="p-2 text-right">Total</th></tr></thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for l in lignes %}
+                            <tr><td class="p-2">{{ l.designation }}</td><td class="p-2 text-center">{{ l.qte }}</td><td class="p-2 text-right font-bold">{{ l.total }} €</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% endif %}
+
+                <!-- Fichiers Devis -->
+                {% set files = ticket.get_daf_files() %}
+                {% if files %}
+                <div class="space-y-2">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Devis Joints</p>
+                    {% for f in files %}
+                    <a href="{{ url_for('static', filename='uploads/tickets/' + ticket.uid_public + '/' + f) }}" target="_blank" class="block bg-white border border-slate-200 p-2 rounded-lg text-xs font-bold text-blue-600 hover:bg-blue-50 flex items-center gap-2">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> {{ f }}
+                    </a>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% endif %}
+
+                <!-- (Autres blocs Info... inchangés) -->
+                
+                 <!-- Statut -->
+                <div class="flex justify-between items-center border-t border-slate-100 pt-4 mt-6">
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Statut</span>
+                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 text-slate-600">{{ ticket.status.value }}</span>
+                </div>
+            </div>
+
+            <!-- Intervenants & Actions (Inchangés) -->
+            <!-- ... (Copier le bloc Intervenants et Actions du fichier précédent) ... -->
+             <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 font-black text-xs">{{ ticket.author.username[0]|upper }}</div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">{{ ticket.author.fullname }}</p>
+                        <p class="text-[9px] text-slate-400 font-bold uppercase tracking-wide">Demandeur</p>
+                    </div>
+                </div>
+                {% if ticket.solver %}
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-black text-xs">{{ ticket.solver.username[0]|upper }}</div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900">{{ ticket.solver.fullname }}</p>
+                        <p class="text-[9px] text-blue-500 font-bold uppercase tracking-wide">Technicien</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            {% if current_user.role.value == 'SOLVER' and ticket.status.value != 'TERMINE' %}
+            <div class="bg-slate-900 p-6 rounded-3xl text-white shadow-2xl">
+                <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Actions Rapides</h3>
+                {% if not ticket.solver %}
+                <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="block w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-center font-black text-xs uppercase tracking-widest transition">Prendre en charge</a>
+                {% else %}
+                <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" onclick="return confirm('Clôturer le ticket ?')" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-center font-black text-xs uppercase tracking-widest transition">Terminer le ticket</a>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- CHAT (Inchangé) -->
+        <div class="lg:col-span-2 flex flex-col h-[750px] bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden relative">
+            <div class="p-5 border-b border-slate-100 bg-white flex justify-between items-center z-10">
+                <h3 class="font-black text-slate-800 uppercase text-xs tracking-widest flex items-center gap-2"><i data-lucide="message-circle" class="w-4 h-4 text-blue-600"></i> Fil de discussion</h3>
+            </div>
+            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50" id="chatContainer">
+                <div class="flex justify-center"><span class="bg-white border border-slate-200 text-slate-400 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Ticket ouvert le {{ ticket.created_at.strftime('%d/%m à %H:%M') }}</span></div>
+                {% for msg in ticket.messages %}
+                <div class="flex flex-col {% if msg.author_id == current_user.id %}items-end{% else %}items-start{% endif %} animate-fadeIn">
+                    <div class="max-w-[80%] {% if msg.author_id == current_user.id %}bg-slate-900 text-white rounded-tr-none{% else %}bg-white border border-slate-200 text-slate-700 rounded-tl-none{% endif %} px-5 py-4 rounded-2xl shadow-sm">
+                        <p class="text-sm font-bold">{{ msg.content }}</p>
+                    </div>
+                    <span class="text-[9px] font-black text-slate-400 mt-2 px-2 uppercase tracking-wide">{{ msg.author.fullname }} • {{ msg.timestamp.strftime('%H:%M') }}</span>
+                </div>
+                {% else %}
+                <div class="flex flex-col items-center justify-center h-full opacity-40"><i data-lucide="message-square" class="w-12 h-12 text-slate-300 mb-2"></i><p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Aucun message</p></div>
+                {% endfor %}
+            </div>
+            {% if ticket.status.value != 'TERMINE' and ticket.status.value != 'REFUSE' %}
+            <div class="p-4 bg-white border-t border-slate-100">
+                <form method="POST" class="flex gap-3">
+                    <input type="text" name="message" class="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-5 py-4 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition" placeholder="Écrivez votre message..." autocomplete="off" required>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl transition shadow-lg shadow-blue-200 group"><i data-lucide="send" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i></button>
+                </form>
+            </div>
+            {% else %}
+            <div class="p-6 bg-slate-50 border-t border-slate-200 text-center"><p class="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="lock" class="w-4 h-4"></i> Discussion close</p></div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+    lucide.createIcons();
+    const chatContainer = document.getElementById('chatContainer');
+    chatContainer.scrollTop = chatContainer.scrollHeight;
+</script>
+{% endblock %}

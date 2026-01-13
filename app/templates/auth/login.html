@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Intranet</title>
+    <!-- Tailwind CSS (Local ou CDN pour le dev) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-900 h-screen flex items-center justify-center">
+
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+        <div class="text-center mb-8">
+            <!-- REMPLACEMENT DU TITRE PAR UN LOGO -->
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Entreprise" class="h-32 mx-auto mb-4 object-contain">
+            <!-- Fallback text si l'image n'existe pas encore -->
+            <!-- <h1 class="text-3xl font-bold text-slate-800">Intranet <span class="text-blue-600">Corp</span></h1> -->
+            <p class="text-slate-500 mt-2">Portail unifié des services</p>
+        </div>
+
+        <!-- Messages Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="mb-4 p-3 rounded-lg text-sm font-medium 
+                        {% if category == 'success' %}bg-green-100 text-green-700
+                        {% elif category == 'danger' %}bg-red-100 text-red-700
+                        {% else %}bg-blue-100 text-blue-700{% endif %}">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-6">
+            <div>
+                <label for="username" class="block text-sm font-medium text-slate-700 mb-1">Identifiant Windows</label>
+                <input type="text" name="username" id="username" required 
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="ex: astraore">
+            </div>
+
+            <div>
+                <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
+                <input type="password" name="password" id="password" required 
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
+                    placeholder="••••••••">
+            </div>
+
+            <button type="submit" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200 transform hover:scale-[1.02]">
+                Se connecter
+            </button>
+        </form>
+
+        <!-- Aide pour le développeur (Visible uniquement en DEBUG ou pour tester) -->
+        <div class="mt-8 pt-6 border-t border-slate-100 text-center">
+            <p class="text-xs text-slate-400 uppercase font-bold mb-3">Comptes de Test</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border cursor-pointer hover:bg-slate-200" onclick="fillLogin('user')">user</span>
+                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border cursor-pointer hover:bg-slate-200" onclick="fillLogin('manager')">manager</span>
+                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border cursor-pointer hover:bg-slate-200" onclick="fillLogin('admin')">admin</span>
+                <span class="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded border border-blue-100 cursor-pointer hover:bg-blue-100" onclick="fillLogin('tech_info')">tech_info</span>
+                <span class="px-2 py-1 bg-purple-50 text-purple-600 text-xs rounded border border-purple-100 cursor-pointer hover:bg-purple-100" onclick="fillLogin('tech_daf')">tech_daf</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function fillLogin(user) {
+            document.getElementById('username').value = user;
+            document.getElementById('password').value = 'password';
+        }
+    </script>
+</body>
+</html>

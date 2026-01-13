@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accès Refusé - Intranet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+    <style>
+        .gif-container {
+            border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+            margin-bottom: 2rem;
+            margin: 0 auto 2rem auto;
+            max-width: 45%;
+        }
+    </style>
+
+<body class="bg-slate-900 h-screen w-full flex flex-col items-center justify-center text-center overflow-hidden relative">
+    <!-- Background Pattern -->
+    <div class="absolute inset-0 opacity-10 pointer-events-none" 
+         style="background-image: radial-gradient(#4f46e5 1px, transparent 1px); background-size: 30px 30px;">
+    </div>
+
+    <div class="z-10 max-w-2xl px-6">
+        <h1 class="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-600 mb-4 animate-pulse">
+            403
+        </h1>
+        <h2 class="text-2xl md:text-3xl font-bold text-white mb-8">
+            Accès Interdit !
+        </h2>
+
+        <!-- Le GIF Catdance -->
+        <div class="gif-container">
+            <img src="{{ url_for('static', filename='img/good-morning.gif') }}" alt="Accès Refusé" class="w-full h-auto object-cover">
+            <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+        </div>
+
+        <p class="text-slate-400 text-lg mb-8">
+            Oups ! Vous n'avez pas les droits pour voir cette <span class="font-mono text-blue-400 font-bold">page</span>.<br>
+            Contacter le service informatique.
+            <br>
+            <p class="text-white text-s mb-8">  PS : on ne vous aidera pas. </p>
+        </p>
+        <a href="{{ url_for('auth.login') }}" class="inline-flex items-center gap-2 px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-full transition transform hover:scale-105 shadow-lg shadow-blue-500/30">
+            <span>Retour à la connexion</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14" />
+            </svg>
+        </a>
+    </div>
+
+</body>
+</html>

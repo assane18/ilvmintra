@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-8">
+
+    <!-- En-tête -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Gestion des Prêts</h1>
+            <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Suivi des sorties de matériel</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard
+            </a>
+            <button onclick="document.getElementById('newPretModal').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Nouveau Prêt
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Rapides -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Matériel Sorti</p>
+                <p class="text-2xl font-black text-blue-600 mt-1">{{ prets|selectattr('statut_dossier', 'equalto', 'En cours')|list|length }}</p>
+            </div>
+            <div class="p-3 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="arrow-up-right" class="w-6 h-6"></i></div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Stock Disponible</p>
+                <p class="text-2xl font-black text-emerald-600 mt-1">{{ materiels|length }}</p>
+            </div>
+            <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="box" class="w-6 h-6"></i></div>
+        </div>
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
+            <div>
+                <p class="text-slate-400 text-[10px] font-black uppercase tracking-widest">Historique Total</p>
+                <p class="text-2xl font-black text-orange-600 mt-1">{{ prets|length }}</p>
+            </div>
+            <div class="p-3 bg-orange-50 text-orange-600 rounded-xl"><i data-lucide="history" class="w-6 h-6"></i></div>
+        </div>
+    </div>
+
+    <!-- Tableau des Prêts -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr class="text-slate-500 font-black uppercase text-[10px] tracking-wider">
+                        <th class="px-6 py-4">Matériel / SN</th>
+                        <th class="px-6 py-4">Emprunteur</th>
+                        <th class="px-6 py-4">Date Sortie</th>
+                        <th class="px-6 py-4">Retour Prévu</th>
+                        <th class="px-6 py-4 text-center">État</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                    {% for pret in prets %}
+                    <tr class="hover:bg-slate-50 transition group">
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-900">{{ pret.materiel.modele }}</div>
+                            <div class="font-mono text-xs text-slate-400 mt-0.5">{{ pret.materiel.sn }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-800">{{ pret.nom_emprunteur }} {{ pret.prenom_emprunteur }}</div>
+                            <div class="text-xs text-slate-500">{{ pret.service_emprunteur }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-slate-500">{{ pret.date_sortie.strftime('%d/%m/%Y') }}</td>
+                        <td class="px-6 py-4 text-slate-500">
+                            {% if pret.date_retour_prevue %}
+                                {{ pret.date_retour_prevue.strftime('%d/%m/%Y') }}
+                            {% else %}
+                                <span class="text-slate-300 italic">Indéfini</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            {% if pret.statut_dossier == 'En cours' %}
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-wide border border-blue-100">
+                                    <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Sorti
+                                </span>
+                            {% else %}
+                                <span class="inline-block px-2.5 py-1 rounded-full bg-slate-100 text-slate-500 text-[10px] font-black uppercase tracking-wide border border-slate-200">
+                                    Terminé
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            {% if pret.statut_dossier == 'En cours' %}
+                            <button onclick="openRetourModal('{{ pret.id }}', '{{ pret.materiel.modele }}', '{{ pret.nom_emprunteur }}')" 
+                                class="bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-bold uppercase transition shadow-sm">
+                                Retour
+                            </button>
+                            {% else %}
+                            <span class="text-emerald-600 text-xs font-bold uppercase flex items-center justify-end gap-1">
+                                <i data-lucide="check-check" class="w-4 h-4"></i> Rendu
+                            </span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="p-12 text-center text-slate-400 italic font-medium">
+                            Aucun prêt enregistré pour le moment.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL NOUVEAU PRET -->
+<div id="newPretModal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
+    <div class="bg-white p-8 rounded-3xl w-full max-w-2xl m-4 shadow-2xl relative max-h-[90vh] overflow-y-auto custom-scroll">
+        <button onclick="document.getElementById('newPretModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+        
+        <div class="mb-8">
+            <h3 class="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Nouveau Prêt</h3>
+            <p class="text-slate-500 text-xs font-bold uppercase tracking-wide">Sortie de matériel du stock</p>
+        </div>
+
+        <form method="POST" class="space-y-6">
+            <input type="hidden" name="action_pret" value="1">
+            
+            <!-- Sélection Matériel -->
+            <div>
+                <label class="label-tiny">Matériel à sortir (Disponible)</label>
+                <select name="materiel_id" class="input-field" required>
+                    <option value="" disabled selected>Choisir un équipement...</option>
+                    {% for mat in materiels %}
+                        <option value="{{ mat.id }}">{{ mat.categorie }} - {{ mat.modele }} (S/N: {{ mat.sn }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Infos Emprunteur -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label-tiny">Nom</label>
+                    <input type="text" name="nom" class="input-field" required placeholder="DUPONT">
+                </div>
+                <div>
+                    <label class="label-tiny">Prénom</label>
+                    <input type="text" name="prenom" class="input-field" required placeholder="Jean">
+                </div>
+                <div class="md:col-span-2">
+                    <label class="label-tiny">Service / Département</label>
+                    <select name="service" class="input-field" required>
+                        <option value="" disabled selected>Choisir un service...</option>
+                        <option value="Accueil">Accueil</option>
+                        <option value="Archipelle">Archipelle</option>
+                        <option value="Cellule Parcours">Cellule Parcours</option>
+                        <option value="CSD">CSD</option>
+                        <option value="DAF">DAF</option>
+                        <option value="DG">DG</option>
+                        <option value="DRH">DRH</option>
+                        <option value="EAM Draveil">EAM Draveil</option>
+                        <option value="ESAT">ESAT</option>
+                        <option value="Espace Loisirs">Espace Loisirs</option>
+                        <option value="FH">FH</option>
+                        <option value="FJ">FJ</option>
+                        <option value="FV">FV</option>
+                        <option value="Gite">Gite</option>
+                        <option value="IME Corbeil">IME Corbeil</option>
+                        <option value="Informatique">Informatique</option>
+                        <option value="Magasin">Magasin</option>
+                        <option value="MAS">MAS</option>
+                        <option value="MAS Externat">MAS Externat</option>
+                        <option value="MAS Inclusive">MAS Inclusive</option>
+                        <option value="Patrimoine">Patrimoine</option>
+                        <option value="Qualite">Qualite</option>
+                        <option value="SACAT">SACAT</option>
+                        <option value="SAMSAH">SAMSAH</option>
+                        <option value="SAVIE">SAVIE</option>
+                        <option value="Sécurité Incendie">Sécurité Incendie</option>
+                        <option value="SESSAD Corbeil">SESSAD Corbeil</option>
+                        <option value="SESSAD Créteil">SESSAD Créteil</option>
+                        <option value="SESSAD TSA">SESSAD TSA</option>
+                        <option value="SG">SG</option>
+                        <option value="SRU">SRU</option>
+                        <option value="Syndicat">Syndicat</option>
+                        <option value="Technique">Technique</option>
+                        <option value="TKITOI">TKITOI</option>
+                        <option value="UEEA">UEEA</option>
+                        <option value="UEMA">UEMA</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Détails Prêt -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label-tiny">Type de prêt</label>
+                    <select name="type_pret" class="input-field">
+                        <option value="Temporaire">Temporaire (Courte durée)</option>
+                        <option value="Attribution">Attribution (Longue durée)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-tiny">Date de sortie</label>
+                    <input type="datetime-local" name="custom_date_sortie" class="input-field">
+                </div>
+            </div>
+
+            <!-- État Départ -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p class="label-tiny mb-3 text-blue-500">État du matériel (Sortie)</p>
+                <div class="grid grid-cols-3 gap-3">
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Écran</label>
+                        <select name="etat_ecran" class="input-field text-xs py-2">
+                            <option value="Neuf">Neuf</option>
+                            <option value="Bon">Bon</option>
+                            <option value="Abimé">Abimé</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Clavier</label>
+                        <select name="etat_clavier" class="input-field text-xs py-2">
+                            <option value="Neuf">Neuf</option>
+                            <option value="Bon">Bon</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-bold text-slate-500 uppercase">Coque</label>
+                        <select name="etat_coque" class="input-field text-xs py-2">
+                            <option value="Neuf">Neuf</option>
+                            <option value="Bon">Bon</option>
+                            <option value="Rayé">Rayé</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <label class="label-tiny">Accessoires fournis</label>
+                    <div class="flex gap-4 text-xs font-bold text-slate-600">
+                        <label class="flex items-center gap-2"><input type="checkbox" name="accessoires" value="Chargeur" checked class="accent-blue-600"> Chargeur</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" name="accessoires" value="Souris" class="accent-blue-600"> Souris</label>
+                        <label class="flex items-center gap-2"><input type="checkbox" name="accessoires" value="Sacoche" class="accent-blue-600"> Sacoche</label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-blue-600 transition shadow-lg text-xs uppercase tracking-widest mt-2">
+                Valider le prêt
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL RETOUR (Généré dynamiquement par JS) -->
+<div id="retourModal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white p-8 rounded-3xl w-full max-w-lg m-4 shadow-2xl relative">
+        <button onclick="document.getElementById('retourModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400"><i data-lucide="x"></i></button>
+        
+        <h3 class="text-xl font-black text-slate-900 uppercase tracking-tight mb-2">Retour Matériel</h3>
+        <p class="text-sm font-bold text-slate-500 mb-6" id="retourInfoText">...</p>
+
+        <form id="retourForm" method="POST" class="space-y-4">
+            <div>
+                <label class="label-tiny">Date de retour</label>
+                <input type="datetime-local" name="custom_date_retour" class="input-field" required>
+            </div>
+            
+            <div class="bg-orange-50 p-4 rounded-xl border border-orange-100">
+                <p class="label-tiny mb-3 text-orange-600">État au retour</p>
+                <div class="grid grid-cols-3 gap-2">
+                    <select name="etat_ecran_retour" class="input-field text-xs"><option value="Bon">Écran OK</option><option value="HS">Écran HS</option></select>
+                    <select name="etat_clavier_retour" class="input-field text-xs"><option value="Bon">Clavier OK</option><option value="HS">Clavier HS</option></select>
+                    <select name="etat_coque_retour" class="input-field text-xs"><option value="Bon">Coque OK</option><option value="HS">Coque HS</option></select>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full bg-emerald-600 text-white font-black py-3 rounded-xl hover:bg-emerald-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">
+                Confirmer le retour
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    function openRetourModal(id, materiel, emprunteur) {
+        const modal = document.getElementById('retourModal');
+        const form = document.getElementById('retourForm');
+        const info = document.getElementById('retourInfoText');
+        
+        // Mise à jour du texte et de l'action du formulaire
+        info.innerText = `${materiel} - Emprunté par ${emprunteur}`;
+        // L'URL d'action doit correspondre à la route définie dans prets.py
+        form.action = `/prets/pret/${id}/retour`; 
+        // Note: Si le Blueprint prets n'a pas de préfixe url, utiliser /pret/${id}/retour
+        // Dans app/__init__.py, on a: app.register_blueprint(prets_bp) SANS préfixe
+        form.action = `/pret/${id}/retour`;
+
+        modal.classList.remove('hidden');
+    }
+</script>
+<style>.label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; outline: none; transition: all 0.2s; } .input-field:focus { border-color: #3b82f6; background-color: #fff; }</style>
+{% endblock %}

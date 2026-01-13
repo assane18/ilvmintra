@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ILVM - Intranet</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Icônes Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* Vos styles personnalisés conservés */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow: hidden; }
+        .alert-error { background-color: #fee2e2; border-left: 4px solid #ef4444; color: #b91c1c; }
+        .alert-success { background-color: #d1fae5; border-left: 4px solid #10b981; color: #047857; }
+        .alert-warning { background-color: #ffedd5; border-left: 4px solid #f97316; color: #c2410c; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .anim-greeting { animation: fadeInUp 0.8s ease-out forwards; }
+        
+        .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
+        .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; outline: none; transition: all 0.2s; } 
+        .input-field:focus { border-color: #3b82f6; background-color: #fff; }
+    </style>
+</head>
+<body class="bg-slate-100 font-sans text-slate-900 min-h-screen flex flex-col">
+    
+    {% if current_user.is_authenticated %}
+    <nav class="bg-slate-900 text-white sticky top-0 z-50 border-b border-slate-800">
+        <div class="container mx-auto px-4 h-16 flex justify-between items-center">
+            <div class="flex items-center gap-8">
+                <!-- Logo -->
+                <a href="{{ url_for('main.user_portal') }}" class="font-black text-xl tracking-tighter text-blue-500 italic flex items-center gap-2">
+                    <i data-lucide="monitor-check"></i> ILVM<span class="text-white">MANAGER</span>
+                </a>
+                
+                <!-- Menu Navigation -->
+                <div class="hidden md:flex gap-1 text-xs font-bold uppercase tracking-widest">
+                    <a href="{{ url_for('main.user_portal') }}" class="px-4 py-2 hover:bg-slate-800 rounded transition flex gap-2 items-center">
+                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Portail
+                    </a>
+                    
+                    <!-- Liens conditionnels selon le rôle (CORRECTION MAJEURE ICI) -->
+                    <!-- On convertit en string et majuscule pour être sûr de la correspondance -->
+                    {% if 'MANAGER' in current_user.role|string|upper or 'ADMIN' in current_user.role|string|upper %}
+                    <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-4 py-2 hover:bg-slate-800 rounded transition flex gap-2 items-center text-purple-400 hover:text-purple-300">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+                    </a>
+                    {% endif %}
+
+                    {% if 'SOLVER' in current_user.role|string|upper or 'ADMIN' in current_user.role|string|upper %}
+                    <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-4 py-2 hover:bg-slate-800 rounded transition flex gap-2 items-center text-blue-400 hover:text-blue-300">
+                        <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Profil Utilisateur & Notifications -->
+            <div class="flex items-center gap-4">
+                
+                <!-- Cloche Notification -->
+                <div class="relative group">
+                    <button id="notifBtn" class="p-2 hover:bg-slate-800 rounded-lg transition relative">
+                        <i data-lucide="bell" class="w-5 h-5 text-slate-300 group-hover:text-white"></i>
+                        <span id="notifBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900"></span>
+                    </button>
+                    
+                    <!-- Dropdown Notifications -->
+                    <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 origin-top-right transition-all">
+                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="text-xs font-black uppercase text-slate-500 tracking-widest">Notifications</h3>
+                            <button onclick="markAllRead()" class="text-[10px] font-bold text-blue-600 hover:underline">Tout marquer comme lu</button>
+                        </div>
+                        <div id="notifList" class="max-h-64 overflow-y-auto">
+                            <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-right hidden sm:block">
+                    <p class="text-xs font-bold text-white">{{ current_user.fullname }}</p>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">{{ current_user.role }}</p>
+                </div>
+                
+                {% if 'ADMIN' in current_user.role|string|upper %}
+                <a href="{{ url_for('users.list_users') }}" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition" title="Gestion Utilisateurs">
+                    <i data-lucide="users" class="w-4 h-4"></i>
+                </a>
+                {% endif %}
+                
+                <a href="{{ url_for('auth.logout') }}" class="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition" title="Déconnexion">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </a>
+            </div>
+        </div>
+    </nav>
+    {% endif %}
+
+    <main class="container mx-auto p-4 md:p-6 pb-20 flex-grow">
+        <!-- Messages Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="px-6 py-4 mb-6 rounded-xl shadow-lg flex items-center gap-3 animate-bounce-short font-bold text-sm 
+                        {% if category == 'success' %}bg-d1fae5 border-l-4 border-green-500 text-green-700
+                        {% elif category == 'danger' %}bg-fee2e2 border-l-4 border-red-500 text-red-700
+                        {% else %}bg-blue-50 border-l-4 border-blue-500 text-blue-700{% endif %}">
+                        <i data-lucide="info" class="w-5 h-5"></i> <p>{{ message }}</p>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Contenu de la page -->
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // Gestion Notifications
+        const notifBtn = document.getElementById('notifBtn');
+        const notifDropdown = document.getElementById('notifDropdown');
+        const notifBadge = document.getElementById('notifBadge');
+        const notifList = document.getElementById('notifList');
+
+        if (notifBtn) {
+            notifBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                notifDropdown.classList.toggle('hidden');
+                if (!notifDropdown.classList.contains('hidden')) {
+                    fetchNotifications();
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!notifDropdown.classList.contains('hidden') && !notifDropdown.contains(e.target) && e.target !== notifBtn) {
+                    notifDropdown.classList.add('hidden');
+                }
+            });
+
+            setInterval(checkNotificationCount, 30000);
+            checkNotificationCount();
+        }
+
+        async function checkNotificationCount() {
+            try {
+                const res = await fetch('/api/notifications');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (data.count > 0) {
+                    notifBadge.classList.remove('hidden');
+                    notifBadge.innerText = data.count > 9 ? '9+' : data.count;
+                } else {
+                    notifBadge.classList.add('hidden');
+                }
+            } catch (e) { console.error("Erreur polling notif", e); }
+        }
+
+        async function fetchNotifications() {
+            try {
+                notifList.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>';
+                const res = await fetch('/api/notifications');
+                const data = await res.json();
+                notifList.innerHTML = '';
+
+                if (data.notifications.length === 0) {
+                    notifList.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs italic">Aucune nouvelle notification.</div>';
+                    return;
+                }
+
+                data.notifications.forEach(n => {
+                    const item = document.createElement('div');
+                    item.className = 'p-3 border-b border-slate-50 hover:bg-slate-50 transition cursor-pointer';
+                    
+                    let colorClass = 'bg-blue-500';
+                    if (n.category === 'success') colorClass = 'bg-green-500';
+                    if (n.category === 'warning' || n.category === 'danger') colorClass = 'bg-red-500';
+
+                    item.innerHTML = `
+                        <div class="flex gap-3 items-start">
+                            <div class="w-2 h-2 mt-1.5 rounded-full ${colorClass}"></div>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold text-slate-700 leading-tight">${n.message}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            </div>
+                        </div>
+                    `;
+                    item.onclick = () => {
+                        markRead(n.id);
+                        if (n.link) window.location.href = n.link;
+                    };
+                    notifList.appendChild(item);
+                });
+            } catch (e) {
+                notifList.innerHTML = '<div class="p-4 text-center text-red-400 text-xs">Erreur de chargement.</div>';
+            }
+        }
+
+        async function markRead(id) {
+            await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
+            checkNotificationCount();
+        }
+
+        async function markAllRead() {
+            await fetch('/api/notifications/read_all', { method: 'POST' });
+            checkNotificationCount();
+            notifDropdown.classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

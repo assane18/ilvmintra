@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold text-white mb-8">Tableau de Bord Validation</h1>
+
+    <!-- SECTION N1 : VALIDATION HIERARCHIQUE (Mes Équipes) -->
+    <div class="bg-slate-800 rounded-lg shadow-lg p-6 mb-8 border border-slate-700">
+        <h2 class="text-xl font-bold text-blue-400 mb-4 flex items-center">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+            Validation Hiérarchique (Mes Équipes)
+        </h2>
+        
+        {% if tickets_n1 %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-slate-300">
+                <thead class="bg-slate-700 text-slate-200 uppercase text-sm">
+                    <tr>
+                        <th class="py-3 px-4">ID</th>
+                        <th class="py-3 px-4">Demandeur</th>
+                        <th class="py-3 px-4">Service (GU)</th>
+                        <th class="py-3 px-4">Titre</th>
+                        <th class="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    {% for ticket in tickets_n1 %}
+                    <tr class="hover:bg-slate-700/50 transition">
+                        <td class="py-3 px-4 font-mono text-blue-300">{{ ticket.uid_public }}</td>
+                        <td class="py-3 px-4">{{ ticket.author.fullname }}</td>
+                        <td class="py-3 px-4"><span class="bg-blue-900 text-blue-300 py-1 px-2 rounded text-xs">{{ ticket.service_demandeur }}</span></td>
+                        <td class="py-3 px-4">{{ ticket.title }}</td>
+                        <td class="py-3 px-4 text-center space-x-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-gray-400 hover:text-white" title="Voir"><i class="fas fa-eye"></i></a>
+                            <a href="{{ url_for('tickets.manager_action', ticket_id=ticket.id, action='validate') }}" class="text-green-500 hover:text-green-400" title="Valider"><i class="fas fa-check-circle text-xl"></i></a>
+                            <a href="{{ url_for('tickets.manager_action', ticket_id=ticket.id, action='refuse') }}" class="text-red-500 hover:text-red-400" title="Refuser"><i class="fas fa-times-circle text-xl"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-slate-500 italic">Aucune demande de vos équipes en attente.</p>
+        {% endif %}
+    </div>
+
+    <!-- SECTION N2 : VALIDATION TECHNIQUE (Mon Service Cible) -->
+    <!-- Uniquement visible si le manager gère un service destinataire (GS) -->
+    {% if tickets_n2 %}
+    <div class="bg-slate-800 rounded-lg shadow-lg p-6 border border-slate-700 mt-8">
+        <h2 class="text-xl font-bold text-purple-400 mb-4 flex items-center">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path></svg>
+            Validation Technique / Budget (Mon Service)
+        </h2>
+        
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-slate-300">
+                <thead class="bg-slate-700 text-slate-200 uppercase text-sm">
+                    <tr>
+                        <th class="py-3 px-4">ID</th>
+                        <th class="py-3 px-4">Origine</th>
+                        <th class="py-3 px-4">Pour Service</th>
+                        <th class="py-3 px-4">Titre</th>
+                        <th class="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-700">
+                    {% for ticket in tickets_n2 %}
+                    <tr class="hover:bg-slate-700/50 transition">
+                        <td class="py-3 px-4 font-mono text-purple-300">{{ ticket.uid_public }}</td>
+                        <td class="py-3 px-4">{{ ticket.service_demandeur }}</td>
+                        <td class="py-3 px-4"><span class="bg-purple-900 text-purple-300 py-1 px-2 rounded text-xs">{{ ticket.target_service.value }}</span></td>
+                        <td class="py-3 px-4">{{ ticket.title }}</td>
+                        <td class="py-3 px-4 text-center space-x-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-gray-400 hover:text-white"><i class="fas fa-eye"></i></a>
+                            <a href="{{ url_for('tickets.manager_action', ticket_id=ticket.id, action='validate') }}" class="text-green-500 hover:text-green-400"><i class="fas fa-check-circle text-xl"></i></a>
+                            <a href="{{ url_for('tickets.manager_action', ticket_id=ticket.id, action='refuse') }}" class="text-red-500 hover:text-red-400"><i class="fas fa-times-circle text-xl"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
+
+
+

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+    
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Mon Historique</h1>
+            <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Toutes mes demandes</p>
+        </div>
+        <a href="{{ url_for('main.user_portal') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
+        </a>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-slate-50 border-b border-slate-200">
+                <tr class="text-slate-500 font-black uppercase text-[10px] tracking-wider">
+                    <th class="px-6 py-4">Réf</th>
+                    <th class="px-6 py-4">Date</th>
+                    <th class="px-6 py-4">Service</th>
+                    <th class="px-6 py-4">Sujet</th>
+                    <th class="px-6 py-4">Statut</th>
+                    <th class="px-6 py-4 text-right"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                {% for ticket in tickets %}
+                <tr class="hover:bg-slate-50 transition group">
+                    <td class="px-6 py-4 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
+                    <td class="px-6 py-4 text-xs font-bold">{{ ticket.created_at.strftime('%d/%m/%Y') }}</td>
+                    <td class="px-6 py-4"><span class="font-black text-[10px] uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">{{ ticket.target_service.value }}</span></td>
+                    <td class="px-6 py-4 font-bold text-slate-900">{{ ticket.title }}</td>
+                    <td class="px-6 py-4">
+                        <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wide 
+                            {% if 'VALIDATION' in ticket.status.value %}bg-yellow-100 text-yellow-700
+                            {% elif 'COURS' in ticket.status.value %}bg-blue-100 text-blue-700
+                            {% elif 'TERMINE' in ticket.status.value %}bg-emerald-100 text-emerald-700
+                            {% else %}bg-red-50 text-red-600{% endif %}">
+                            {{ ticket.status.value }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 font-bold uppercase text-xs">Voir</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="p-8 text-center text-slate-400 italic font-bold">Aucune demande enregistrée.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</div>
+<script>lucide.createIcons();</script>
+{% endblock %}

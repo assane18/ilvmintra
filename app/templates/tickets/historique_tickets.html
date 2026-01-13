@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex flex-col gap-8">
+
+    <!-- En-tête -->
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Historique Tickets</h1>
+            <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Archives des demandes traitées</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard
+            </a>
+            <!-- BOUTON AJOUT MANUEL -->
+            <button onclick="document.getElementById('manualTicketModal').classList.remove('hidden')" class="bg-slate-900 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
+                <i data-lucide="edit" class="w-4 h-4"></i> Ajout Manuel
+            </button>
+        </div>
+    </div>
+
+    <!-- Tableau des Archives -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200">
+                    <tr class="text-slate-500 font-black uppercase text-[10px] tracking-wider">
+                        <th class="px-6 py-4">Réf / Date</th>
+                        <th class="px-6 py-4">Sujet</th>
+                        <th class="px-6 py-4">Demandeur</th>
+                        <th class="px-6 py-4">Résolu par</th>
+                        <th class="px-6 py-4 text-center">Clôture</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                    {% for ticket in tickets %}
+                    <tr class="hover:bg-slate-50 transition group">
+                        <td class="px-6 py-4">
+                            <div class="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block mb-1">{{ ticket.uid_public }}</div>
+                            <div class="text-[10px] text-slate-400 font-bold uppercase">{{ ticket.created_at.strftime('%d/%m/%Y') }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-900">{{ ticket.title }}</div>
+                            <div class="text-xs text-slate-500 truncate max-w-xs">{{ ticket.category_ticket or 'Standard' }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            <div class="font-bold text-slate-800">{{ ticket.author.fullname }}</div>
+                            <div class="text-[10px] text-slate-400 uppercase font-bold">Client</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if ticket.solver %}
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600">
+                                    {{ ticket.solver.username[0]|upper }}
+                                </div>
+                                <span class="text-xs font-bold text-slate-600">{{ ticket.solver.fullname }}</span>
+                            </div>
+                            {% else %}
+                            <span class="text-slate-300 text-xs italic">Auto</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-center">
+                            <div class="text-emerald-600 text-xs font-bold">{{ ticket.closed_at.strftime('%d/%m/%Y') if ticket.closed_at else '-' }}</div>
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-slate-400 hover:text-blue-600 transition p-2" title="Voir Détail">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="p-12 text-center text-slate-400 italic font-medium">
+                            Aucun ticket archivé.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL AJOUT MANUEL -->
+<div id="manualTicketModal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
+    <div class="bg-white p-8 rounded-3xl w-full max-w-lg m-4 shadow-2xl relative">
+        <button onclick="document.getElementById('manualTicketModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </button>
+        
+        <div class="mb-6">
+            <h3 class="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Saisie Manuelle</h3>
+            <p class="text-slate-500 text-xs font-bold uppercase tracking-wide">Archivage d'une demande externe (Téléphone, Oral...)</p>
+        </div>
+
+        <form method="POST" class="space-y-5">
+            
+            <div>
+                <label class="label-tiny">Sujet de la demande</label>
+                <input type="text" name="title" class="input-field" required placeholder="Ex: Panne réseau bureau 204">
+            </div>
+
+            <div>
+                <label class="label-tiny">Nom du Demandeur (Texte libre)</label>
+                <input type="text" name="user_name" class="input-field" required placeholder="Ex: M. Dupont (Compta)">
+            </div>
+
+            <div>
+                <label class="label-tiny">Date de réception</label>
+                <input type="datetime-local" name="date_creation" class="input-field">
+            </div>
+
+            <div>
+                <label class="label-tiny">Description / Résolution</label>
+                <textarea name="description" rows="3" class="input-field" placeholder="Détails du problème et de la solution apportée..."></textarea>
+            </div>
+
+            <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">
+                Enregistrer & Archiver
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+</script>
+<style>
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; outline: none; transition: all 0.2s; } 
+    .input-field:focus { border-color: #3b82f6; background-color: #fff; }
+</style>
+{% endblock %}
