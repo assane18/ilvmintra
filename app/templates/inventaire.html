@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 px-6 pt-6">
     <div>
-        <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Stock Matériel</h1>
-        <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Parc informatique</p>
+        <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Stock Matériel</h1>
+        <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Parc informatique</p>
     </div>
     <div class="flex flex-wrap gap-3">
         <!-- BOUTON RETOUR DASHBOARD -->
-        <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+        <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
             <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
         </a>
 
@@ -17,76 +17,121 @@
         <button onclick="document.getElementById('importModal').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2">
             <i data-lucide="upload"></i> Importer
         </button>
-        <button onclick="document.getElementById('newMaterielForm').classList.toggle('hidden')" class="bg-slate-900 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2">
-            <i data-lucide="plus"></i> Nouveau
+        <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2 hover:-translate-y-1 transition">
+            <i data-lucide="plus-circle"></i> Ajouter
         </button>
     </div>
 </div>
 
-<div id="newMaterielForm" class="hidden bg-white p-8 rounded-3xl shadow-xl border border-slate-200 mb-8 relative">
-    <div class="absolute top-4 right-4 cursor-pointer text-slate-400 hover:text-slate-600" onclick="document.getElementById('newMaterielForm').classList.add('hidden')"><i data-lucide="x"></i></div>
-    <h3 class="text-lg font-black text-slate-900 uppercase mb-6 flex items-center gap-2"><i data-lucide="package-plus" class="text-slate-600"></i> Ajouter au Stock</h3>
-    <form method="POST">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div><label class="label-tiny">Catégorie</label><select name="categorie" id="catSelect" onchange="toggleImei()" class="input-field"><option value="PC Portable">PC Portable</option><option value="Tour PC">Tour PC</option><option value="Ecran">Écran</option><option value="Telephone">Téléphone</option><option value="Tablette">Tablette</option><option value="Autre">Autre</option></select></div>
-            <div><label class="label-tiny">Modèle</label><input type="text" name="modele" class="input-field" required></div>
-            <div><label class="label-tiny">S/N</label><input type="text" name="sn" class="input-field font-mono" required></div>
-            <div><label class="label-tiny">Hostname</label><input type="text" name="hostname" class="input-field font-mono"></div>
-            <div id="imeiField" class="hidden"><label class="label-tiny">IMEI</label><input type="text" name="imei" class="input-field font-mono"></div>
-        </div>
-        <button type="submit" class="mt-6 w-full bg-slate-900 text-white font-black py-4 rounded-2xl hover:bg-emerald-600 transition text-xs uppercase tracking-[0.2em]">Enregistrer</button>
-    </form>
+<div class="px-6 pb-20">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider">
+                <tr>
+                    <th class="px-6 py-4">Type</th>
+                    <th class="px-6 py-4">Modèle</th>
+                    <th class="px-6 py-4">S/N</th>
+                    <th class="px-6 py-4">Hostname</th>
+                    <th class="px-6 py-4">Statut</th>
+                    <th class="px-6 py-4 text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
+                {% for item in materiels %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                    <td class="px-6 py-4"><span class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-2 py-1 rounded text-xs font-bold uppercase">{{ item.categorie }}</span></td>
+                    <td class="px-6 py-4 text-slate-900 dark:text-white font-bold">{{ item.modele }}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{{ item.sn }}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-blue-600 dark:text-blue-400">{{ item.hostname or '-' }}</td>
+                    <td class="px-6 py-4">
+                        {% if item.statut == 'Disponible' %}
+                        <span class="text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Dispo</span>
+                        {% else %}
+                        <span class="text-orange-500 dark:text-orange-400 text-xs font-black uppercase flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> {{ item.statut }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right flex justify-end gap-2">
+                        <button onclick="document.getElementById('edit-mat-{{ item.id }}').classList.remove('hidden')" class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                        <a href="{{ url_for('inventaire.supprimer', id=item.id) }}" onclick="return confirm('Supprimer ?')" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></a>
+                    </td>
+                </tr>
+
+                <!-- MODAL EDIT (Pour chaque item) -->
+                <div id="edit-mat-{{ item.id }}" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+                    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+                        <h3 class="text-xl font-black text-slate-900 dark:text-white mb-4">Modifier {{ item.modele }}</h3>
+                        <form action="{{ url_for('inventaire.modifier', id=item.id) }}" method="POST" class="space-y-4">
+                            <input type="text" name="categorie" value="{{ item.categorie }}" class="input-field" placeholder="Catégorie">
+                            <input type="text" name="modele" value="{{ item.modele }}" class="input-field" placeholder="Modèle">
+                            <input type="text" name="sn" value="{{ item.sn }}" class="input-field font-mono" placeholder="S/N">
+                            <input type="text" name="hostname" value="{{ item.hostname or '' }}" class="input-field font-mono" placeholder="Hostname">
+                            <input type="text" name="imei" value="{{ item.imei or '' }}" class="input-field font-mono" placeholder="IMEI">
+                            <div class="flex gap-2 mt-4">
+                                <button type="button" onclick="document.getElementById('edit-mat-{{ item.id }}').classList.add('hidden')" class="flex-1 py-3 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-xs uppercase hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Annuler</button>
+                                <button type="submit" class="flex-1 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase hover:bg-blue-700">Sauvegarder</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
-<!-- Modal Import -->
-<div id="importModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white p-8 rounded-2xl w-full max-w-lg m-4 shadow-2xl relative">
-        <button onclick="document.getElementById('importModal').classList.add('hidden')" class="absolute top-4 right-4 text-slate-400"><i data-lucide="x"></i></button>
-        <h3 class="font-black text-xl mb-4 uppercase">Importer Stock (Excel)</h3>
-        <p class="text-xs text-slate-500 mb-6 font-bold">Colonnes : Categorie, Modele, SN, Hostname, IMEI.</p>
-        <form action="{{ url_for('inventaire.import_stock') }}" method="POST" enctype="multipart/form-data">
-            <input type="file" name="file" accept=".xlsx" class="w-full border border-slate-200 p-2 rounded-lg text-sm mb-4">
-            <button class="w-full bg-blue-600 text-white font-black py-3 rounded-xl uppercase text-xs">Lancer l'import</button>
+<!-- MODAL ADD -->
+<div id="addModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+        <button onclick="document.getElementById('addModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i data-lucide="x"></i></button>
+        <h3 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">Ajouter Matériel</h3>
+        <form action="{{ url_for('inventaire.ajouter') }}" method="POST" class="space-y-4">
+            <select name="categorie" id="catSelect" onchange="toggleImei()" class="input-field">
+                <option value="PC Portable">PC Portable</option>
+                <option value="Ecran">Ecran</option>
+                <option value="Telephone">Téléphone</option>
+                <option value="Tablette">Tablette</option>
+                <option value="Peripherique">Périphérique</option>
+            </select>
+            <input type="text" name="modele" class="input-field" placeholder="Modèle (ex: Dell Latitude)" required>
+            <input type="text" name="sn" class="input-field font-mono" placeholder="Numéro Série (S/N)" required>
+            <input type="text" name="hostname" class="input-field font-mono" placeholder="Hostname (ex: ILVMLT001)">
+            <input type="text" name="imei" id="imeiField" class="input-field font-mono hidden" placeholder="IMEI (Si téléphone)">
+            <button type="submit" class="w-full bg-slate-900 dark:bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">Ajouter au stock</button>
         </form>
     </div>
 </div>
 
-<div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-    <table class="min-w-full text-left">
-        <thead class="bg-slate-50 border-b border-slate-200"><tr class="text-slate-500 font-black uppercase text-[10px] tracking-wider"><th class="px-6 py-4">Type</th><th class="px-6 py-4">Modèle</th><th class="px-6 py-4">Identification</th><th class="px-6 py-4">Hostname</th><th class="px-6 py-4 text-center">État</th><th class="px-6 py-4 text-right">Actions</th></tr></thead>
-        <tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-700">
-            {% for item in stock %}
-            <tr class="hover:bg-slate-50 transition group">
-                <td class="px-6 py-4 font-bold text-slate-900">{{ item.categorie }}</td>
-                <td class="px-6 py-4">{{ item.modele }}</td>
-                <td class="px-6 py-4"><div class="font-mono text-xs text-slate-500">SN: <span class="font-bold text-slate-700">{{ item.sn }}</span></div>{% if item.imei %}<div class="font-mono text-xs text-slate-400 mt-1">IMEI: {{ item.imei }}</div>{% endif %}</td>
-                <td class="px-6 py-4"><div class="text-xs font-bold text-slate-500">{{ item.hostname or '-' }}</div></td>
-                <td class="px-6 py-4 text-center">{% if item.statut == 'Disponible' %}<span class="inline-block px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase">En Stock</span>{% elif item.statut == 'Prêté' %}<span class="inline-block px-2 py-1 rounded bg-blue-100 text-blue-700 text-[10px] font-black uppercase">Sorti</span>{% else %}<span class="inline-block px-2 py-1 rounded bg-red-100 text-red-700 text-[10px] font-black uppercase">{{ item.statut }}</span>{% endif %}</td>
-                <td class="px-6 py-4 text-right flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition">
-                    <button onclick="document.getElementById('edit-mat-{{ item.id }}').classList.remove('hidden')" class="text-blue-600 hover:text-blue-800"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                    <a href="{{ url_for('inventaire.delete_materiel', id=item.id) }}" onclick="return confirm('Supprimer définitivement ?')" class="text-red-400 hover:text-red-600"><i data-lucide="trash-2" class="w-4 h-4"></i></a>
-                </td>
-            </tr>
-            <div id="edit-mat-{{ item.id }}" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm">
-                <div class="bg-white p-6 rounded-2xl w-full max-w-lg m-4 shadow-2xl">
-                    <h4 class="font-black text-lg mb-4 uppercase">Modifier Matériel</h4>
-                    <form action="{{ url_for('inventaire.edit_materiel', id=item.id) }}" method="POST" class="space-y-3">
-                        <input type="text" name="categorie" value="{{ item.categorie }}" class="input-field">
-                        <input type="text" name="modele" value="{{ item.modele }}" class="input-field">
-                        <input type="text" name="sn" value="{{ item.sn }}" class="input-field font-mono">
-                        <input type="text" name="hostname" value="{{ item.hostname or '' }}" class="input-field font-mono" placeholder="Hostname">
-                        <input type="text" name="imei" value="{{ item.imei or '' }}" class="input-field font-mono" placeholder="IMEI">
-                        <div class="flex gap-2 mt-4"><button type="button" onclick="document.getElementById('edit-mat-{{ item.id }}').classList.add('hidden')" class="flex-1 py-3 border rounded-xl font-bold text-xs uppercase hover:bg-slate-50">Annuler</button><button type="submit" class="flex-1 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase hover:bg-blue-700">Sauvegarder</button></div>
-                    </form>
-                </div>
-            </div>
-            {% endfor %}
-        </tbody>
-    </table>
+<!-- MODAL IMPORT -->
+<div id="importModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+        <button onclick="document.getElementById('importModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i data-lucide="x"></i></button>
+        <h3 class="text-xl font-black text-slate-900 dark:text-white mb-4">Importer Excel</h3>
+        <form action="{{ url_for('inventaire.import_stock') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl text-xs text-blue-800 dark:text-blue-300 font-medium">Fichier .xlsx avec colonnes: Categorie, Modele, SN, Hostname, IMEI</div>
+            <input type="file" name="file" accept=".xlsx" class="input-field bg-white dark:bg-slate-700" required>
+            <button type="submit" class="w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-700 shadow-lg text-xs uppercase tracking-widest">Lancer l'import</button>
+        </form>
+    </div>
 </div>
+
 <script>
-    function toggleImei() { document.getElementById('imeiField').classList.toggle('hidden', document.getElementById('catSelect').value !== 'Telephone' && document.getElementById('catSelect').value !== 'Tablette'); }
+    function toggleImei() { 
+        const val = document.getElementById('catSelect').value;
+        document.getElementById('imeiField').classList.toggle('hidden', val !== 'Telephone' && val !== 'Tablette'); 
+    }
     lucide.createIcons();
 </script>
-<style>.label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; outline: none; transition: all 0.2s; } .input-field:focus { border-color: #3b82f6; background-color: #fff; }</style>
+
+<style>
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
+    /* Dark mode override */
+    .dark .label-tiny { color: #94a3b8; }
+
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.75rem; outline: none; transition: all 0.2s; color: #1e293b; }
+    .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); background-color: white; }
+
+    /* Dark Mode Inputs */
+    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
+</style>
 {% endblock %}

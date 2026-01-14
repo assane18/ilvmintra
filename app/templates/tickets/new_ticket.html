@@ -1,42 +1,42 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex justify-center items-start min-h-[80vh] pt-10 pb-20">
+<div class="flex justify-center items-start min-h-[80vh] pt-10 pb-20 px-4">
 
-    <div class="bg-white p-8 rounded-3xl shadow-xl border border-slate-200 w-full max-w-3xl relative">
+    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-3xl relative transition-colors duration-300">
         
-        <a href="{{ url_for('main.user_portal') }}" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition">
+        <a href="{{ url_for('main.user_portal') }}" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
             <i data-lucide="x" class="w-6 h-6"></i>
         </a>
 
         <div class="text-center mb-8">
             <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 
-                {% if service_name == 'INFO' %}bg-blue-50 text-blue-600
-                {% elif service_name == 'DAF' %}bg-purple-50 text-purple-600
-                {% elif service_name == 'TECH' %}bg-orange-50 text-orange-600
-                {% else %}bg-emerald-50 text-emerald-600{% endif %}">
+                {% if service_name == 'INFO' %}bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400
+                {% elif service_name == 'DAF' %}bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400
+                {% elif service_name == 'TECH' %}bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400
+                {% else %}bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400{% endif %}">
                 
                 {% if service_name == 'INFO' %}<i data-lucide="monitor" class="w-8 h-8"></i>
                 {% elif service_name == 'DAF' %}<i data-lucide="banknote" class="w-8 h-8"></i>
                 {% elif service_name == 'TECH' %}<i data-lucide="wrench" class="w-8 h-8"></i>
                 {% else %}<i data-lucide="file-plus" class="w-8 h-8"></i>{% endif %}
             </div>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight mb-2">Nouvelle Demande <span class="text-blue-600">{{ service.value }}</span></h1>
-            <p class="text-slate-500">Remplissez les informations ci-dessous.</p>
+            <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Nouvelle Demande <span class="text-blue-600 dark:text-blue-400">{{ service.value }}</span></h1>
+            <p class="text-slate-500 dark:text-slate-400">Remplissez les informations ci-dessous.</p>
         </div>
 
         <form method="POST" enctype="multipart/form-data" class="space-y-6">
             
             <!-- SÉLECTEUR SERVICE DEMANDEUR (Si User a plusieurs GU) -->
             {% if user_origins|length > 1 %}
-            <div class="bg-slate-50 p-4 rounded-lg border border-yellow-500 mb-6">
-                <label class="block text-slate-700 text-sm font-bold mb-2">Pour quel service faites-vous cette demande ?</label>
-                <select name="selected_origin" class="w-full bg-white text-slate-800 rounded p-2 border border-slate-300 focus:ring-2 focus:ring-blue-500">
+            <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-lg border border-yellow-500 dark:border-yellow-600 mb-6">
+                <label class="block text-slate-700 dark:text-slate-300 text-sm font-bold mb-2">Pour quel service faites-vous cette demande ?</label>
+                <select name="selected_origin" class="w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded p-2 border border-slate-300 dark:border-slate-600 focus:ring-2 focus:ring-blue-500">
                     {% for origin in user_origins %}
                     <option value="{{ origin }}">GU-{{ origin }}</option>
                     {% endfor %}
                 </select>
-                <p class="text-xs text-slate-500 mt-1">En tant que Directeur/Manager multi-services, veuillez préciser l'origine.</p>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">En tant que Directeur/Manager multi-services, veuillez préciser l'origine.</p>
             </div>
             {% else %}
                 <!-- Champ caché si un seul service -->
@@ -49,8 +49,9 @@
             <div>
                 <label class="label-tiny">Type de demande</label>
                 <select name="category_ticket" id="category_ticket" onchange="toggleFormFields()" class="input-field cursor-pointer">
-                    <option value="Standard">Demande / Incident Standard</option>
+                    <option value="Standard">Demande Standard</option>
                     {% if service_name == 'INFO' %}
+                    <option value="Incident Standard">Incident / Panne (Internet, PC...)</option>
                     <option value="Nouvel Utilisateur">Création Nouvel Utilisateur</option>
                     <option value="Matériel">Demande de Matériel</option>
                     {% endif %}
@@ -83,58 +84,58 @@
             </div>
 
             <!-- FORMULAIRE NOUVEL UTILISATEUR (INFO ONLY) -->
-            <div id="new-user-fields" class="hidden bg-blue-50 p-6 rounded-2xl border border-blue-100 space-y-4">
-                <h3 class="font-bold text-blue-800 mb-4 flex items-center"><i data-lucide="user-plus" class="w-5 h-5 mr-2"></i> Fiche Nouvel Arrivant</h3>
+            <div id="new-user-fields" class="hidden bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-100 dark:border-blue-900/50 space-y-4">
+                <h3 class="font-bold text-blue-800 dark:text-blue-300 mb-4 flex items-center"><i data-lucide="user-plus" class="w-5 h-5 mr-2"></i> Fiche Nouvel Arrivant</h3>
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="text" name="new_user_nom" placeholder="Nom" class="input-field bg-white">
-                    <input type="text" name="new_user_prenom" placeholder="Prénom" class="input-field bg-white">
+                    <input type="text" name="new_user_nom" placeholder="Nom" class="input-field bg-white dark:bg-slate-700">
+                    <input type="text" name="new_user_prenom" placeholder="Prénom" class="input-field bg-white dark:bg-slate-700">
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="label-tiny">Date d'arrivée</label>
-                        <input type="date" name="new_user_date" class="input-field bg-white">
+                        <input type="date" name="new_user_date" class="input-field bg-white dark:bg-slate-700">
                     </div>
                     <div>
                         <label class="label-tiny">Service affecté</label>
-                        <input type="text" name="new_user_service" class="input-field bg-white">
+                        <input type="text" name="new_user_service" class="input-field bg-white dark:bg-slate-700">
                     </div>
                 </div>
                 <div>
                     <label class="label-tiny">Besoins d'accès (Dossiers, Logiciels...)</label>
-                    <textarea name="new_user_acces" rows="3" class="input-field bg-white" placeholder="Ex: Accès dossier Compta, Logiciel SAGE..."></textarea>
+                    <textarea name="new_user_acces" rows="3" class="input-field bg-white dark:bg-slate-700" placeholder="Ex: Accès dossier Compta, Logiciel SAGE..."></textarea>
                 </div>
             </div>
 
             <!-- FORMULAIRE MATÉRIEL (INFO ONLY) -->
-            <div id="materiel-fields" class="hidden bg-orange-50 p-6 rounded-2xl border border-orange-100 space-y-4">
-                <h3 class="font-bold text-orange-800 mb-4 flex items-center"><i data-lucide="monitor" class="w-5 h-5 mr-2"></i> Demande de Matériel</h3>
-                <textarea name="materiel_list" rows="3" class="input-field bg-white" placeholder="Ex: 1 PC Portable, 1 Écran 24 pouces..."></textarea>
+            <div id="materiel-fields" class="hidden bg-orange-50 dark:bg-orange-900/20 p-6 rounded-2xl border border-orange-100 dark:border-orange-900/50 space-y-4">
+                <h3 class="font-bold text-orange-800 dark:text-orange-300 mb-4 flex items-center"><i data-lucide="monitor" class="w-5 h-5 mr-2"></i> Demande de Matériel</h3>
+                <textarea name="materiel_list" rows="3" class="input-field bg-white dark:bg-slate-700" placeholder="Ex: 1 PC Portable, 1 Écran 24 pouces..."></textarea>
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="text" name="destinataire_materiel" placeholder="Pour qui ?" class="input-field bg-white">
-                    <input type="text" name="lieu_installation_mat" placeholder="Lieu d'installation" class="input-field bg-white">
+                    <input type="text" name="destinataire_materiel" placeholder="Pour qui ?" class="input-field bg-white dark:bg-slate-700">
+                    <input type="text" name="lieu_installation_mat" placeholder="Lieu d'installation" class="input-field bg-white dark:bg-slate-700">
                 </div>
             </div>
 
             <!-- FORMULAIRE BON DE COMMANDE (DAF ONLY) -->
             {% if service_name == 'DAF' %}
             <div id="daf-fields" class="hidden space-y-6">
-                <div class="bg-purple-50 p-6 rounded-2xl border border-purple-100 space-y-4">
-                    <h3 class="font-bold text-purple-800 mb-4">Informations Fournisseur</h3>
+                <div class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-2xl border border-purple-100 dark:border-purple-900/50 space-y-4">
+                    <h3 class="font-bold text-purple-800 dark:text-purple-300 mb-4">Informations Fournisseur</h3>
                     <div class="grid grid-cols-2 gap-4">
-                        <input type="text" name="daf_fournisseur_nom" placeholder="Nom Fournisseur" class="input-field bg-white">
-                        <input type="email" name="daf_fournisseur_email" placeholder="Email" class="input-field bg-white">
+                        <input type="text" name="daf_fournisseur_nom" placeholder="Nom Fournisseur" class="input-field bg-white dark:bg-slate-700">
+                        <input type="email" name="daf_fournisseur_email" placeholder="Email" class="input-field bg-white dark:bg-slate-700">
                     </div>
                     <div class="grid grid-cols-2 gap-4">
-                        <input type="text" name="daf_fournisseur_tel" placeholder="Téléphone" class="input-field bg-white">
-                        <input type="text" name="daf_fournisseur_fax" placeholder="Fax (Optionnel)" class="input-field bg-white">
+                        <input type="text" name="daf_fournisseur_tel" placeholder="Téléphone" class="input-field bg-white dark:bg-slate-700">
+                        <input type="text" name="daf_fournisseur_fax" placeholder="Fax (Optionnel)" class="input-field bg-white dark:bg-slate-700">
                     </div>
                 </div>
 
-                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                    <h3 class="font-bold text-slate-700 mb-4">Détails de la commande</h3>
+                <div class="bg-slate-50 dark:bg-slate-700 p-6 rounded-2xl border border-slate-200 dark:border-slate-600">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4">Détails de la commande</h3>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm text-left">
-                            <thead class="bg-slate-200 text-slate-700 uppercase">
+                            <thead class="bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-300 uppercase">
                                 <tr>
                                     <th class="p-2">Désignation</th>
                                     <th class="p-2 w-24">Réf</th>
@@ -143,21 +144,21 @@
                                     <th class="p-2 w-24">Total</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-slate-200">
+                            <tbody class="divide-y divide-slate-200 dark:divide-slate-600">
                                 {% for i in range(1, 6) %}
                                 <tr>
-                                    <td class="p-2"><input type="text" name="daf_designation_{{i}}" class="w-full bg-white border border-slate-300 rounded p-1"></td>
-                                    <td class="p-2"><input type="text" name="daf_ref_{{i}}" class="w-full bg-white border border-slate-300 rounded p-1"></td>
-                                    <td class="p-2"><input type="number" name="daf_qte_{{i}}" id="qte_{{i}}" oninput="calcTotal({{i}})" class="w-full bg-white border border-slate-300 rounded p-1"></td>
-                                    <td class="p-2"><input type="number" step="0.01" name="daf_pu_{{i}}" id="pu_{{i}}" oninput="calcTotal({{i}})" class="w-full bg-white border border-slate-300 rounded p-1"></td>
-                                    <td class="p-2"><input type="text" id="total_{{i}}" name="daf_total_{{i}}" readonly class="w-full bg-slate-100 border-none rounded p-1 text-right font-mono"></td>
+                                    <td class="p-2"><input type="text" name="daf_designation_{{i}}" class="w-full bg-white dark:bg-slate-800 dark:text-white border border-slate-300 dark:border-slate-500 rounded p-1"></td>
+                                    <td class="p-2"><input type="text" name="daf_ref_{{i}}" class="w-full bg-white dark:bg-slate-800 dark:text-white border border-slate-300 dark:border-slate-500 rounded p-1"></td>
+                                    <td class="p-2"><input type="number" name="daf_qte_{{i}}" id="qte_{{i}}" oninput="calcTotal({{i}})" class="w-full bg-white dark:bg-slate-800 dark:text-white border border-slate-300 dark:border-slate-500 rounded p-1"></td>
+                                    <td class="p-2"><input type="number" step="0.01" name="daf_pu_{{i}}" id="pu_{{i}}" oninput="calcTotal({{i}})" class="w-full bg-white dark:bg-slate-800 dark:text-white border border-slate-300 dark:border-slate-500 rounded p-1"></td>
+                                    <td class="p-2"><input type="text" id="total_{{i}}" name="daf_total_{{i}}" readonly class="w-full bg-slate-100 dark:bg-slate-600 dark:text-white border-none rounded p-1 text-right font-mono"></td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colspan="4" class="text-right font-bold p-2">TOTAL ESTIMÉ :</td>
-                                    <td class="p-2 font-bold text-right" id="grandTotal">0.00 €</td>
+                                    <td colspan="4" class="text-right font-bold p-2 text-slate-700 dark:text-slate-300">TOTAL ESTIMÉ :</td>
+                                    <td class="p-2 font-bold text-right text-slate-900 dark:text-white" id="grandTotal">0.00 €</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -168,26 +169,26 @@
                         <div class="flex space-x-4">
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="radio" name="daf_type_prix" value="HT" checked class="form-radio text-purple-600">
-                                <span>Hors Taxe (HT)</span>
+                                <span class="text-slate-700 dark:text-slate-300">Hors Taxe (HT)</span>
                             </label>
                             <label class="flex items-center space-x-2 cursor-pointer">
                                 <input type="radio" name="daf_type_prix" value="TTC" class="form-radio text-purple-600">
-                                <span>TTC</span>
+                                <span class="text-slate-700 dark:text-slate-300">TTC</span>
                             </label>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                    <h3 class="font-bold text-slate-700 mb-4">Pièces Jointes (Devis)</h3>
-                    <input type="file" name="devis_1" class="input-field bg-white mb-2">
-                    <input type="file" name="devis_2" class="input-field bg-white">
+                <div class="bg-slate-50 dark:bg-slate-700 p-6 rounded-2xl border border-slate-200 dark:border-slate-600">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4">Pièces Jointes (Devis)</h3>
+                    <input type="file" name="devis_1" class="input-field bg-white dark:bg-slate-800 dark:text-slate-300 mb-2">
+                    <input type="file" name="devis_2" class="input-field bg-white dark:bg-slate-800 dark:text-slate-300">
                 </div>
             </div>
             {% endif %}
 
             <!-- BOUTON ENVOYER -->
-            <button type="submit" class="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition transform hover:scale-[1.01] shadow-lg flex justify-center items-center">
+            <button type="submit" class="w-full py-4 bg-slate-900 hover:bg-slate-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold rounded-xl transition transform hover:scale-[1.01] shadow-lg flex justify-center items-center">
                 <span>Envoyer la demande</span>
                 <i data-lucide="send" class="ml-2 w-5 h-5"></i>
             </button>
@@ -237,8 +238,15 @@
 </script>
 
 <style>
-    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 6px; display: block; } 
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.75rem; outline: none; transition: all 0.2s; }
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; display: block; letter-spacing: 0.1em; }
+    /* Dark mode override pour label */
+    .dark .label-tiny { color: #94a3b8; }
+    
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.75rem; outline: none; transition: all 0.2s; color: #1e293b; }
     .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); background-color: white; }
+    
+    /* Dark Mode Inputs */
+    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
 </style>
 {% endblock %}

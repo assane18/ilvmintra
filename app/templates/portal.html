@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portail Intranet</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b', 
+                            950: '#020617', 
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
     <style>
@@ -12,127 +27,171 @@
         .card-service { transition: all 0.3s ease; }
         .card-service:hover { transform: translateY(-5px); box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
     </style>
+    <!-- Script d'initialisation du thème pour éviter le flash -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
 </head>
-<body class="bg-slate-50 min-h-screen">
+<body class="bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
 
+    <!-- BARRE DE NAVIGATION -->
     <nav class="bg-slate-900 text-white sticky top-0 z-50 border-b border-slate-800">
         <div class="container mx-auto px-4 h-16 flex justify-between items-center">
             <div class="flex items-center gap-8">
+                <!-- Logo -->
                 <span class="font-black text-xl tracking-tighter text-blue-500 italic flex items-center gap-2">
                     <i data-lucide="monitor-check"></i> ILVM<span class="text-white">PORTAIL</span>
                 </span>
+
+                <!-- AJOUT DES BOUTONS ICI (Visibles pour tous) -->
+                <div class="hidden md:flex gap-1 ml-6">
+                    <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2">
+                        <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
+                    </a>
+                    
+                    <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+                    </a>
+                </div>
             </div>
+
+            <!-- Menu Utilisateur + Dark Mode Toggle -->
             <div class="flex items-center gap-4">
+                <!-- Toggle Dark Mode -->
+                <button id="theme-toggle-portal" class="p-2 text-slate-400 hover:text-yellow-500 hover:bg-slate-800 rounded-lg transition" title="Changer le thème">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+
                 <div class="text-right hidden sm:block">
                     <p class="text-xs font-bold text-white">{{ current_user.fullname }}</p>
-                    <p class="text-[10px] text-slate-400 uppercase font-bold">{{ current_user.role }}</p>
+                    <p class="text-[10px] text-slate-400 uppercase font-bold">{{ current_user.role.value }}</p>
                 </div>
-                <a href="{{ url_for('auth.logout') }}" class="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition" title="Déconnexion"><i data-lucide="log-out" class="w-4 h-4"></i></a>
+                <a href="{{ url_for('auth.logout') }}" class="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition" title="Déconnexion">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                </a>
             </div>
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-6 py-12">
-        
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="mb-8 p-4 rounded-xl flex items-center gap-3 shadow-sm border font-bold text-sm
-                        {% if category == 'success' %}bg-green-50 border-green-200 text-green-700
-                        {% elif category == 'danger' %}bg-red-50 border-red-200 text-red-700
-                        {% else %}bg-blue-50 border-blue-200 text-blue-700{% endif %}">
-                        <i data-lucide="info" class="w-5 h-5"></i>
-                        <span>{{ message }}</span>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-        
-        <div class="text-center mb-12">
-            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight mb-4">Bonjour, comment pouvons-nous vous aider ?</h1>
-            <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Sélectionnez un service pour créer une nouvelle demande</p>
+    <!-- CONTENU PRINCIPAL -->
+    <div class="container mx-auto px-4 py-12">
+        <!-- Message de bienvenue -->
+        <div class="mb-12 text-center">
+            <h1 class="text-4xl font-black text-slate-900 dark:text-white mb-2">Bonjour, <span class="text-blue-600">{{ current_user.fullname.split()[0] }}</span> <br> comment pouvons-nous vous aider ? </h1>
+            <p class="text-slate-500 dark:text-slate-400 font-medium">Sélectionnez un service pour créer une nouvelle demande</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <a href="{{ url_for('tickets.new_ticket', service_name='INFO') }}" class="card-service group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-blue-300 cursor-pointer block">
-                <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+        <!-- Grille Services -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
+            
+            <!-- Carte Informatique -->
+            <a href="{{ url_for('tickets.new_ticket', service_name='INFO') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="monitor" class="w-24 h-24 text-blue-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                     <i data-lucide="monitor" class="w-7 h-7"></i>
                 </div>
-                <h3 class="font-black text-lg text-slate-900 uppercase mb-2">Informatique</h3>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Matériel, Logiciels, Bugs</p>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Informatique</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Problème PC, Internet, Logiciel, Imprimante...</p>
+                <div class="mt-4 flex items-center text-blue-600 dark:text-blue-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
             </a>
 
-            <a href="{{ url_for('tickets.new_ticket', service_name='DAF') }}" class="card-service group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-purple-300 cursor-pointer block">
-                <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+            <!-- Carte DAF -->
+            <a href="{{ url_for('tickets.new_ticket', service_name='DAF') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="banknote" class="w-24 h-24 text-purple-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-purple-50 dark:bg-purple-900/30 rounded-2xl flex items-center justify-center mb-4 text-purple-600 dark:text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-colors">
                     <i data-lucide="banknote" class="w-7 h-7"></i>
                 </div>
-                <h3 class="font-black text-lg text-slate-900 uppercase mb-2">DAF / Compta</h3>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Achats, Notes de frais</p>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">DAF / Achats</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Bons de commande, Factures, Budget...</p>
+                <div class="mt-4 flex items-center text-purple-600 dark:text-purple-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
             </a>
 
-            <a href="{{ url_for('tickets.new_ticket', service_name='TECH') }}" class="card-service group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-orange-300 cursor-pointer block">
-                <div class="w-14 h-14 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
+            <!-- Carte Technique -->
+            <a href="{{ url_for('tickets.new_ticket', service_name='TECH') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="wrench" class="w-24 h-24 text-orange-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-orange-50 dark:bg-orange-900/30 rounded-2xl flex items-center justify-center mb-4 text-orange-600 dark:text-orange-400 group-hover:bg-orange-600 group-hover:text-white transition-colors">
                     <i data-lucide="wrench" class="w-7 h-7"></i>
                 </div>
-                <h3 class="font-black text-lg text-slate-900 uppercase mb-2">Srv Techniques</h3>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Plomberie, Élec, Accès</p>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Services Techniques</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Travaux, Maintenance, Plomberie...</p>
+                <div class="mt-4 flex items-center text-orange-600 dark:text-orange-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
             </a>
 
-            <a href="{{ url_for('tickets.new_ticket', service_name='GEN') }}" class="card-service group bg-white p-6 rounded-2xl border border-slate-200 shadow-sm hover:border-emerald-300 cursor-pointer block">
-                <div class="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition">
-                    <i data-lucide="package" class="w-7 h-7"></i>
+            <!-- Carte Généraux -->
+            <a href="{{ url_for('tickets.new_ticket', service_name='GEN') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="file-plus" class="w-24 h-24 text-emerald-600"></i>
                 </div>
-                <h3 class="font-black text-lg text-slate-900 uppercase mb-2">Srv Généraux</h3>
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wide">Fournitures, Mobilier</p>
+                <div class="w-14 h-14 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center mb-4 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                    <i data-lucide="file-plus" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Services Généraux</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Logistique, Courrier, Véhicules...</p>
+                <div class="mt-4 flex items-center text-emerald-600 dark:text-emerald-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
             </a>
         </div>
 
-        <!-- Section MES TICKETS (DYNAMIQUE) -->
-        <div class="mt-16">
+        <!-- Section "Mes dernières demandes" -->
+        <div class="max-w-4xl mx-auto">
             <div class="flex items-center justify-between mb-6">
-                <h2 class="text-xl font-black text-slate-900 uppercase tracking-tight">Mes dernières demandes</h2>
-                <a href="{{ url_for('main.my_history') }}" class="text-xs font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wide">Voir tout l'historique</a>
+                <h2 class="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                    <i data-lucide="history" class="text-slate-400"></i> Mes dernières demandes
+                </h2>
+                <a href="{{ url_for('main.my_history') }}" class="text-sm font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 transition">Voir tout l'historique -></a>
             </div>
-            
-            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                <table class="w-full text-left text-sm text-slate-600">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-black uppercase text-[10px] tracking-wider">
+
+            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                    <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-100 dark:border-slate-600 text-slate-500 dark:text-slate-300 uppercase font-bold text-xs tracking-wider">
                         <tr>
-                            <th class="px-6 py-4">ID Ticket</th>
-                            <th class="px-6 py-4">Sujet</th>
                             <th class="px-6 py-4">Service</th>
+                            <th class="px-6 py-4">Sujet</th>
                             <th class="px-6 py-4">Statut</th>
                             <th class="px-6 py-4">Date</th>
-                            <th class="px-6 py-4"></th>
+                            <th class="px-6 py-4 text-right">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 font-medium">
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         {% for ticket in tickets %}
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="px-6 py-4 font-mono font-bold text-slate-700">{{ ticket.uid_public }}</td>
-                            <td class="px-6 py-4 font-bold text-slate-900">{{ ticket.title }}</td>
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                            <td class="px-6 py-4"><span class="font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded">{{ ticket.target_service.value }}</span></td>
+                            <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ ticket.title }}</td>
                             <td class="px-6 py-4">
-                                <span class="flex items-center gap-2 text-xs font-bold">
-                                    {{ ticket.target_service.value }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-4">
-                                <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest 
-                                    {% if 'VALIDATION' in ticket.status.value %}bg-yellow-100 text-yellow-700
-                                    {% elif 'COURS' in ticket.status.value %}bg-blue-100 text-blue-700
-                                    {% elif 'TERMINE' in ticket.status.value %}bg-emerald-100 text-emerald-700
-                                    {% else %}bg-slate-100 text-slate-500{% endif %}">
+                                <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest 
+                                    {% if 'VALIDATION' in ticket.status.value %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300
+                                    {% elif 'COURS' in ticket.status.value %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300
+                                    {% elif 'TERMINE' in ticket.status.value %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300
+                                    {% else %}bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400{% endif %}">
                                     {{ ticket.status.value }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 font-mono text-xs">{{ ticket.created_at.strftime('%d/%m/%Y') }}</td>
                             <td class="px-6 py-4 text-right">
-                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 font-bold text-xs uppercase">Voir</a>
+                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-bold text-xs uppercase">Voir</a>
                             </td>
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="6" class="p-8 text-center text-slate-400 italic font-bold">
+                            <td colspan="6" class="p-8 text-center text-slate-400 dark:text-slate-500 italic font-bold">
                                 Vous n'avez pas encore fait de demande.
                             </td>
                         </tr>
@@ -146,6 +205,28 @@
 
     <script>
         lucide.createIcons();
+
+        // Script pour gérer le Dark Mode localement si non hérité de base.html
+        const toggleBtn = document.getElementById('theme-toggle-portal');
+        if (toggleBtn) {
+            // Initialisation
+            if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+
+            // Click Handler
+            toggleBtn.addEventListener('click', () => {
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
+                }
+            });
+        }
     </script>
 </body>
 </html>

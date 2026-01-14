@@ -30,46 +30,79 @@ def mark_all_read():
     db.session.commit()
     return jsonify({'success': True})
 
-# --- TEAM CHAT (NOUVEAU) ---
+# --- TEAM CHAT (CORRIGÉ) ---
 
 @api_bp.route('/api/team_chat', methods=['GET'])
 @login_required
 def get_team_messages():
-    # On récupère les messages du service de l'utilisateur
-    if not current_user.service_department:
-        return jsonify([]) # Pas de service, pas de chat
-        
-    messages = TeamMessage.query.filter_by(service=current_user.service_department)\
-        .order_by(TeamMessage.timestamp.desc())\
-        .limit(50).all()
+    # CORRECTION : Utilisation de get_allowed_services() au lieu de service_department
+    my_services = current_user.get_allowed_services()
     
-    # On inverse pour avoir l'ordre chronologique (le plus vieux en haut pour le chat)
-    msgs_data = []
-    for m in reversed(messages):
-        d = m.to_dict()
-        d['is_me'] = (m.author_id == current_user.id)
-        # Formatage heure
-        d['time'] = m.timestamp.strftime('%H:%M')
-        msgs_data.append(d)
+    if not my_services:
+        # Pas de service technique = Pas de chat d'équipe
+        return jsonify([])
         
-    return jsonify(msgs_data)
+    # On prend le premier service autorisé comme canal principal pour le chat
+    # (Pour l'instant, un user ne voit que le chat de son premier service technique)
+    main_service_name = my_services[0]
+    
+    try:
+        # On cherche l'Enum correspondant au nom du service (ex: "INFORMATIQUE")
+        svc_enum = None
+        for s in ServiceType:
+            # On compare la valeur (value) de l'Enum avec le nom stocké dans la liste JSON
+            if s.value == main_service_name:
+                svc_enum = s
+                break
+        
+        if not svc_enum: 
+            return jsonify([])
+
+        # Récupération des messages pour ce service
+        messages = TeamMessage.query.filter_by(service=svc_enum)\
+            .order_by(TeamMessage.timestamp.desc())\
+            .limit(50).all()
+        
+        # Formatage pour le JSON
+        msgs_data = []
+        for m in reversed(messages):
+            d = m.to_dict()
+            d['is_me'] = (m.author_id == current_user.id)
+            d['time'] = m.timestamp.strftime('%H:%M')
+            msgs_data.append(d)
+            
+        return jsonify(msgs_data)
+        
+    except Exception as e:
+        print(f"Chat Error: {e}")
+        return jsonify([])
 
 @api_bp.route('/api/team_chat', methods=['POST'])
 @login_required
 def post_team_message():
-    if not current_user.service_department:
+    my_services = current_user.get_allowed_services()
+    if not my_services:
         return jsonify({'error': 'No service'}), 400
         
+    main_service_name = my_services[0]
     data = request.get_json()
     content = data.get('content')
     
     if content:
-        msg = TeamMessage(
-            service=current_user.service_department,
-            content=content,
-            author=current_user
-        )
-        db.session.add(msg)
-        db.session.commit()
-        return jsonify({'status': 'ok'})
+        try:
+            svc_enum = None
+            for s in ServiceType:
+                if s.value == main_service_name:
+                    svc_enum = s
+                    break
+            
+            if svc_enum:
+                msg = TeamMessage(service=svc_enum, content=content, author=current_user)
+                db.session.add(msg)
+                db.session.commit()
+                return jsonify({'success': True})
+        except Exception as e:
+            print(f"Chat Post Error: {e}")
+            return jsonify({'error': 'Internal Error'}), 500
+            
     return jsonify({'error': 'Empty content'}), 400

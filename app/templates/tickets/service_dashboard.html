@@ -1,204 +1,228 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-20">
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-8 pb-20 p-6 bg-slate-100 dark:bg-slate-900 min-h-screen transition-colors duration-300">
     
+    <!-- SECTION PRINCIPALE (GAUCHE) -->
     <div class="lg:col-span-3 flex flex-col gap-8">
         
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
-            <div>
-                <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Dashboard {{ current_user.service_department.value }}</h1>
-                <div class="anim-greeting text-slate-500 font-bold text-sm mt-1 flex items-center gap-2">
-                    <span class="text-xl">👋</span> Bonjour <span class="text-blue-600">{{ current_user.fullname }}</span> !
+        <!-- HEADER -->
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+                <div>
+                    <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">
+                        Dashboard 
+                        <span class="text-blue-600 dark:text-blue-400">
+                            {% for svc in current_user.get_allowed_services() %}
+                                {{ svc }}{% if not loop.last %}, {% endif %}
+                            {% endfor %}
+                        </span>
+                    </h1>
+                    <div class="anim-greeting text-slate-500 dark:text-slate-400 font-bold text-sm mt-1 flex items-center gap-2">
+                        <span class="text-xl">👋</span> Bonjour <span class="text-blue-600 dark:text-blue-400">{{ current_user.fullname }}</span> !
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="hidden sm:block bg-white dark:bg-slate-800 px-6 py-3 rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm text-sm font-bold text-slate-600 dark:text-slate-300 capitalize" id="liveClock">--:--:--</div>
                 </div>
             </div>
-            
-            <div class="flex flex-wrap items-center gap-3">
-                <a href="{{ url_for('main.user_portal') }}" class="bg-slate-900 hover:bg-slate-700 text-white px-5 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
-                    <i data-lucide="plus-circle" class="w-4 h-4"></i> Faire une demande
+
+            <!-- BARRE D'OUTILS TECH -->
+            <div class="flex flex-wrap gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <a href="{{ url_for('tickets.historique_tickets') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold uppercase tracking-wide transition">
+                    <i data-lucide="archive" class="w-4 h-4 text-blue-500 dark:text-blue-400"></i> Historique / Ajout Manuel
                 </a>
-                <div class="hidden sm:block bg-white px-6 py-3 rounded-xl border border-slate-200 shadow-sm text-sm font-bold text-slate-600 capitalize" id="liveClock">--</div>
+                
+                {% if 'INFO' in current_user.get_allowed_services() or 'INFORMATIQUE' in current_user.get_allowed_services() %}
+                <a href="{{ url_for('inventaire.liste') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold uppercase tracking-wide transition">
+                    <i data-lucide="package" class="w-4 h-4 text-orange-500 dark:text-orange-400"></i> Stock & Inventaire
+                </a>
+                <a href="{{ url_for('prets.liste_prets') }}" class="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-lg text-xs font-bold uppercase tracking-wide transition">
+                    <i data-lucide="arrow-right-left" class="w-4 h-4 text-purple-500 dark:text-purple-400"></i> Gestion des Prêts
+                </a>
+                {% endif %}
             </div>
         </div>
 
+        <!-- STATS CARDS -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between md:col-span-1 row-span-2 relative overflow-hidden">
-                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Répartition</h3>
-                <div class="relative h-40 w-full flex justify-center z-10"><canvas id="ticketChart"></canvas></div>
-                <div class="mt-4 flex justify-between text-[10px] font-bold uppercase text-slate-400 z-10"><span>Actifs: {{ stats.active }}</span><span>Total: {{ stats.pending + stats.active + stats.done }}</span></div>
+            <!-- À Traiter -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl group-hover:scale-110 transition"><i data-lucide="inbox" class="w-6 h-6"></i></div>
+                    <span class="bg-orange-50 dark:bg-orange-900/50 text-orange-600 dark:text-orange-300 text-[10px] font-black uppercase px-2 py-1 rounded-lg">Prioritaire</span>
+                </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">{{ stats.pending }}</div>
+                <div class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tickets à attribuer</div>
             </div>
 
-            <a href="#" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group hover:border-orange-300 transition">
-                <div><p class="text-3xl font-black text-slate-900">{{ stats.pending }}</p><p class="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-orange-600">À Traiter</p></div>
-                <div class="p-3 bg-orange-100 text-orange-600 rounded-xl"><i data-lucide="inbox" class="w-6 h-6"></i></div>
-            </a>
+            <!-- En Cours (Mes Tickets) -->
+            <div class="bg-blue-600 dark:bg-blue-700 p-6 rounded-2xl shadow-lg shadow-blue-200 dark:shadow-none transform hover:-translate-y-1 transition text-white relative overflow-hidden">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-white opacity-10 rounded-full blur-2xl"></div>
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-white/20 rounded-xl backdrop-blur-sm"><i data-lucide="play-circle" class="w-6 h-6"></i></div>
+                    <span class="bg-white/20 text-white text-[10px] font-black uppercase px-2 py-1 rounded-lg">En cours</span>
+                </div>
+                <div class="text-3xl font-black mb-1">{{ stats.active }}</div>
+                <div class="text-xs font-bold text-blue-100 uppercase tracking-wider">Mes Dossiers</div>
+            </div>
 
-            <a href="#" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group hover:border-blue-300 transition">
-                <div><p class="text-3xl font-black text-slate-900">{{ stats.active }}</p><p class="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-blue-600">En Cours</p></div>
-                <div class="p-3 bg-blue-100 text-blue-600 rounded-xl"><i data-lucide="activity" class="w-6 h-6"></i></div>
-            </a>
+            <!-- Terminés (Global) -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm hover:shadow-md transition group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl group-hover:scale-110 transition"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
+                    <span class="bg-emerald-50 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-300 text-[10px] font-black uppercase px-2 py-1 rounded-lg">Total</span>
+                </div>
+                <div class="text-3xl font-black text-slate-800 dark:text-white mb-1">{{ stats.done }}</div>
+                <div class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Tickets Clôturés</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
-            <!-- BOUTONS SPÉCIFIQUES PAR SERVICE -->
-            {% if 'INFORMATIQUE' in current_user.service_department.value|upper or 'INFO' in current_user.service_department.value|upper %}
-                <a href="{{ url_for('inventaire.liste') }}" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group hover:border-emerald-300 transition">
-                    <div><p class="text-3xl font-black text-slate-900">{{ stats.stock }}</p><p class="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-emerald-600">Stock</p></div>
-                    <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl"><i data-lucide="package-check" class="w-6 h-6"></i></div>
-                </a>
-                <a href="{{ url_for('prets.liste_prets') }}" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group hover:border-blue-300 transition">
-                    <div><p class="text-3xl font-black text-slate-900">{{ stats.prets }}</p><p class="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-blue-600">Prêts</p></div>
-                    <div class="p-3 bg-blue-100 text-blue-600 rounded-xl"><i data-lucide="arrow-right-left" class="w-6 h-6"></i></div>
-                </a>
-            {% elif 'DAF' in current_user.service_department.value|upper %}
-                <!-- BOUTON HISTORIQUE DAF -->
-                <a href="{{ url_for('tickets.historique_tickets') }}" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group hover:border-purple-300 transition col-span-2">
-                    <div>
-                        <p class="text-3xl font-black text-slate-900">{{ stats.done }}</p>
-                        <p class="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-purple-600">Historique Achats / Bons</p>
+            <!-- LISTE DES TICKETS ATTRIBUÉS (EN COURS) -->
+            <div class="lg:col-span-2 bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                <div class="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+                    <h2 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                        <i data-lucide="activity" class="w-5 h-5 text-blue-500"></i> Mes Tickets en cours
+                    </h2>
+                </div>
+                
+                <div class="divide-y divide-slate-100 dark:divide-slate-700 overflow-y-auto flex-1">
+                    {% if mine %}
+                        {% for ticket in mine %}
+                        <div class="p-5 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition group relative">
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="font-mono text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-900 px-1.5 py-0.5 rounded">#{{ ticket.uid_public }}</span>
+                                    <span class="bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase">{{ ticket.category_ticket }}</span>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-400">{{ ticket.created_at.strftime('%d/%m %H:%M') }}</span>
+                            </div>
+                            
+                            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition">{{ ticket.title }}</h3>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">{{ ticket.description }}</p>
+                            
+                            <div class="flex justify-between items-center mt-3">
+                                <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                    <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                        {{ ticket.author.fullname[:1] }}
+                                    </div>
+                                    {{ ticket.author.fullname }}
+                                    {% if ticket.tel_demandeur %}<span class="text-slate-300">|</span> <i data-lucide="phone" class="w-3 h-3"></i> {{ ticket.tel_demandeur }}{% endif %}
+                                </div>
+                                
+                                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-600 transition">
+                                        Voir
+                                    </a>
+                                    <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-green-700 transition shadow-sm">
+                                        Clôturer
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="h-full flex flex-col items-center justify-center text-center p-12">
+                            <div class="w-16 h-16 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i data-lucide="thumbs-up" class="w-8 h-8 text-slate-300 dark:text-slate-500"></i>
+                            </div>
+                            <p class="text-slate-500 dark:text-slate-400 font-medium">Aucun ticket en cours.</p>
+                            <p class="text-slate-400 dark:text-slate-500 text-xs mt-1">Prenez-en un dans la file d'attente !</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- FILE D'ATTENTE (POOL) -->
+            <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                <div class="p-5 border-b border-slate-100 dark:border-slate-700 bg-slate-50/80 dark:bg-slate-900/50 backdrop-blur flex justify-between items-center sticky top-0 z-10">
+                    <h2 class="font-bold text-slate-800 dark:text-white text-sm uppercase tracking-wide flex items-center gap-2">
+                        <span class="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span> File d'attente
+                    </h2>
+                    <span class="bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-bold px-2 py-0.5 rounded-full">{{ stats.pending }}</span>
+                </div>
+
+                <div class="overflow-y-auto flex-1 p-3 space-y-3 bg-slate-50/30 dark:bg-slate-900/20 scrollbar-hide">
+                    {% for ticket in pool_standard %}
+                    <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-orange-200 dark:hover:border-orange-500 transition group cursor-default">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded uppercase tracking-wider">Standard</span>
+                            <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">{{ ticket.title|truncate(40) }}</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ ticket.service_demandeur }} • {{ ticket.author.fullname }}</p>
+                        
+                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-orange-500 hover:text-white transition gap-2 group-hover:shadow-md">
+                            <i data-lucide="download" class="w-3 h-3"></i> Prendre en charge
+                        </a>
                     </div>
-                    <div class="p-3 bg-purple-100 text-purple-600 rounded-xl"><i data-lucide="file-check" class="w-6 h-6"></i></div>
-                </a>
-            {% else %}
-                <a href="#" class="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex justify-between items-center group hover:border-emerald-300 transition col-span-2">
-                    <div><p class="text-3xl font-black text-slate-900">{{ stats.done }}</p><p class="text-xs font-black text-slate-400 uppercase tracking-wider group-hover:text-emerald-600">Total Clôturés</p></div>
-                    <div class="p-3 bg-emerald-100 text-emerald-600 rounded-xl"><i data-lucide="check-circle" class="w-6 h-6"></i></div>
-                </a>
-            {% endif %}
-        </div>
+                    {% endfor %}
+                    
+                    {% for ticket in pool_users %}
+                    <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500 transition group">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] font-bold text-blue-500 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded uppercase tracking-wider">Arrivée</span>
+                            <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">Nouvel Utilisateur</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ ticket.new_user_fullname }} ({{ ticket.new_user_service }})</p>
+                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-blue-600 hover:text-white transition gap-2">
+                            <i data-lucide="download" class="w-3 h-3"></i> Prendre
+                        </a>
+                    </div>
+                    {% endfor %}
 
-        <!-- --- SECTION DAF : BONS DE COMMANDE --- -->
-        {% if pool_bons %}
-        <div class="bg-white rounded-2xl shadow-sm border border-purple-100 overflow-hidden">
-            <div class="bg-purple-50 px-6 py-4 border-b border-purple-100 flex justify-between items-center">
-                <span class="font-black text-xs uppercase text-purple-700 flex items-center gap-2"><i data-lucide="banknote" class="w-4 h-4"></i> Bons de Commande à traiter</span>
-                <span class="bg-purple-200 text-purple-800 px-2 py-1 rounded text-[10px] font-bold">{{ pool_bons|length }}</span>
-            </div>
-            <table class="w-full text-xs text-left">
-                {% for ticket in pool_bons %}
-                <tr class="border-b border-slate-50 hover:bg-slate-50 group">
-                    <td class="px-6 py-4 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
-                    <td class="px-6 py-4 font-bold text-slate-900">{{ ticket.title }}</td>
-                    <td class="px-6 py-4 text-slate-500">{{ ticket.service_demandeur }}</td>
-                    <td class="px-6 py-4 text-right">
-                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="inline-flex items-center gap-1 bg-white border border-slate-200 hover:border-purple-400 hover:text-purple-600 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition uppercase tracking-wide">Prendre</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-        {% endif %}
+                    {% for ticket in pool_bons %}
+                    <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-purple-200 dark:hover:border-purple-500 transition group">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] font-bold text-purple-500 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded uppercase tracking-wider">DAF</span>
+                            <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">Bon de Commande</h4>
+                        <p class="text-xs text-purple-600 dark:text-purple-400 mb-2 truncate">{{ ticket.daf_fournisseur_nom }}</p>
+                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-purple-600 hover:text-white transition gap-2">
+                            <i data-lucide="download" class="w-3 h-3"></i> Traiter
+                        </a>
+                    </div>
+                    {% endfor %}
 
-        <!-- --- AUTRES SECTIONS (Users, Materiel, Standard) --- -->
-        {% if pool_users %}
-        <div class="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
-            <div class="bg-blue-50 px-6 py-4 border-b border-blue-100 flex justify-between items-center">
-                <span class="font-black text-xs uppercase text-blue-700 flex items-center gap-2"><i data-lucide="user-plus" class="w-4 h-4"></i> Nouveaux Utilisateurs</span>
-                <span class="bg-blue-200 text-blue-800 px-2 py-1 rounded text-[10px] font-bold">{{ pool_users|length }}</span>
+                    {% if not pool_standard and not pool_users and not pool_materiel and not pool_bons %}
+                    <div class="h-full flex flex-col items-center justify-center opacity-40">
+                        <i data-lucide="check-circle" class="w-12 h-12 text-slate-300 dark:text-slate-600 mb-2"></i>
+                        <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Tout est calme</p>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
-            <table class="w-full text-xs text-left">
-                {% for ticket in pool_users %}
-                <tr class="border-b border-slate-50 hover:bg-slate-50 group">
-                    <td class="px-6 py-4 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
-                    <td class="px-6 py-4"><div class="font-bold text-slate-900">{{ ticket.new_user_fullname }}</div><div class="text-[10px] text-slate-500">Service: {{ ticket.new_user_service }}</div></td>
-                    <td class="px-6 py-4 text-right"><a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="inline-flex items-center gap-1 bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition uppercase tracking-wide">Prendre</a></td>
-                </tr>
-                {% endfor %}
-            </table>
         </div>
-        {% endif %}
-        
-        {% if pool_materiel %}
-        <div class="bg-white rounded-2xl shadow-sm border border-emerald-100 overflow-hidden">
-            <div class="bg-emerald-50 px-6 py-4 border-b border-emerald-100 flex justify-between items-center">
-                <span class="font-black text-xs uppercase text-emerald-700 flex items-center gap-2"><i data-lucide="monitor" class="w-4 h-4"></i> Demandes Matériel</span>
-                <span class="bg-emerald-200 text-emerald-800 px-2 py-1 rounded text-[10px] font-bold">{{ pool_materiel|length }}</span>
-            </div>
-            <table class="w-full text-xs text-left">
-                {% for ticket in pool_materiel %}
-                <tr class="border-b border-slate-50 hover:bg-slate-50 group">
-                    <td class="px-6 py-4 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
-                    <td class="px-6 py-4"><div class="font-bold text-slate-900">{{ ticket.destinataire_materiel }}</div></td>
-                    <td class="px-6 py-4 text-right"><a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="inline-flex items-center gap-1 bg-white border border-slate-200 hover:border-emerald-400 hover:text-emerald-600 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition uppercase tracking-wide">Prendre</a></td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-        {% endif %}
-
-        {% if pool_standard %}
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-            <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <span class="font-black text-xs uppercase text-slate-500 flex items-center gap-2"><i data-lucide="alert-circle" class="w-4 h-4"></i> Incidents & Autres</span>
-                <span class="bg-slate-200 text-slate-600 px-2 py-1 rounded text-[10px] font-bold">{{ pool_standard|length }}</span>
-            </div>
-            <table class="w-full text-xs text-left">
-                {% for ticket in pool_standard %}
-                <tr class="border-b border-slate-50 hover:bg-slate-50 group">
-                    <td class="px-6 py-4 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
-                    <td class="px-6 py-4 font-bold text-slate-800">{{ ticket.title }}</td>
-                    <td class="px-6 py-4 text-right"><a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="inline-flex items-center gap-1 bg-white border border-slate-200 hover:border-blue-400 hover:text-blue-600 text-slate-500 px-3 py-1.5 rounded-lg font-bold transition uppercase tracking-wide">Prendre</a></td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-        {% endif %}
-
-        <!-- MES DOSSIERS -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-4">
-            <div class="bg-slate-900 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-                <span class="font-black text-xs uppercase text-white flex items-center gap-2"><i data-lucide="user-check" class="w-4 h-4"></i> Mes Dossiers En Cours</span>
-                <span class="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">{{ mine|length }}</span>
-            </div>
-            <table class="w-full text-xs text-left">
-                {% for ticket in mine %}
-                <tr class="border-b border-slate-50 hover:bg-slate-50">
-                    <td class="px-6 py-4 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
-                    <td class="px-6 py-4 font-bold text-slate-800">{{ ticket.title }}</td>
-                    <td class="px-6 py-4"><span class="inline-block px-2 py-0.5 rounded bg-slate-100 text-slate-500 text-[9px] font-bold uppercase">{{ ticket.category_ticket or 'Standard' }}</span></td>
-                    <td class="px-6 py-4 text-right flex justify-end gap-2">
-                        <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 font-bold uppercase">Chat</a>
-                        <span class="text-slate-300">|</span>
-                        <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" onclick="return confirm('Clôturer ?')" class="text-emerald-600 hover:text-emerald-800 font-bold uppercase">Terminer</a>
-                    </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="4" class="p-8 text-center text-slate-400 italic font-bold">Aucun dossier en cours.</td></tr>
-                {% endfor %}
-            </table>
-        </div>
-        
-        <!-- HISTORIQUE (Tout en bas) -->
-        {% if history %}
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mt-4 opacity-80 hover:opacity-100 transition">
-             <div class="bg-slate-50 px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                <span class="font-black text-xs uppercase text-emerald-600 flex items-center gap-2"><i data-lucide="archive" class="w-4 h-4"></i> Historique (20 Derniers)</span>
-                <a href="{{ url_for('tickets.historique_tickets') }}" class="text-[10px] font-bold text-blue-600 hover:underline uppercase">Voir tout</a>
-            </div>
-            <table class="w-full text-xs text-left">
-                {% for ticket in history %}
-                <tr class="border-b border-slate-50 hover:bg-slate-50">
-                    <td class="px-6 py-3 font-mono text-slate-400 font-bold">{{ ticket.uid_public }}</td>
-                    <td class="px-6 py-3 font-bold text-slate-800">{{ ticket.title }}</td>
-                    <td class="px-6 py-3 text-slate-500">Clôturé le {{ ticket.closed_at.strftime('%d/%m à %H:%M') if ticket.closed_at else '-' }}</td>
-                    <td class="px-6 py-3 text-right">
-                        <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-slate-400 hover:text-blue-600 font-bold uppercase">Revoir</a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </table>
-        </div>
-        {% endif %}
     </div>
 
-    <!-- COLONNE DROITE : TEAM CHAT (Inchangé) -->
-    <div class="lg:col-span-1 hidden lg:flex flex-col h-[calc(100vh-140px)] sticky top-24">
-        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 flex flex-col h-full overflow-hidden">
-            <div class="bg-slate-900 text-white p-4 flex justify-between items-center">
-                <h3 class="font-black uppercase text-xs tracking-widest flex items-center gap-2"><i data-lucide="users" class="w-4 h-4"></i> Team {{ current_user.service_department.value }}</h3>
+    <!-- SIDEBAR DROITE (GRAPHIQUES & CHAT) -->
+    <div class="hidden lg:flex flex-col gap-6">
+        
+        <!-- Graphique (Taille Réduite) -->
+        <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase mb-4 text-center">Répartition</h3>
+            <div class="h-32">
+                <canvas id="ticketChart"></canvas>
             </div>
-            <div id="teamChatBox" class="flex-grow p-4 overflow-y-auto space-y-3 bg-slate-50 text-xs text-center text-slate-400 italic">Chat interne disponible.</div>
-            <div class="p-3 bg-white border-t border-slate-200">
+        </div>
+
+        <!-- Chat Équipe -->
+        <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm flex-1 flex flex-col overflow-hidden h-[400px]">
+            <div class="p-4 bg-slate-900 dark:bg-slate-950 text-white flex justify-between items-center">
+                <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-2"><i data-lucide="message-circle" class="w-4 h-4"></i> Chat Équipe</span>
+                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+            </div>
+            <div class="flex-1 bg-slate-50 dark:bg-slate-900 p-3 overflow-y-auto space-y-3" id="teamChatBox">
+                <div class="text-xs text-center text-slate-400 italic">Connexion au chat...</div>
+            </div>
+            <div class="p-3 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700">
                 <form id="teamChatForm" class="flex gap-2">
-                    <input type="text" id="teamMsgInput" class="w-full bg-slate-100 border-none rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Message d'équipe..." autocomplete="off">
+                    <input type="text" id="teamMsgInput" class="w-full bg-slate-100 dark:bg-slate-700 border-none rounded-lg px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Message d'équipe..." autocomplete="off">
                     <button type="submit" class="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition"><i data-lucide="send" class="w-4 h-4"></i></button>
                 </form>
             </div>
@@ -221,8 +245,67 @@
                 borderWidth: 0
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: '75%' }
+        options: { 
+            cutout: '70%', 
+            plugins: { legend: { display: false } },
+            maintainAspectRatio: false
+        }
     });
-    // (Script chat identique à avant)
+
+    // Chat Logic
+    const chatBox = document.getElementById('teamChatBox');
+    
+    async function loadChat() {
+        try {
+            const res = await fetch('/api/team_chat');
+            if (!res.ok) throw new Error('Chat API Error');
+            
+            const msgs = await res.json();
+            chatBox.innerHTML = '';
+            if (msgs.length === 0) {
+                chatBox.innerHTML = '<div class="text-xs text-center text-slate-400 italic">Aucun message pour ce service.</div>';
+                return;
+            }
+
+            msgs.forEach(m => {
+                const isMe = m.is_me;
+                chatBox.innerHTML += `
+                    <div class="flex flex-col ${isMe ? 'items-end' : 'items-start'}">
+                        <span class="text-[9px] text-slate-400 mb-0.5 px-1">${m.user} • ${m.time}</span>
+                        <div class="${isMe ? 'bg-blue-600 text-white' : 'bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300'} px-3 py-2 rounded-xl text-xs max-w-[80%] shadow-sm">
+                            ${m.content}
+                        </div>
+                    </div>
+                `;
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        } catch(e) {
+            console.error(e);
+            chatBox.innerHTML = '<div class="text-xs text-center text-red-400">Erreur de chargement du chat.</div>';
+        }
+    }
+
+    document.getElementById('teamChatForm').onsubmit = async (e) => {
+        e.preventDefault();
+        const input = document.getElementById('teamMsgInput');
+        if(!input.value.trim()) return;
+        
+        try {
+            const res = await fetch('/api/team_chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({content: input.value})
+            });
+            if (!res.ok) throw new Error('Post failed');
+            input.value = '';
+            loadChat();
+        } catch (e) {
+            console.error("Post error", e);
+            alert("Erreur lors de l'envoi du message.");
+        }
+    };
+
+    setInterval(loadChat, 5000); 
+    loadChat(); 
 </script>
 {% endblock %}

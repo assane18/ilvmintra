@@ -1,80 +1,76 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-8">
+<div class="flex flex-col gap-8 p-6 bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
 
     <!-- En-tête -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 uppercase tracking-tight">Historique Tickets</h1>
-            <p class="text-slate-500 font-bold text-xs mt-1 uppercase tracking-wide">Archives des demandes traitées</p>
+            <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Historique Tickets</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Archives des demandes traitées</p>
         </div>
-        <div class="flex gap-3">
-            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+        <div class="flex gap-3 flex-wrap">
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard
             </a>
+            <!-- BOUTON EXPORT -->
+            <a href="{{ url_for('tickets.export_history') }}" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition">
+                <i data-lucide="download" class="w-4 h-4"></i> Exporter Excel
+            </a>
             <!-- BOUTON AJOUT MANUEL -->
-            <button onclick="document.getElementById('manualTicketModal').classList.remove('hidden')" class="bg-slate-900 hover:bg-slate-700 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
+            <button onclick="document.getElementById('manualTicketModal').classList.remove('hidden')" class="bg-slate-900 dark:bg-blue-600 hover:bg-slate-700 dark:hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
                 <i data-lucide="edit" class="w-4 h-4"></i> Ajout Manuel
             </button>
         </div>
     </div>
 
     <!-- Tableau des Archives -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 border-b border-slate-200">
-                    <tr class="text-slate-500 font-black uppercase text-[10px] tracking-wider">
-                        <th class="px-6 py-4">Réf / Date</th>
-                        <th class="px-6 py-4">Sujet</th>
+            <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
+                <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                    <tr class="text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                        <th class="px-6 py-4">Réf</th>
+                        <th class="px-6 py-4">Date</th>
                         <th class="px-6 py-4">Demandeur</th>
+                        <th class="px-6 py-4">Service Cible</th>
+                        <th class="px-6 py-4">Sujet</th>
                         <th class="px-6 py-4">Résolu par</th>
-                        <th class="px-6 py-4 text-center">Clôture</th>
-                        <th class="px-6 py-4 text-right">Actions</th>
+                        <th class="px-6 py-4 text-right">Action</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-300">
                     {% for ticket in tickets %}
-                    <tr class="hover:bg-slate-50 transition group">
+                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                        <td class="px-6 py-4 font-mono text-xs text-slate-400 dark:text-slate-500">{{ ticket.uid_public }}</td>
+                        <td class="px-6 py-4 text-xs">{{ ticket.created_at.strftime('%d/%m/%Y') }}</td>
                         <td class="px-6 py-4">
-                            <div class="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded inline-block mb-1">{{ ticket.uid_public }}</div>
-                            <div class="text-[10px] text-slate-400 font-bold uppercase">{{ ticket.created_at.strftime('%d/%m/%Y') }}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="font-bold text-slate-900">{{ ticket.title }}</div>
-                            <div class="text-xs text-slate-500 truncate max-w-xs">{{ ticket.category_ticket or 'Standard' }}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="font-bold text-slate-800">{{ ticket.author.fullname }}</div>
-                            <div class="text-[10px] text-slate-400 uppercase font-bold">Client</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            {% if ticket.solver %}
-                            <div class="flex items-center gap-2">
-                                <div class="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-[9px] font-bold text-slate-600">
-                                    {{ ticket.solver.username[0]|upper }}
-                                </div>
-                                <span class="text-xs font-bold text-slate-600">{{ ticket.solver.fullname }}</span>
-                            </div>
+                            {% if ticket.new_user_fullname and 'Manuel' in ticket.description %}
+                                <span class="text-blue-600 dark:text-blue-400 font-bold" title="Ajout Manuel">{{ ticket.new_user_fullname }}</span>
                             {% else %}
-                            <span class="text-slate-300 text-xs italic">Auto</span>
+                                {{ ticket.author.fullname }}
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 text-center">
-                            <div class="text-emerald-600 text-xs font-bold">{{ ticket.closed_at.strftime('%d/%m/%Y') if ticket.closed_at else '-' }}</div>
+                        <td class="px-6 py-4">
+                            <span class="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] font-black px-2 py-1 rounded uppercase">
+                                {{ ticket.target_service.value }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-slate-800 dark:text-white">{{ ticket.title|truncate(40) }}</td>
+                        <td class="px-6 py-4 text-xs text-slate-500 dark:text-slate-400">
+                            {% if ticket.solver %}
+                                {{ ticket.solver.fullname }}
+                            {% else %}
+                                -
+                            {% endif %}
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-slate-400 hover:text-blue-600 transition p-2" title="Voir Détail">
-                                <i data-lucide="eye" class="w-4 h-4"></i>
-                            </a>
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-bold uppercase">Voir</a>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="6" class="p-12 text-center text-slate-400 italic font-medium">
-                            Aucun ticket archivé.
-                        </td>
+                        <td colspan="7" class="p-12 text-center text-slate-400 dark:text-slate-500 italic">Aucune archive trouvée.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -85,22 +81,21 @@
 </div>
 
 <!-- MODAL AJOUT MANUEL -->
-<div id="manualTicketModal" class="hidden fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
-    <div class="bg-white p-8 rounded-3xl w-full max-w-lg m-4 shadow-2xl relative">
-        <button onclick="document.getElementById('manualTicketModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 transition">
+<div id="manualTicketModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
+    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-lg m-4 shadow-2xl relative border border-slate-100 dark:border-slate-700">
+        <button onclick="document.getElementById('manualTicketModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
             <i data-lucide="x" class="w-6 h-6"></i>
         </button>
         
         <div class="mb-6">
-            <h3 class="text-2xl font-black text-slate-900 uppercase tracking-tight mb-2">Saisie Manuelle</h3>
-            <p class="text-slate-500 text-xs font-bold uppercase tracking-wide">Archivage d'une demande externe (Téléphone, Oral...)</p>
+            <h3 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-1">Ajout Manuel</h3>
+            <p class="text-slate-500 dark:text-slate-400 text-xs font-bold uppercase tracking-wide">Archivage d'une demande passée</p>
         </div>
 
-        <form method="POST" class="space-y-5">
-            
+        <form method="POST" class="space-y-4">
             <div>
-                <label class="label-tiny">Sujet de la demande</label>
-                <input type="text" name="title" class="input-field" required placeholder="Ex: Panne réseau bureau 204">
+                <label class="label-tiny">Titre</label>
+                <input type="text" name="title" class="input-field" required placeholder="Ex: Remplacement souris">
             </div>
 
             <div>
@@ -130,7 +125,14 @@
 </script>
 <style>
     .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; outline: none; transition: all 0.2s; } 
-    .input-field:focus { border-color: #3b82f6; background-color: #fff; }
+    /* Dark mode override */
+    .dark .label-tiny { color: #94a3b8; }
+
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; } 
+    .input-field:focus { border-color: #3b82f6; background-color: white; }
+
+    /* Dark Mode Inputs */
+    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; }
 </style>
 {% endblock %}

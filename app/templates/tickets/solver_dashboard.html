@@ -16,91 +16,201 @@
             <div class="bg-blue-600 p-1.5 rounded">
                 <i data-lucide="wrench" class="w-5 h-5"></i>
             </div>
-            <span class="font-bold">Espace Technicien <span class="opacity-50 mx-2">|</span> {{ current_user.service_department.value }}</span>
+            <!-- CORRECTION CRITIQUE: Boucle sur les services autorisés -->
+            <span class="font-bold">Espace Technicien <span class="opacity-50 mx-2">|</span> 
+                {% for svc in current_user.get_allowed_services() %}
+                    {{ svc }}{% if not loop.last %}, {% endif %}
+                {% endfor %}
+            </span>
         </div>
         <div class="flex items-center gap-4">
             <span class="text-sm font-medium opacity-70">{{ current_user.fullname }}</span>
-            <a href="{{ url_for('main.user_portal') }}" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded text-xs font-bold uppercase transition">Portail User</a>
-            <a href="{{ url_for('auth.logout') }}" class="text-red-400 hover:text-red-300"><i data-lucide="log-out" class="w-5 h-5"></i></a>
+            <a href="{{ url_for('main.user_portal') }}" class="bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-sm transition">
+                <i data-lucide="log-out" class="w-4 h-4 inline mr-1"></i> Quitter
+            </a>
         </div>
     </nav>
 
-    <div class="max-w-7xl mx-auto px-6 py-8">
+    <div class="container mx-auto p-6 flex gap-6 h-[calc(100vh-80px)]">
         
-        <!-- Messages Flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="mb-6 p-4 rounded bg-white shadow border-l-4 border-blue-500 text-sm text-slate-700">{{ message }}</div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- COLONNE GAUCHE : Pool & Menu -->
+        <div class="w-1/4 flex flex-col gap-6 overflow-hidden">
             
-            <!-- COLONNE 1 : À PRENDRE (POOL) -->
-            <div class="space-y-4">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                    <span class="w-2 h-2 bg-orange-500 rounded-full"></span> File d'attente ({{ pool|length }})
-                </h2>
-                
-                {% for ticket in pool %}
-                <div class="bg-white p-4 rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition group">
-                    <div class="flex justify-between items-start mb-2">
-                        <span class="font-mono text-xs bg-slate-100 px-1.5 py-0.5 rounded text-slate-500">{{ ticket.uid_public }}</span>
-                        <span class="text-xs text-slate-400">{{ ticket.created_at.strftime('%d/%m %H:%M') }}</span>
-                    </div>
-                    <h3 class="font-bold text-slate-800 mb-1">{{ ticket.title }}</h3>
-                    <p class="text-sm text-slate-500 mb-3 line-clamp-2">{{ ticket.description }}</p>
-                    <div class="flex justify-between items-center border-t border-slate-50 pt-3">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center text-[10px] font-bold text-slate-600">{{ ticket.author.username[0]|upper }}</div>
-                            <span class="text-xs font-medium text-slate-600">{{ ticket.author.fullname }}</span>
-                        </div>
-                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-1.5 rounded transition">
-                            S'attribuer
-                        </a>
-                    </div>
+            <!-- Stats Rapides -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <span class="block text-2xl font-bold text-blue-600">{{ stats.active }}</span>
+                    <span class="text-xs text-slate-500 uppercase font-bold tracking-wide">Mes Tickets</span>
                 </div>
-                {% else %}
-                <div class="text-center py-8 text-slate-400 text-sm italic">Aucun ticket en attente.</div>
-                {% endfor %}
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 text-center">
+                    <span class="block text-2xl font-bold text-slate-700">{{ stats.pending }}</span>
+                    <span class="text-xs text-slate-500 uppercase font-bold tracking-wide">En Attente</span>
+                </div>
             </div>
 
-            <!-- COLONNE 2 & 3 : MES TICKETS (EN COURS) -->
-            <div class="lg:col-span-2 space-y-4">
-                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-                    <span class="w-2 h-2 bg-blue-500 rounded-full"></span> Mes dossiers en cours ({{ mine|length }})
+            <!-- Pool Tickets (Non Attribués) -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex-1 flex flex-col overflow-hidden">
+                <div class="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                    <h2 class="font-bold text-slate-700 flex items-center">
+                        <i data-lucide="inbox" class="w-4 h-4 mr-2 text-slate-400"></i> File d'attente
+                    </h2>
+                    <span class="bg-red-100 text-red-600 text-xs font-bold px-2 py-0.5 rounded-full">{{ stats.pending }}</span>
+                </div>
+                
+                <div class="overflow-y-auto p-2 space-y-2 flex-1 scrollbar-hide">
+                    {% if pool_standard or pool_users or pool_materiel or pool_bons %}
+                        
+                        <!-- Catégorie: Incidents / Standard -->
+                        {% for ticket in pool_standard %}
+                        <div class="group bg-white hover:bg-blue-50 p-3 rounded-lg border border-slate-100 hover:border-blue-200 transition cursor-pointer relative">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-mono text-slate-400">#{{ ticket.uid_public }}</span>
+                                <span class="bg-slate-100 text-slate-500 text-[10px] px-1.5 rounded">{{ ticket.created_at.strftime('%H:%M') }}</span>
+                            </div>
+                            <h3 class="font-bold text-sm text-slate-800 leading-tight mb-1">{{ ticket.title|truncate(30) }}</h3>
+                            <p class="text-xs text-slate-500 mb-2 truncate">{{ ticket.author.fullname }} • {{ ticket.service_demandeur }}</p>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 bg-blue-600 text-white p-1.5 rounded-md shadow-lg transition transform scale-90 hover:scale-100">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Autres catégories -->
+                        {% for ticket in pool_users %}
+                        <div class="group bg-blue-50 hover:bg-blue-100 p-3 rounded-lg border border-blue-100 transition cursor-pointer relative">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-mono text-blue-400">#{{ ticket.uid_public }}</span>
+                                <span class="bg-white text-blue-600 text-[10px] px-1.5 rounded font-bold">USER</span>
+                            </div>
+                            <h3 class="font-bold text-sm text-blue-900 leading-tight mb-1">Nouvel Arrivant</h3>
+                            <p class="text-xs text-blue-600 mb-2 truncate">{{ ticket.new_user_fullname }}</p>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 bg-blue-600 text-white p-1.5 rounded-md shadow-lg transition">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
+
+                        {% for ticket in pool_bons %}
+                        <div class="group bg-purple-50 hover:bg-purple-100 p-3 rounded-lg border border-purple-100 transition cursor-pointer relative">
+                            <div class="flex justify-between items-start mb-1">
+                                <span class="text-[10px] font-mono text-purple-400">#{{ ticket.uid_public }}</span>
+                                <span class="bg-white text-purple-600 text-[10px] px-1.5 rounded font-bold">DAF</span>
+                            </div>
+                            <h3 class="font-bold text-sm text-purple-900 leading-tight mb-1">Bon de Commande</h3>
+                            <p class="text-xs text-purple-600 mb-2 truncate">{{ ticket.daf_fournisseur_nom }}</p>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 bg-purple-600 text-white p-1.5 rounded-md shadow-lg transition">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                            </a>
+                        </div>
+                        {% endfor %}
+
+                    {% else %}
+                        <div class="text-center py-8 opacity-50">
+                            <i data-lucide="coffee" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
+                            <p class="text-xs text-slate-400">Aucun ticket en attente.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- COLONNE DROITE : Espace de Travail -->
+        <div class="w-3/4 flex flex-col gap-6">
+            
+            <!-- Mes Tickets En Cours -->
+            <div class="flex-1 overflow-y-auto pr-2 space-y-4">
+                <h2 class="font-bold text-lg text-slate-800 flex items-center mb-4">
+                    <i data-lucide="play-circle" class="w-5 h-5 mr-2 text-blue-500"></i> En cours de traitement
                 </h2>
 
                 {% for ticket in mine %}
-                <div class="bg-white rounded-xl shadow-sm border border-blue-100 overflow-hidden">
-                    <div class="bg-blue-50/50 px-6 py-3 border-b border-blue-100 flex justify-between items-center">
-                        <div class="flex items-center gap-3">
-                            <span class="font-mono text-sm font-bold text-blue-800">{{ ticket.uid_public }}</span>
-                            <span class="h-4 w-px bg-blue-200"></span>
-                            <span class="text-sm font-bold text-slate-700">{{ ticket.title }}</span>
-                        </div>
-                        <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" onclick="return confirm('Clôturer ce ticket ?')" class="text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded transition flex items-center gap-1">
-                            <i data-lucide="check" class="w-3 h-3"></i> Terminer
-                        </a>
-                    </div>
-                    <div class="p-6">
-                        <div class="flex gap-4">
-                            <div class="flex-1">
-                                <p class="text-slate-600 text-sm leading-relaxed">{{ ticket.description }}</p>
-                                {% if ticket.hostname %}
-                                <div class="mt-3 inline-flex items-center gap-2 bg-slate-100 px-3 py-1 rounded text-xs font-mono text-slate-600">
-                                    <i data-lucide="monitor" class="w-3 h-3"></i> {{ ticket.hostname }}
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition">
+                    <div class="flex">
+                        <!-- Bandeau Latéral -->
+                        <div class="w-2 bg-blue-500"></div>
+                        
+                        <!-- Contenu -->
+                        <div class="flex-1 p-5">
+                            <div class="flex justify-between items-start mb-3">
+                                <div>
+                                    <h3 class="text-lg font-bold text-slate-800">{{ ticket.title }}</h3>
+                                    <p class="text-sm text-slate-500">
+                                        Par <span class="font-semibold text-slate-700">{{ ticket.author.fullname }}</span> 
+                                        ({{ ticket.service_demandeur }}) 
+                                        <span class="mx-2">•</span> 
+                                        <span class="font-mono text-xs bg-slate-100 px-1 rounded">{{ ticket.uid_public }}</span>
+                                    </p>
                                 </div>
-                                {% endif %}
+                                <div class="flex gap-2">
+                                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium transition flex items-center">
+                                        <i data-lucide="eye" class="w-4 h-4 mr-1.5"></i> Détails
+                                    </a>
+                                    <!-- Menu Actions -->
+                                    <div class="relative group">
+                                        <button class="bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-sm font-medium transition">
+                                            Actions
+                                        </button>
+                                        <div class="absolute right-0 mt-2 w-48 bg-white border border-slate-100 rounded-lg shadow-xl hidden group-hover:block z-10 p-1">
+                                            <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" class="block px-4 py-2 text-sm text-green-600 hover:bg-green-50 rounded flex items-center">
+                                                <i data-lucide="check" class="w-4 h-4 mr-2"></i> Clôturer
+                                            </a>
+                                            
+                                            <!-- Formulaire Transfert Rapide -->
+                                            <div class="border-t border-slate-100 mt-1 pt-1 px-4 py-2">
+                                                <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Transférer à</p>
+                                                <form action="{{ url_for('tickets.transfer_ticket', ticket_id=ticket.id) }}" method="POST">
+                                                    <select name="target_service" onchange="this.form.submit()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded p-1">
+                                                        <option value="">-- Service --</option>
+                                                        {% for s in services %}
+                                                            {% if s.name not in current_user.get_allowed_services() %}
+                                                            <option value="{{ s.name }}">{{ s.value }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </form>
+                                            </div>
+
+                                            <!-- Formulaire Assignation Rapide -->
+                                            <div class="border-t border-slate-100 mt-1 pt-1 px-4 py-2">
+                                                <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Assigner à</p>
+                                                <form action="{{ url_for('tickets.assign_ticket', ticket_id=ticket.id) }}" method="POST">
+                                                    <select name="solver_id" onchange="this.form.submit()" class="w-full text-xs bg-slate-50 border border-slate-200 rounded p-1">
+                                                        <option value="">-- Collègue --</option>
+                                                        {% for s in solvers %}
+                                                            {% if s.id != current_user.id %}
+                                                            <option value="{{ s.id }}">{{ s.fullname }}</option>
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                    </select>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <!-- Zone Chat (Placeholder pour la V2) -->
-                            <div class="w-1/3 border-l border-slate-100 pl-4 flex flex-col justify-center items-center text-center">
-                                <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2">
-                                    <i data-lucide="message-square" class="w-5 h-5"></i>
+
+                            <div class="bg-slate-50 rounded-lg p-3 text-sm text-slate-600 mb-4 border border-slate-100">
+                                {{ ticket.description|truncate(150) }}
+                            </div>
+
+                            <div class="flex items-center justify-between text-xs text-slate-500">
+                                <div class="flex gap-4">
+                                    {% if ticket.tel_demandeur %}
+                                    <span class="flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> {{ ticket.tel_demandeur }}</span>
+                                    {% endif %}
+                                    {% if ticket.hostname %}
+                                    <div class="flex items-center gap-2 bg-slate-100 px-3 py-1 rounded text-xs font-mono text-slate-600">
+                                        <i data-lucide="monitor" class="w-3 h-3"></i> {{ ticket.hostname }}
+                                    </div>
+                                    {% endif %}
                                 </div>
-                                <p class="text-xs text-slate-400">Chat avec {{ ticket.author.fullname }}<br>(À venir)</p>
+                                <!-- Zone Chat (Placeholder pour la V2) -->
+                                <div class="w-1/3 border-l border-slate-100 pl-4 flex flex-col justify-center items-center text-center">
+                                    <div class="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-2">
+                                        <i data-lucide="message-square" class="w-5 h-5"></i>
+                                    </div>
+                                    <p class="text-xs text-slate-400">Chat avec {{ ticket.author.fullname }}<br>(À venir)</p>
+                                </div>
                             </div>
                         </div>
                     </div>

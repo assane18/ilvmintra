@@ -12,103 +12,94 @@ inventaire_bp = Blueprint('inventaire', __name__)
 @inventaire_bp.route('/inventaire', methods=['GET', 'POST'])
 @login_required
 def liste():
-    # SÉCURITÉ : Seuls les Admins ou les Techniciens INFORMATIQUE ont accès
-    user_role = str(current_user.role).upper()
+    # SÉCURITÉ : Admin ou (Tech/Manager/Directeur) du service INFO
+    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    user_services = current_user.get_allowed_services()
     
-    # On gère le cas où service_department est None ou Enum
-    user_service = ""
-    if current_user.service_department:
-        # Si c'est un Enum, on prend .name, sinon on convertit en string
-        user_service = getattr(current_user.service_department, 'name', str(current_user.service_department)).upper()
-    
-    # DEBUG (A supprimer en prod si besoin)
-    # print(f"DEBUG ACCESS INVENTAIRE: Role={user_role}, Service={user_service}")
-
     is_admin = 'ADMIN' in user_role
-    # On vérifie si 'INFO' est dans le nom du service (ex: 'INFORMATIQUE' ou 'INFO')
-    is_tech_info = 'SOLVER' in user_role and ('INFO' in user_service or 'INFORMATIQUE' in user_service)
+    
+    # CORRECTION : On autorise SOLVER, MANAGER et DIRECTEUR s'ils sont du service INFO
+    is_allowed_role = 'SOLVER' in user_role or 'MANAGER' in user_role or 'DIRECTEUR' in user_role
+    is_tech_info = is_allowed_role and ('INFORMATIQUE' in user_services or 'INFO' in user_services)
     
     if not (is_admin or is_tech_info):
-        flash("Accès réservé à la DSI (Admin ou Tech Info).", "danger")
+        flash("Accès réservé au service Informatique.", "danger")
         return redirect(url_for('main.user_portal'))
 
-    if request.method == 'POST':
-        try:
-            sn_check = request.form.get('sn')
-            if Materiel.query.filter_by(sn=sn_check).first():
-                flash(f'ERREUR : Le S/N "{sn_check}" existe déjà !', 'error')
-            else:
-                m = Materiel(
-                    categorie=request.form.get('categorie'), 
-                    modele=request.form.get('modele'),
-                    sn=sn_check, 
-                    hostname=request.form.get('hostname'),
-                    imei=request.form.get('imei'), 
-                    statut='Disponible'
-                )
-                db.session.add(m)
-                db.session.commit()
-                flash('Matériel ajouté avec succès.', 'success')
-        except IntegrityError:
-            db.session.rollback()
-            flash('Erreur doublon S/N.', 'error')
-        except Exception as e:
-            db.session.rollback()
-            flash(f'Erreur technique : {str(e)}', 'error')
-            
-    stock = Materiel.query.all()
-    return render_template('inventaire.html', stock=stock)
+    materiels = Materiel.query.all()
+    return render_template('inventaire.html', materiels=materiels)
 
-@inventaire_bp.route('/materiel/<int:id>/update', methods=['POST'])
+@inventaire_bp.route('/inventaire/add', methods=['POST'])
 @login_required
-def edit_materiel(id):
-    m = Materiel.query.get_or_404(id)
-    m.modele = request.form.get('modele')
-    m.sn = request.form.get('sn')
-    m.hostname = request.form.get('hostname')
-    m.imei = request.form.get('imei')
-    m.categorie = request.form.get('categorie')
-    try:
-        db.session.commit()
-        flash('Fiche matériel mise à jour.', 'success')
-    except:
-        db.session.rollback()
-        flash('Erreur : S/N déjà existant.', 'error')
-    return redirect(url_for('inventaire.liste'))
+def ajouter():
+    # Vérification droits pour l'ajout
+    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    user_services = current_user.get_allowed_services()
 
-@inventaire_bp.route('/materiel/<int:id>/delete')
-@login_required
-def delete_materiel(id):
-    if Pret.query.filter_by(materiel_id=id).first():
-        flash('Impossible de supprimer : ce matériel a un historique de prêts.', 'error')
+    is_admin = 'ADMIN' in user_role
+    is_allowed_role = 'SOLVER' in user_role or 'MANAGER' in user_role or 'DIRECTEUR' in user_role
+    is_tech_info = is_allowed_role and ('INFORMATIQUE' in user_services or 'INFO' in user_services)
+
+    if not (is_admin or is_tech_info):
+        return redirect(url_for('main.user_portal'))
+
+    categorie = request.form.get('categorie')
+    modele = request.form.get('modele')
+    sn = request.form.get('sn')
+    hostname = request.form.get('hostname')
+    imei = request.form.get('imei')
+
+    if Materiel.query.filter_by(sn=sn).first():
+        flash(f'Erreur : Le numéro de série {sn} existe déjà.', 'danger')
     else:
-        m = Materiel.query.get_or_404(id)
-        db.session.delete(m)
+        new_mat = Materiel(categorie=categorie, modele=modele, sn=sn, hostname=hostname, imei=imei)
+        db.session.add(new_mat)
         db.session.commit()
-        flash('Matériel supprimé du stock.', 'success')
+        flash('Matériel ajouté.', 'success')
+
     return redirect(url_for('inventaire.liste'))
 
-# --- IMPORT / EXPORT (Excel) ---
+@inventaire_bp.route('/inventaire/edit/<int:id>', methods=['POST'])
+@login_required
+def modifier(id):
+    mat = Materiel.query.get_or_404(id)
+    mat.categorie = request.form.get('categorie')
+    mat.modele = request.form.get('modele')
+    mat.sn = request.form.get('sn')
+    mat.hostname = request.form.get('hostname')
+    mat.imei = request.form.get('imei')
+    db.session.commit()
+    flash('Matériel modifié.', 'success')
+    return redirect(url_for('inventaire.liste'))
+
+@inventaire_bp.route('/inventaire/delete/<int:id>')
+@login_required
+def supprimer(id):
+    mat = Materiel.query.get_or_404(id)
+    db.session.delete(mat)
+    db.session.commit()
+    flash('Matériel supprimé.', 'success')
+    return redirect(url_for('inventaire.liste'))
 
 @inventaire_bp.route('/export/stock')
 @login_required
 def export_stock():
+    materiels = Materiel.query.all()
     data = []
-    for m in Materiel.query.all():
+    for m in materiels:
         data.append({
-            'Categorie': m.categorie, 
-            'Modele': m.modele, 
-            'SN': m.sn, 
-            'Hostname': m.hostname, 
-            'IMEI': m.imei, 
+            'Categorie': m.categorie,
+            'Modele': m.modele,
+            'SN': m.sn,
+            'Hostname': m.hostname,
+            'IMEI': m.imei,
             'Statut': m.statut
         })
+    
     df = pd.DataFrame(data)
-    
-    export_dir = os.path.join(current_app.root_path, 'static', 'exports')
+    export_dir = os.path.join(current_app.root_path, 'static', 'uploads')
     os.makedirs(export_dir, exist_ok=True)
-    
-    filename = f'Export_Stock_{datetime.now().strftime("%Y%m%d")}.xlsx'
+    filename = f'Export_Stock_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
     path = os.path.join(export_dir, filename)
     
     df.to_excel(path, index=False)
@@ -117,20 +108,17 @@ def export_stock():
 @inventaire_bp.route('/import/stock', methods=['POST'])
 @login_required
 def import_stock():
-    if 'file' not in request.files:
-        return redirect(url_for('inventaire.liste'))
-    
+    if 'file' not in request.files: return redirect(url_for('inventaire.liste'))
     file = request.files['file']
-    if file.filename == '':
-        return redirect(url_for('inventaire.liste'))
+    if file.filename == '': return redirect(url_for('inventaire.liste'))
         
     try:
         df = pd.read_excel(file)
-        c = 0
         if 'SN' not in df.columns:
-            flash('Erreur format : Colonne "SN" manquante.', 'error')
+            flash('Erreur format : Colonne "SN" manquante.', 'danger')
             return redirect(url_for('inventaire.liste'))
             
+        count = 0
         for _, row in df.iterrows():
             sn_val = str(row['SN']).strip()
             if not Materiel.query.filter_by(sn=sn_val).first():
@@ -142,10 +130,10 @@ def import_stock():
                     imei=str(row.get('IMEI','')), 
                     statut='Disponible'
                 ))
-                c += 1
+                count += 1
         db.session.commit()
-        flash(f'Import terminé : {c} nouveaux matériels ajoutés.', 'success')
+        flash(f'Import terminé : {count} matériels ajoutés.', 'success')
     except Exception as e:
-        flash(f'Erreur lors de l\'import : {str(e)}', 'error')
+        flash(f'Erreur import : {e}', 'danger')
         
     return redirect(url_for('inventaire.liste'))

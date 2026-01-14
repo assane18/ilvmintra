@@ -8,15 +8,12 @@ users_bp = Blueprint('users', __name__)
 @users_bp.route('/admin/users')
 @login_required
 def list_users():
-    # Sécurité : Admin Only
-    # On convertit en string pour être sûr
-    if 'ADMIN' not in str(current_user.role).upper():
+    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    if 'ADMIN' not in user_role:
         flash("Accès réservé aux administrateurs.", "danger")
         return redirect(url_for('main.user_portal'))
     
     users = User.query.all()
-    
-    # Préparation des listes pour les menus déroulants
     roles = [r.value for r in UserRole]
     services = [s.value for s in ServiceType]
     
@@ -25,31 +22,28 @@ def list_users():
 @users_bp.route('/admin/users/edit/<int:id>', methods=['POST'])
 @login_required
 def edit_user(id):
-    if 'ADMIN' not in str(current_user.role).upper():
+    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    if 'ADMIN' not in user_role:
         return redirect(url_for('main.user_portal'))
         
     user = User.query.get_or_404(id)
-    
-    # Mise à jour du nom
     user.fullname = request.form.get('fullname')
     
-    # Mise à jour du Rôle
     role_value = request.form.get('role')
-    # On cherche l'Enum correspondant à la valeur (ex: 'SOLVER' -> UserRole.SOLVER)
     for r in UserRole:
         if r.value == role_value:
             user.role = r
             break
             
-    # Mise à jour du Service
+    # CORRECTION CRITIQUE : Utilisation de set_allowed_services au lieu de service_department
     service_value = request.form.get('service')
     if service_value and service_value != 'None':
-        for s in ServiceType:
-            if s.value == service_value:
-                user.service_department = s
-                break
+        # On définit le service comme unique service autorisé
+        user.set_allowed_services([service_value])
+        # On peut aussi définir l'origine par défaut
+        user.set_origin_services([service_value])
     else:
-        user.service_department = None
+        user.set_allowed_services([])
         
     db.session.commit()
     flash(f'Utilisateur {user.fullname} mis à jour.', 'success')
@@ -58,16 +52,16 @@ def edit_user(id):
 @users_bp.route('/admin/users/delete/<int:id>')
 @login_required
 def delete_user(id):
-    if 'ADMIN' not in str(current_user.role).upper():
+    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    if 'ADMIN' not in user_role:
         return redirect(url_for('main.user_portal'))
         
     user = User.query.get_or_404(id)
-    
-    if user.id == current_user.id:
-        flash("Impossible de supprimer votre propre compte !", "danger")
-    else:
+    if user.id != current_user.id:
         db.session.delete(user)
         db.session.commit()
-        flash('Compte supprimé.', 'success')
+        flash('Utilisateur supprimé.', 'success')
+    else:
+        flash('Impossible de se supprimer soi-même.', 'danger')
         
     return redirect(url_for('users.list_users'))

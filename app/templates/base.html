@@ -1,11 +1,26 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="fr" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ILVM - Intranet</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS (avec support Dark Mode) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            850: '#1e293b', // Couleur sombre custom
+                            950: '#020617', // Très sombre
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <!-- Icônes Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Chart.js -->
@@ -20,163 +35,186 @@
         .alert-success { background-color: #d1fae5; border-left: 4px solid #10b981; color: #047857; }
         .alert-warning { background-color: #ffedd5; border-left: 4px solid #f97316; color: #c2410c; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .anim-greeting { animation: fadeInUp 0.8s ease-out forwards; }
+        .anim-greeting { animation: fadeInUp 0.5s ease-out forwards; }
         
-        .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
-        .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 700; outline: none; transition: all 0.2s; } 
-        .input-field:focus { border-color: #3b82f6; background-color: #fff; }
+        /* Styles spécifiques Dark Mode pour les alertes */
+        .dark .alert-error { background-color: #450a0a; border-left-color: #ef4444; color: #fca5a5; }
+        .dark .alert-success { background-color: #022c22; border-left-color: #10b981; color: #6ee7b7; }
+        .dark .alert-warning { background-color: #431407; border-left-color: #f97316; color: #fdba74; }
     </style>
-</head>
-<body class="bg-slate-100 font-sans text-slate-900 min-h-screen flex flex-col">
     
-    {% if current_user.is_authenticated %}
-    <nav class="bg-slate-900 text-white sticky top-0 z-50 border-b border-slate-800">
-        <div class="container mx-auto px-4 h-16 flex justify-between items-center">
-            <div class="flex items-center gap-8">
-                <!-- Logo -->
-                <a href="{{ url_for('main.user_portal') }}" class="font-black text-xl tracking-tighter text-blue-500 italic flex items-center gap-2">
-                    <i data-lucide="monitor-check"></i> ILVM<span class="text-white">MANAGER</span>
+    <!-- Script d'initialisation du thème (avant chargement du body pour éviter le flash) -->
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+</head>
+<body class="bg-slate-50 font-sans text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 dark:bg-slate-950 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
+
+    <!-- Flash Messages (Notifications) -->
+    <div class="fixed top-4 right-4 z-50 w-96 space-y-2 pointer-events-none">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="pointer-events-auto shadow-lg rounded-lg p-4 mb-2 flex items-start transform transition-all duration-300 hover:scale-105 bg-white dark:bg-slate-800 border border-transparent
+                    {% if category == 'danger' %}alert-error{% elif category == 'success' %}alert-success{% else %}alert-warning{% endif %}">
+                    <div class="flex-1">
+                        <p class="font-bold text-sm">{{ 'Succès' if category == 'success' else 'Attention' }}</p>
+                        <p class="text-sm opacity-90">{{ message }}</p>
+                    </div>
+                    <button onclick="this.parentElement.remove()" class="ml-3 text-current opacity-50 hover:opacity-100 focus:outline-none">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Navigation Bar (Optionnelle, visible sauf sur Login) -->
+    {% if current_user.is_authenticated and request.endpoint != 'auth.login' %}
+    <nav class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-40 shadow-sm dark:bg-slate-900 dark:border-slate-800 transition-colors duration-300">
+        <div class="flex items-center gap-4">
+            <a href="{{ url_for('main.user_portal') }}" class="flex items-center gap-2 group">
+                <div class="bg-blue-600 text-white p-1.5 rounded-lg group-hover:bg-blue-700 transition">
+                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
+                </div>
+                <span class="font-bold text-lg text-slate-800 tracking-tight group-hover:text-blue-600 dark:text-slate-100 dark:group-hover:text-blue-400 transition">Intranet</span>
+            </a>
+            
+            <!-- Liens contextuels VISIBLES POUR TOUS (Sécurité gérée par redirection backend) -->
+            <div class="hidden md:flex gap-1 ml-6">
+                <!-- Bouton Espace Tech -->
+                <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800">
+                    <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
                 </a>
                 
-                <!-- Menu Navigation -->
-                <div class="hidden md:flex gap-1 text-xs font-bold uppercase tracking-widest">
-                    <a href="{{ url_for('main.user_portal') }}" class="px-4 py-2 hover:bg-slate-800 rounded transition flex gap-2 items-center">
-                        <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Portail
-                    </a>
-                    
-                    <!-- Liens conditionnels selon le rôle (CORRECTION MAJEURE ICI) -->
-                    <!-- On convertit en string et majuscule pour être sûr de la correspondance -->
-                    {% if 'MANAGER' in current_user.role|string|upper or 'ADMIN' in current_user.role|string|upper %}
-                    <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-4 py-2 hover:bg-slate-800 rounded transition flex gap-2 items-center text-purple-400 hover:text-purple-300">
-                        <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
-                    </a>
-                    {% endif %}
-
-                    {% if 'SOLVER' in current_user.role|string|upper or 'ADMIN' in current_user.role|string|upper %}
-                    <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-4 py-2 hover:bg-slate-800 rounded transition flex gap-2 items-center text-blue-400 hover:text-blue-300">
-                        <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
-                    </a>
-                    {% endif %}
-                </div>
+                <!-- Bouton Validation -->
+                <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-purple-600 hover:bg-purple-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-purple-400 dark:hover:bg-slate-800">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+                </a>
             </div>
+        </div>
+
+        <div class="flex items-center gap-4">
             
-            <!-- Profil Utilisateur & Notifications -->
-            <div class="flex items-center gap-4">
+            <!-- BOUTON DARK MODE -->
+            <button id="theme-toggle" class="p-2 text-slate-400 hover:text-yellow-500 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-yellow-300 rounded-lg transition" title="Changer le thème">
+                <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
+                <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
+            </button>
+
+            <!-- Notifications -->
+            <div class="relative" id="notif-container">
+                <button onclick="toggleNotifs()" class="relative p-2 text-slate-400 hover:text-blue-600 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-400">
+                    <i data-lucide="bell" class="w-5 h-5"></i>
+                    <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+                </button>
                 
-                <!-- Cloche Notification -->
-                <div class="relative group">
-                    <button id="notifBtn" class="p-2 hover:bg-slate-800 rounded-lg transition relative">
-                        <i data-lucide="bell" class="w-5 h-5 text-slate-300 group-hover:text-white"></i>
-                        <span id="notifBadge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-slate-900"></span>
-                    </button>
-                    
-                    <!-- Dropdown Notifications -->
-                    <div id="notifDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 origin-top-right transition-all">
-                        <div class="bg-slate-50 px-4 py-3 border-b border-slate-100 flex justify-between items-center">
-                            <h3 class="text-xs font-black uppercase text-slate-500 tracking-widest">Notifications</h3>
-                            <button onclick="markAllRead()" class="text-[10px] font-bold text-blue-600 hover:underline">Tout marquer comme lu</button>
-                        </div>
-                        <div id="notifList" class="max-h-64 overflow-y-auto">
-                            <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
-                        </div>
+                <!-- Dropdown Notifs -->
+                <div id="notif-dropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 hidden transform origin-top-right transition-all z-50 dark:bg-slate-800 dark:border-slate-700">
+                    <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl dark:bg-slate-700 dark:border-slate-600">
+                        <span class="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Notifications</span>
+                        <button onclick="markAllRead()" class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">Tout marquer lu</button>
+                    </div>
+                    <div id="notif-list" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1">
+                        <!-- JS injectera ici -->
+                        <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
                     </div>
                 </div>
+            </div>
 
+            <!-- User Menu -->
+            <div class="flex items-center gap-3 pl-4 border-l border-slate-200 dark:border-slate-700">
                 <div class="text-right hidden sm:block">
-                    <p class="text-xs font-bold text-white">{{ current_user.fullname }}</p>
-                    <p class="text-[10px] text-slate-400 uppercase font-bold">{{ current_user.role }}</p>
+                    <p class="text-sm font-bold text-slate-700 leading-none dark:text-slate-200">{{ current_user.fullname }}</p>
+                    <p class="text-[10px] text-slate-400 font-mono mt-1 uppercase">{{ current_user.role.value }}</p>
                 </div>
-                
-                {% if 'ADMIN' in current_user.role|string|upper %}
-                <a href="{{ url_for('users.list_users') }}" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg transition" title="Gestion Utilisateurs">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                </a>
-                {% endif %}
-                
-                <a href="{{ url_for('auth.logout') }}" class="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition" title="Déconnexion">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                <a href="{{ url_for('auth.logout') }}" class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition dark:hover:bg-slate-800" title="Déconnexion">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
                 </a>
             </div>
         </div>
     </nav>
     {% endif %}
 
-    <main class="container mx-auto p-4 md:p-6 pb-20 flex-grow">
-        <!-- Messages Flash -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="px-6 py-4 mb-6 rounded-xl shadow-lg flex items-center gap-3 animate-bounce-short font-bold text-sm 
-                        {% if category == 'success' %}bg-d1fae5 border-l-4 border-green-500 text-green-700
-                        {% elif category == 'danger' %}bg-fee2e2 border-l-4 border-red-500 text-red-700
-                        {% else %}bg-blue-50 border-l-4 border-blue-500 text-blue-700{% endif %}">
-                        <i data-lucide="info" class="w-5 h-5"></i> <p>{{ message }}</p>
-                    </div>
-                {% endfor %}
-            {% endif %}
-        {% endwith %}
-
-        <!-- Contenu de la page -->
+    <!-- Main Content -->
+    <main class="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
         {% block content %}{% endblock %}
     </main>
 
+    <!-- Init Lucide Icons -->
     <script>
         lucide.createIcons();
 
-        // Gestion Notifications
-        const notifBtn = document.getElementById('notifBtn');
-        const notifDropdown = document.getElementById('notifDropdown');
-        const notifBadge = document.getElementById('notifBadge');
-        const notifList = document.getElementById('notifList');
+        // --- GESTION DARK MODE ---
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const themeIconSun = document.querySelector('.dark\\:block'); // Soleil
+        const themeIconMoon = document.querySelector('.dark\\:hidden'); // Lune
 
-        if (notifBtn) {
-            notifBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                notifDropdown.classList.toggle('hidden');
-                if (!notifDropdown.classList.contains('hidden')) {
-                    fetchNotifications();
+        if (themeToggleBtn) {
+            themeToggleBtn.addEventListener('click', function() {
+                // Bascule la classe dark sur html
+                if (document.documentElement.classList.contains('dark')) {
+                    document.documentElement.classList.remove('dark');
+                    localStorage.theme = 'light';
+                } else {
+                    document.documentElement.classList.add('dark');
+                    localStorage.theme = 'dark';
                 }
             });
+        }
 
-            document.addEventListener('click', (e) => {
-                if (!notifDropdown.classList.contains('hidden') && !notifDropdown.contains(e.target) && e.target !== notifBtn) {
-                    notifDropdown.classList.add('hidden');
-                }
-            });
+        // --- GESTION NOTIFICATIONS (Reste inchangé) ---
+        const notifBadge = document.getElementById('notif-badge');
+        const notifDropdown = document.getElementById('notif-dropdown');
+        const notifList = document.getElementById('notif-list');
 
-            setInterval(checkNotificationCount, 30000);
-            checkNotificationCount();
+        function toggleNotifs() {
+            if (notifDropdown.classList.contains('hidden')) {
+                notifDropdown.classList.remove('hidden');
+                loadNotifications();
+            } else {
+                notifDropdown.classList.add('hidden');
+            }
         }
 
         async function checkNotificationCount() {
             try {
-                const res = await fetch('/api/notifications');
-                if (!res.ok) return;
+                const res = await fetch('/api/notifications/count');
                 const data = await res.json();
                 if (data.count > 0) {
                     notifBadge.classList.remove('hidden');
-                    notifBadge.innerText = data.count > 9 ? '9+' : data.count;
                 } else {
                     notifBadge.classList.add('hidden');
                 }
-            } catch (e) { console.error("Erreur polling notif", e); }
+            } catch (e) { console.error("Notif error", e); }
         }
 
-        async function fetchNotifications() {
+        // Vérif toutes les 30s
+        if(document.getElementById('notif-container')) {
+            setInterval(checkNotificationCount, 30000);
+            checkNotificationCount();
+        }
+
+        async function loadNotifications() {
             try {
-                notifList.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>';
                 const res = await fetch('/api/notifications');
                 const data = await res.json();
                 notifList.innerHTML = '';
-
-                if (data.notifications.length === 0) {
-                    notifList.innerHTML = '<div class="p-6 text-center text-slate-400 text-xs italic">Aucune nouvelle notification.</div>';
+                
+                if (data.length === 0) {
+                    notifList.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs dark:text-slate-500">Aucune notification.</div>';
                     return;
                 }
 
-                data.notifications.forEach(n => {
+                data.forEach(n => {
                     const item = document.createElement('div');
-                    item.className = 'p-3 border-b border-slate-50 hover:bg-slate-50 transition cursor-pointer';
+                    // Adaptation Dark Mode pour les items de notif
+                    item.className = `p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition border-l-2 dark:hover:bg-slate-700 ${n.is_read ? 'border-transparent opacity-50' : 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'}`;
                     
                     let colorClass = 'bg-blue-500';
                     if (n.category === 'success') colorClass = 'bg-green-500';
@@ -186,7 +224,7 @@
                         <div class="flex gap-3 items-start">
                             <div class="w-2 h-2 mt-1.5 rounded-full ${colorClass}"></div>
                             <div class="flex-1">
-                                <p class="text-xs font-bold text-slate-700 leading-tight">${n.message}</p>
+                                <p class="text-xs font-bold text-slate-700 leading-tight dark:text-slate-200">${n.message}</p>
                                 <p class="text-[10px] text-slate-400 mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
                             </div>
                         </div>
