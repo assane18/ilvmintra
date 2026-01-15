@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, redirect, url_for
+from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required, current_user
 from app.models import UserRole, Ticket
 
@@ -30,23 +30,23 @@ def my_history():
 @main_bp.route('/admin/dashboard')
 @login_required
 def admin_dashboard():
-    if 'ADMIN' not in str(current_user.role).upper():
-        return redirect(url_for('main.catdance'))
+    # Sécurité : Admin Only
+    if 'ADMIN' not in str(current_user.role.value).upper():
+        return redirect(url_for('main.user_portal'))
     return redirect(url_for('users.list_users'))
 
 @main_bp.route('/dashboard')
 @login_required
 def dashboard():
-    role = str(current_user.role).upper()
+    # Redirection intelligente selon le rôle
+    role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    
     if 'ADMIN' in role:
         return redirect(url_for('tickets.solver_dashboard'))
-    elif 'MANAGER' in role:
+    elif 'MANAGER' in role or 'DIRECTEUR' in role:
         return redirect(url_for('tickets.manager_dashboard'))
     elif 'SOLVER' in role:
         return redirect(url_for('tickets.solver_dashboard'))
-    else:
-        return redirect(url_for('main.user_portal'))
+    
+    return redirect(url_for('main.user_portal'))
 
-@main_bp.route('/catdance')
-def catdance():
-    return render_template('errors/catdance.html')
