@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; color: #333; }
+        .header { background-color: #0f172a; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; background-color: #f8fafc; }
+        .btn { display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+        .footer { font-size: 12px; color: #666; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Intranet ILVM</h1>
+    </div>
+    <div class="content">
+        <h2>Bonjour {{ user.fullname }},</h2>
+        
+        <p>{{ message }}</p>
+        
+        <div style="background: white; padding: 15px; border-left: 4px solid #2563eb; margin: 15px 0;">
+            <strong>Ticket :</strong> {{ ticket.uid_public }}<br>
+            <strong>Objet :</strong> {{ ticket.title }}<br>
+            <strong>Statut :</strong> {{ ticket.status.value }}
+        </div>
+
+        <a href="{{ link }}" class="btn">Accéder à la demande</a>
+    </div>
+    <div class="footer">
+        Ceci est un message automatique, merci de ne pas répondre.
+    </div>
+</body>
+</html>

@@ -257,8 +257,9 @@
     
     async function loadChat() {
         try {
-            const res = await fetch('/api/team_chat');
-            if (!res.ok) throw new Error('Chat API Error');
+            // CORRECTION URL: Utilisation de url_for pour être sûr du chemin
+            const res = await fetch("{{ url_for('api.get_team_messages') }}");
+            if (!res.ok) throw new Error('Chat API Error ' + res.status);
             
             const msgs = await res.json();
             chatBox.innerHTML = '';
@@ -291,7 +292,8 @@
         if(!input.value.trim()) return;
         
         try {
-            const res = await fetch('/api/team_chat', {
+            // CORRECTION URL POST
+            const res = await fetch("{{ url_for('api.post_team_message') }}", {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({content: input.value})

@@ -87,12 +87,12 @@
             
             <!-- Liens contextuels VISIBLES POUR TOUS (Sécurité gérée par redirection backend) -->
             <div class="hidden md:flex gap-1 ml-6">
-                <!-- Bouton Espace Tech -->
+                <!-- Bouton Espace Tech (Visible pour tous) -->
                 <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800">
                     <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
                 </a>
                 
-                <!-- Bouton Validation -->
+                <!-- Bouton Validation (Visible pour tous) -->
                 <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-purple-600 hover:bg-purple-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-purple-400 dark:hover:bg-slate-800">
                     <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
                 </a>
@@ -168,7 +168,7 @@
             });
         }
 
-        // --- GESTION NOTIFICATIONS (Reste inchangé) ---
+        // --- GESTION NOTIFICATIONS (CORRIGÉ) ---
         const notifBadge = document.getElementById('notif-badge');
         const notifDropdown = document.getElementById('notif-dropdown');
         const notifList = document.getElementById('notif-list');
@@ -184,7 +184,8 @@
 
         async function checkNotificationCount() {
             try {
-                const res = await fetch('/api/notifications/count');
+                // CORRECTION : Utilisation de url_for pour la bonne route API
+                const res = await fetch("{{ url_for('api.get_notifications_count') }}");
                 const data = await res.json();
                 if (data.count > 0) {
                     notifBadge.classList.remove('hidden');
@@ -202,16 +203,17 @@
 
         async function loadNotifications() {
             try {
-                const res = await fetch('/api/notifications');
+                // CORRECTION : Utilisation de url_for
+                const res = await fetch("{{ url_for('api.get_notifications') }}");
                 const data = await res.json();
                 notifList.innerHTML = '';
                 
-                if (data.length === 0) {
+                if (data.notifications.length === 0) {
                     notifList.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs dark:text-slate-500">Aucune notification.</div>';
                     return;
                 }
 
-                data.forEach(n => {
+                data.notifications.forEach(n => {
                     const item = document.createElement('div');
                     // Adaptation Dark Mode pour les items de notif
                     item.className = `p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition border-l-2 dark:hover:bg-slate-700 ${n.is_read ? 'border-transparent opacity-50' : 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'}`;
@@ -241,12 +243,14 @@
         }
 
         async function markRead(id) {
+            // CORRECTION URL
             await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
             checkNotificationCount();
         }
 
         async function markAllRead() {
-            await fetch('/api/notifications/read_all', { method: 'POST' });
+            // CORRECTION URL (url_for serait mieux mais ici c'est plus complexe à injecter dans une string template JS pur, le hardcode relatif marche souvent si api_bp n'a pas de préfixe complexe)
+            await fetch("{{ url_for('api.mark_all_read') }}", { method: 'POST' });
             checkNotificationCount();
             notifDropdown.classList.add('hidden');
         }
