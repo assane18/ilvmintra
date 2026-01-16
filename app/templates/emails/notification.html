@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; color: #1e293b; }
+        .box { border: 1px solid #e2e8f0; padding: 20px; border-radius: 8px; max-width: 600px; margin: 0 auto; }
+        .header { background-color: #0f172a; color: white; padding: 15px; border-radius: 8px 8px 0 0; text-align: center; }
+        .content { padding: 20px; }
+        .btn { display: inline-block; background-color: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 15px; }
+        .info { background: #f1f5f9; padding: 10px; border-left: 4px solid #2563eb; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="header">
+            <h2>Notification Intranet</h2>
+        </div>
+        <div class="content">
+            <p>Bonjour <strong>{{ user.fullname }}</strong>,</p>
+            <p>{{ message }}</p>
+            
+            {% if ticket %}
+            <div class="info">
+                <strong>Référence :</strong> {{ ticket.uid_public }}<br>
+                <strong>Sujet :</strong> {{ ticket.title }}<br>
+                <strong>Service :</strong> {{ ticket.target_service.value }}
+            </div>
+            {% endif %}
+
+            <p>Connectez-vous pour traiter cette demande.</p>
+            <a href="{{ link }}" class="btn">Accéder à l'Intranet</a>
+        </div>
+    </div>
+</body>
+</html>

@@ -15,6 +15,15 @@ class Config:
     UPLOAD_FOLDER = os.path.join(basedir, 'app/static/uploads')
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
 
+    MAIL_SERVER = os.environ.get('MAIL_SERVER') or '192.168.1.4'
+    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 25)
+    MAIL_USE_TLS = False
+    MAIL_USERNAME = None
+    MAIL_PASSWORD = None
+    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'no-reply-intranet@ilvm.lan'
+    MAIL_DEBUG = False
+
+
 class DevelopmentConfig(Config):
     DEBUG = True
     # SQLite local pour le dev WSL

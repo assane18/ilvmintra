@@ -10,6 +10,7 @@ import pandas as pd
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from functools import wraps
+from app.emails import send_email 
 
 tickets_bp = Blueprint('tickets', __name__)
 
