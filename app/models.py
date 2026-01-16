@@ -4,8 +4,6 @@ from datetime import datetime
 import enum
 import json
 
-# --- ÉNUMÉRATIONS ---
-
 class UserRole(str, enum.Enum):
     USER = "USER"
     MANAGER = "MANAGER"
@@ -16,7 +14,7 @@ class UserRole(str, enum.Enum):
 class TicketStatus(str, enum.Enum):
     VALIDATION_N1 = "VALIDATION_HIERARCHIQUE"
     VALIDATION_N2 = "VALIDATION_TECHNIQUE"
-    DAF_SIGNATURE = "SIGNATURE_DIRECTEUR"      # Nouveau statut
+    DAF_SIGNATURE = "SIGNATURE_DIRECTEUR"
     PENDING = "EN_ATTENTE_TRAITEMENT"
     IN_PROGRESS = "EN_COURS"
     WAITING_USER = "EN_ATTENTE_USER"
@@ -32,8 +30,6 @@ class ServiceType(str, enum.Enum):
     SECU = "SECU"
     AUTRE = "AUTRE"
 
-# --- MODÈLES ---
-
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -41,7 +37,6 @@ class User(UserMixin, db.Model):
     fullname = db.Column(db.String(120))
     email = db.Column(db.String(120))
     role = db.Column(db.Enum(UserRole), default=UserRole.USER)
-    
     origin_services_json = db.Column(db.Text, default='[]')
     allowed_services_json = db.Column(db.Text, default='[]')
     location = db.Column(db.String(100), nullable=True)
@@ -68,31 +63,23 @@ class User(UserMixin, db.Model):
 
 class Ticket(db.Model):
     __tablename__ = 'tickets'
-    
     id = db.Column(db.Integer, primary_key=True)
     uid_public = db.Column(db.String(20), unique=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
-    
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     author = db.relationship('User', foreign_keys=[author_id], backref='my_tickets')
-    
     target_service = db.Column(db.Enum(ServiceType), nullable=False)
     status = db.Column(db.Enum(TicketStatus), default=TicketStatus.VALIDATION_N1)
-    
     solver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     solver = db.relationship('User', foreign_keys=[solver_id], backref='assigned_tickets')
-    
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True)
-    
     category_ticket = db.Column(db.String(50)) 
     hostname = db.Column(db.String(64), nullable=True)
     service_demandeur = db.Column(db.String(100), nullable=True)
     tel_demandeur = db.Column(db.String(20), nullable=True)
     lieu_installation = db.Column(db.String(100), nullable=True)
-
-    # Champs divers
     new_user_fullname = db.Column(db.String(150), nullable=True)
     new_user_service = db.Column(db.String(100), nullable=True)
     new_user_acces = db.Column(db.String(255), nullable=True)
@@ -100,29 +87,32 @@ class Ticket(db.Model):
     materiel_list = db.Column(db.Text, nullable=True)
     destinataire_materiel = db.Column(db.String(150), nullable=True)
     service_destinataire = db.Column(db.String(100), nullable=True)
-
-    # Champs DAF V1
     daf_lieu_livraison = db.Column(db.String(100))
     daf_fournisseur_nom = db.Column(db.String(100))
     daf_fournisseur_tel = db.Column(db.String(50))
     daf_fournisseur_fax = db.Column(db.String(50))
     daf_fournisseur_email = db.Column(db.String(100))
     daf_type_prix = db.Column(db.String(10))
-    
     daf_lignes_json = db.Column(db.Text) 
     daf_files_json = db.Column(db.Text)
-
-    # Champs DAF V2 (Nouveaux)
     daf_uf = db.Column(db.String(50), nullable=True)
     daf_budget_affecte = db.Column(db.String(100), nullable=True)
     daf_new_supplier = db.Column(db.Boolean, default=False)
     daf_siret = db.Column(db.String(50), nullable=True)
     daf_fournisseur_tel_comment = db.Column(db.String(100), nullable=True)
     daf_rib_file = db.Column(db.String(255), nullable=True)
-
-    # Workflow DAF Interne
     daf_solver_file = db.Column(db.String(255), nullable=True)
     daf_signed_file = db.Column(db.String(255), nullable=True)
+
+    def get_safe_status(self):
+        if self.status is None: return "INCONNU"
+        if hasattr(self.status, 'value'): return str(self.status.value)
+        return str(self.status)
+
+    def get_safe_target_service(self):
+        if self.target_service is None: return "AUTRE"
+        if hasattr(self.target_service, 'value'): return str(self.target_service.value)
+        return str(self.target_service)
 
     def get_daf_lignes(self):
         if not self.daf_lignes_json: return []
@@ -153,7 +143,6 @@ class TeamMessage(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     author = db.relationship('User')
 
-# --- MODÈLES INVENTAIRE & PRETS (Version minimale pour éviter erreurs imports) ---
 class Materiel(db.Model):
     __tablename__ = 'materiels'
     id = db.Column(db.Integer, primary_key=True)
