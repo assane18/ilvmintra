@@ -8,29 +8,28 @@ import json
 
 class UserRole(str, enum.Enum):
     USER = "USER"
-    MANAGER = "MANAGER"     # N+1
-    DIRECTEUR = "DIRECTEUR" # N+2
-    SOLVER = "SOLVER"       # Technicien qui traite
+    MANAGER = "MANAGER"
+    DIRECTEUR = "DIRECTEUR"
+    SOLVER = "SOLVER"
     ADMIN = "ADMIN"
 
 class TicketStatus(str, enum.Enum):
-    VALIDATION_N1 = "VALIDATION_HIERARCHIQUE"  # Validation Manager/Directeur du demandeur
-    VALIDATION_N2 = "VALIDATION_TECHNIQUE"     # Validation par le service destinataire (Budget/Faisabilité)
-    PENDING = "EN_ATTENTE_TRAITEMENT"          # Validé, en attente d'attribution (Pool)
+    VALIDATION_N1 = "VALIDATION_HIERARCHIQUE"
+    VALIDATION_N2 = "VALIDATION_TECHNIQUE"
+    DAF_SIGNATURE = "SIGNATURE_DIRECTEUR"      # Nouveau statut
+    PENDING = "EN_ATTENTE_TRAITEMENT"
     IN_PROGRESS = "EN_COURS"
     WAITING_USER = "EN_ATTENTE_USER"
     REFUSED = "REFUSE"
     DONE = "TERMINE"
 
 class ServiceType(str, enum.Enum):
-    # Liste des services destinataires (GS)
     INFO = "INFORMATIQUE"
     DAF = "DAF"
     GEN = "GENERAUX"
     TECH = "TECHNIQUE"
     DRH = "DRH"
     SECU = "SECU"
-    # Fallback pour l'affichage
     AUTRE = "AUTRE"
 
 # --- MODÈLES ---
@@ -41,32 +40,27 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, index=True)
     fullname = db.Column(db.String(120))
     email = db.Column(db.String(120))
-    
     role = db.Column(db.Enum(UserRole), default=UserRole.USER)
     
-    # Stockage JSON des groupes AD
-    # origin_services (GU) : D'où vient l'utilisateur (ex: ["GU-DAF", "GU-MAS"])
     origin_services_json = db.Column(db.Text, default='[]')
-    
-    # allowed_services (GS) : Ce que l'utilisateur peut traiter (ex: ["GS-INFORMATIQUE"])
     allowed_services_json = db.Column(db.Text, default='[]')
-
-    location = db.Column(db.String(100), nullable=True) # Lieu physique
-
+    location = db.Column(db.String(100), nullable=True)
     notifications = db.relationship('Notification', backref='user', lazy='dynamic')
 
     def set_origin_services(self, services_list):
-        self.origin_services_json = json.dumps(services_list)
+        try: self.origin_services_json = json.dumps(services_list)
+        except: self.origin_services_json = '[]'
 
     def get_origin_services(self):
-        try: return json.loads(self.origin_services_json)
+        try: return json.loads(self.origin_services_json) or []
         except: return []
 
     def set_allowed_services(self, services_list):
-        self.allowed_services_json = json.dumps(services_list)
+        try: self.allowed_services_json = json.dumps(services_list)
+        except: self.allowed_services_json = '[]'
 
     def get_allowed_services(self):
-        try: return json.loads(self.allowed_services_json)
+        try: return json.loads(self.allowed_services_json) or []
         except: return []
 
     def __repr__(self):
@@ -83,7 +77,7 @@ class Ticket(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     author = db.relationship('User', foreign_keys=[author_id], backref='my_tickets')
     
-    target_service = db.Column(db.Enum(ServiceType), nullable=False) # Le service qui reçoit (GS)
+    target_service = db.Column(db.Enum(ServiceType), nullable=False)
     status = db.Column(db.Enum(TicketStatus), default=TicketStatus.VALIDATION_N1)
     
     solver_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
@@ -94,23 +88,20 @@ class Ticket(db.Model):
     
     category_ticket = db.Column(db.String(50)) 
     hostname = db.Column(db.String(64), nullable=True)
-    
-    # Service demandeur (Choisi parmi les GU de l'user)
     service_demandeur = db.Column(db.String(100), nullable=True)
-    
     tel_demandeur = db.Column(db.String(20), nullable=True)
     lieu_installation = db.Column(db.String(100), nullable=True)
 
-    # Champs spécifiques (Nouvel user, Matériel, DAF...)
+    # Champs divers
     new_user_fullname = db.Column(db.String(150), nullable=True)
     new_user_service = db.Column(db.String(100), nullable=True)
     new_user_acces = db.Column(db.String(255), nullable=True)
     new_user_date = db.Column(db.DateTime, nullable=True)
-    
     materiel_list = db.Column(db.Text, nullable=True)
     destinataire_materiel = db.Column(db.String(150), nullable=True)
     service_destinataire = db.Column(db.String(100), nullable=True)
 
+    # Champs DAF V1
     daf_lieu_livraison = db.Column(db.String(100))
     daf_fournisseur_nom = db.Column(db.String(100))
     daf_fournisseur_tel = db.Column(db.String(50))
@@ -121,17 +112,27 @@ class Ticket(db.Model):
     daf_lignes_json = db.Column(db.Text) 
     daf_files_json = db.Column(db.Text)
 
+    # Champs DAF V2 (Nouveaux)
+    daf_uf = db.Column(db.String(50), nullable=True)
+    daf_budget_affecte = db.Column(db.String(100), nullable=True)
+    daf_new_supplier = db.Column(db.Boolean, default=False)
+    daf_siret = db.Column(db.String(50), nullable=True)
+    daf_fournisseur_tel_comment = db.Column(db.String(100), nullable=True)
+    daf_rib_file = db.Column(db.String(255), nullable=True)
+
+    # Workflow DAF Interne
+    daf_solver_file = db.Column(db.String(255), nullable=True)
+    daf_signed_file = db.Column(db.String(255), nullable=True)
+
     def get_daf_lignes(self):
-        if self.daf_lignes_json:
-            try: return json.loads(self.daf_lignes_json)
-            except: return []
-        return []
+        if not self.daf_lignes_json: return []
+        try: return json.loads(self.daf_lignes_json)
+        except: return []
 
     def get_daf_files(self):
-        if self.daf_files_json:
-            try: return json.loads(self.daf_files_json)
-            except: return []
-        return []
+        if not self.daf_files_json: return []
+        try: return json.loads(self.daf_files_json)
+        except: return []
 
 class TicketMessage(db.Model):
     __tablename__ = 'ticket_messages'
@@ -152,7 +153,7 @@ class TeamMessage(db.Model):
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     author = db.relationship('User')
 
-# --- MODÈLES INVENTAIRE & PRETS (Inchangés) ---
+# --- MODÈLES INVENTAIRE & PRETS (Version minimale pour éviter erreurs imports) ---
 class Materiel(db.Model):
     __tablename__ = 'materiels'
     id = db.Column(db.Integer, primary_key=True)
@@ -162,12 +163,12 @@ class Materiel(db.Model):
     hostname = db.Column(db.String(100))
     imei = db.Column(db.String(100))
     statut = db.Column(db.String(50), default='Disponible')
+    historique_prets = db.relationship('Pret', backref='materiel_rel', lazy='dynamic')
 
 class Pret(db.Model):
     __tablename__ = 'prets'
     id = db.Column(db.Integer, primary_key=True)
     materiel_id = db.Column(db.Integer, db.ForeignKey('materiels.id'))
-    materiel = db.relationship('Materiel', backref='historique_prets')
     technicien_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     technicien = db.relationship('User', backref='prets_geres')
     nom_emprunteur = db.Column(db.String(100))
