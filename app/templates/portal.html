@@ -148,7 +148,26 @@
                     Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
                 </div>
             </a>
+
+            <!-- Carte FCPI (Agent Recruté) - PIÈGE CATDANCE -->
+            <a href="{{ url_for('fcpi.check_access') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="user-plus" class="w-24 h-24 text-pink-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-pink-50 dark:bg-pink-900/30 rounded-2xl flex items-center justify-center mb-4 text-pink-600 dark:text-pink-400 group-hover:bg-pink-600 group-hover:text-white transition-colors">
+                    <i data-lucide="user-plus" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Agent Recruté (FCPI)</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Création de poste, arrivées...</p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold px-2 py-1 rounded border border-slate-200 dark:border-slate-600 uppercase">
+                        Manager Only
+                    </span>
+                </div>
+            </a>
+
         </div>
+
 
         <!-- Section "Mes dernières demandes" -->
         <div class="max-w-4xl mx-auto">

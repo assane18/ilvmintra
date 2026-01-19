@@ -22,13 +22,55 @@ class TicketStatus(str, enum.Enum):
     DONE = "TERMINE"
 
 class ServiceType(str, enum.Enum):
+    # Services Historiques
     INFO = "INFORMATIQUE"
     DAF = "DAF"
     GEN = "GENERAUX"
     TECH = "TECHNIQUE"
     DRH = "DRH"
-    SECU = "SECU"
+    SECU = "SECU" # Badge / Accès
     AUTRE = "AUTRE"
+
+    # Nouveaux Services Ajoutés
+    ACCUEIL = "Accueil"
+    ARCHIPELLE = "Archipelle"
+    CELLULE_PARCOURS = "Cellule Parcours"
+    CSD = "CSD"
+    DG = "DG"
+    EAM_DRAVEIL = "EAM Draveil"
+    ESAT = "ESAT"
+    ESPACE_LOISIRS = "Espace Loisirs"
+    FH = "FH"
+    FJ = "FJ"
+    FV = "FV"
+    GITE = "Gite"
+    IME_CORBEIL = "IME Corbeil"
+    MAGASIN = "Magasin"
+    MAS = "MAS"
+    MAS_EXTERNAT = "MAS Externat"
+    MAS_INCLUSIVE = "MAS Inclusive"
+    PATRIMOINE = "Patrimoine"
+    QUALITE = "Qualite"
+    SACAT = "SACAT"
+    SAMSAH = "SAMSAH"
+    SAVIE = "SAVIE"
+    SECURITE_INCENDIE = "Sécurité Incendie"
+    SESSAD_CORBEIL = "SESSAD Corbeil"
+    SESSAD_CRETEIL = "SESSAD Créteil"
+    SESSAD_TSA = "SESSAD TSA"
+    SG = "SG"
+    SRU = "SRU"
+    SYNDICAT = "Syndicat"
+    TKITOI = "TKITOI"
+    UEEA = "UEEA"
+    UEMA = "UEMA"
+
+class RecruitmentStatus(str, enum.Enum):
+    WAITING_RH_MGR = "VALIDATION_RH_MANAGER"
+    WAITING_RH_DIR = "VALIDATION_RH_DIRECTEUR"
+    REFUSED = "REFUSE"
+    DISPATCHED = "DISPATCHE_AUX_SERVICES" 
+    DONE = "TERMINE"
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -64,7 +106,7 @@ class User(UserMixin, db.Model):
 class Ticket(db.Model):
     __tablename__ = 'tickets'
     id = db.Column(db.Integer, primary_key=True)
-    uid_public = db.Column(db.String(20), unique=True, index=True)
+    uid_public = db.Column(db.String(30), unique=True, index=True)
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text, nullable=False)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -123,6 +165,72 @@ class Ticket(db.Model):
         if not self.daf_files_json: return []
         try: return json.loads(self.daf_files_json)
         except: return []
+
+class Recruitment(db.Model):
+    __tablename__ = 'recruitments'
+    id = db.Column(db.Integer, primary_key=True)
+    uid_public = db.Column(db.String(20), unique=True, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = db.relationship('User', backref='my_recruitments')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    status = db.Column(db.Enum(RecruitmentStatus), default=RecruitmentStatus.WAITING_RH_MGR)
+    
+    # --- Données Agent ---
+    date_entree = db.Column(db.DateTime)
+    nom_agent = db.Column(db.String(100))
+    prenom_agent = db.Column(db.String(100))
+    fonction = db.Column(db.String(100))
+    service_agent = db.Column(db.String(100))
+    uf_agent = db.Column(db.String(50))
+    
+    # --- DRH ---
+    contractuel = db.Column(db.Boolean, default=False)
+    date_debut_contrat = db.Column(db.DateTime, nullable=True)
+    date_fin_contrat = db.Column(db.DateTime, nullable=True)
+    condition_recrutement = db.Column(db.String(50)) 
+    temps_travail = db.Column(db.String(50)) 
+    pourcentage_temps = db.Column(db.String(20), nullable=True)
+    motif_recrutement = db.Column(db.String(50)) 
+    simulation_salaire = db.Column(db.Boolean, default=False)
+    
+    # --- Badge & Clefs ---
+    localisation_poste = db.Column(db.String(100))
+    commentaire_securite = db.Column(db.Text)
+    
+    # --- Imago ---
+    imago_active = db.Column(db.Boolean, default=False)
+    imago_mobilite = db.Column(db.String(200), nullable=True)
+    
+    # --- Informatique ---
+    materiels_demandes = db.Column(db.String(255))
+    acces_informatique = db.Column(db.Text)
+    
+    # --- Fichiers ---
+    file_cv = db.Column(db.String(255))
+    file_fiche_poste = db.Column(db.String(255))
+    file_photo = db.Column(db.String(255))
+    
+    # --- Workflow ---
+    refusal_reason = db.Column(db.Text)
+    child_tickets_ids = db.Column(db.Text, default='[]') 
+
+    def get_child_tickets(self):
+        try: return json.loads(self.child_tickets_ids)
+        except: return []
+
+    # --- AJOUTS POUR LE SUIVI ---
+    def get_child_tickets_objects(self):
+        """Retourne la liste des objets Ticket réels pour affichage statut"""
+        ids = self.get_child_tickets()
+        if not ids: return []
+        return Ticket.query.filter(Ticket.id.in_(ids)).all()
+
+    @property
+    def is_fully_completed(self):
+        """Vérifie si tous les sous-tickets sont terminés"""
+        tickets = self.get_child_tickets_objects()
+        if not tickets: return False
+        return all(t.status == TicketStatus.DONE for t in tickets)
 
 class TicketMessage(db.Model):
     __tablename__ = 'ticket_messages'
@@ -185,3 +293,13 @@ class Notification(db.Model):
     link = db.Column(db.String(255))
     is_read = db.Column(db.Boolean, default=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'message': self.message,
+            'category': self.category,
+            'link': self.link,
+            'is_read': self.is_read,
+            'timestamp': self.timestamp.isoformat()
+        }

@@ -5,10 +5,11 @@ from app import db
 from ldap3 import Server, Connection, ALL, SIMPLE
 from functools import wraps
 from sqlalchemy.exc import DataError, StatementError
+import unicodedata
 
 auth_bp = Blueprint('auth', __name__)
 
-# --- ANTI-CACHE RENFORCÉ (CRITIQUE POUR LE BOUTON RETOUR) ---
+# --- ANTI-CACHE RENFORCÉ ---
 def nocache(view):
     @wraps(view)
     def no_cache(*args, **kwargs):
@@ -19,7 +20,12 @@ def nocache(view):
         return response
     return no_cache
 
-# ... (Fonctions get_ldap_connection et parse_ad_groups inchangées) ...
+def normalize_text(text):
+    """Supprime les accents et met en majuscules pour la comparaison"""
+    if not text: return ""
+    text = unicodedata.normalize('NFD', text).encode('ascii', 'ignore').decode('utf-8')
+    return text.upper().replace(' ', '_').replace('-', '_')
+
 def get_ldap_connection(username, password):
     LDAP_SERVER_URL = current_app.config.get('LDAP_SERVER', 'ldap://192.168.1.9') 
     LDAP_DOMAIN_PREFIX = current_app.config.get('LDAP_DOMAIN', 'ILVM\\') 
@@ -35,12 +41,14 @@ def get_ldap_connection(username, password):
         return None, None, str(e)
 
 def parse_ad_groups(groups_entry):
+    # On met tout en MAJUSCULES pour simplifier les comparaisons
     groups_list = [str(g).upper().split(',')[0].replace('CN=', '') for g in groups_entry]
     role = UserRole.USER
     origin_services = []
     allowed_services = []
 
     for group in groups_list:
+        # 1. RÔLES (GR-)
         if group.startswith('GR-'):
             role_suffix = group.replace('GR-', '')
             if role_suffix == 'DIRECTEUR': role = UserRole.DIRECTEUR
@@ -48,16 +56,58 @@ def parse_ad_groups(groups_entry):
             elif role_suffix == 'SOLVER' and role != UserRole.DIRECTEUR and role != UserRole.MANAGER: role = UserRole.SOLVER
             elif role_suffix == 'ADMIN': role = UserRole.ADMIN
 
+        # 2. SERVICES GÉRÉS (GS-)
         elif group.startswith('GS-'):
-            svc_name = group.replace('GS-', '')
-            # Mapping simplifié
+            svc_name = group.replace('GS-', '') # ex: 'SESSAD CRETEIL' ou 'INFORMATIQUE'
+            
+            # --- MAPPING MANUEL COMPLET ---
+            # Services Historiques / Techniques
             if svc_name in ['INFORMATIQUE', 'INFO']: allowed_services.append(ServiceType.INFO.value)
             elif svc_name == 'DAF': allowed_services.append(ServiceType.DAF.value)
             elif svc_name in ['TECHNIQUE', 'TECH']: allowed_services.append(ServiceType.TECH.value)
-            elif svc_name == 'GENERAUX': allowed_services.append(ServiceType.GEN.value)
-            # ... autres mappings ...
-            else: allowed_services.append(svc_name)
+            elif svc_name in ['GENERAUX', 'GEN']: allowed_services.append(ServiceType.GEN.value)
+            elif svc_name == 'DRH': allowed_services.append(ServiceType.DRH.value)
+            elif svc_name == 'SECU': allowed_services.append(ServiceType.SECU.value)
+            
+            # Services Ajoutés (Mapping explicite pour éviter les erreurs de syntaxe AD)
+            elif svc_name == 'ACCUEIL': allowed_services.append(ServiceType.ACCUEIL.value)
+            elif svc_name == 'ARCHIPELLE': allowed_services.append(ServiceType.ARCHIPELLE.value)
+            elif svc_name == 'CELLULE PARCOURS': allowed_services.append(ServiceType.CELLULE_PARCOURS.value)
+            elif svc_name == 'CSD': allowed_services.append(ServiceType.CSD.value)
+            elif svc_name == 'DG': allowed_services.append(ServiceType.DG.value)
+            elif svc_name == 'EAM DRAVEIL': allowed_services.append(ServiceType.EAM_DRAVEIL.value)
+            elif svc_name == 'ESAT': allowed_services.append(ServiceType.ESAT.value)
+            elif svc_name == 'ESPACE LOISIRS': allowed_services.append(ServiceType.ESPACE_LOISIRS.value)
+            elif svc_name == 'FH': allowed_services.append(ServiceType.FH.value)
+            elif svc_name == 'FJ': allowed_services.append(ServiceType.FJ.value)
+            elif svc_name == 'FV': allowed_services.append(ServiceType.FV.value)
+            elif svc_name == 'GITE': allowed_services.append(ServiceType.GITE.value)
+            elif svc_name == 'IME CORBEIL': allowed_services.append(ServiceType.IME_CORBEIL.value)
+            elif svc_name == 'MAGASIN': allowed_services.append(ServiceType.MAGASIN.value)
+            elif svc_name == 'MAS': allowed_services.append(ServiceType.MAS.value)
+            elif svc_name == 'MAS EXTERNAT': allowed_services.append(ServiceType.MAS_EXTERNAT.value)
+            elif svc_name == 'MAS INCLUSIVE': allowed_services.append(ServiceType.MAS_INCLUSIVE.value)
+            elif svc_name == 'PATRIMOINE': allowed_services.append(ServiceType.PATRIMOINE.value)
+            elif svc_name == 'QUALITE': allowed_services.append(ServiceType.QUALITE.value)
+            elif svc_name == 'SACAT': allowed_services.append(ServiceType.SACAT.value)
+            elif svc_name == 'SAMSAH': allowed_services.append(ServiceType.SAMSAH.value)
+            elif svc_name == 'SAVIE': allowed_services.append(ServiceType.SAVIE.value)
+            elif svc_name == 'SECURITE INCENDIE': allowed_services.append(ServiceType.SECURITE_INCENDIE.value)
+            elif svc_name == 'SESSAD CORBEIL': allowed_services.append(ServiceType.SESSAD_CORBEIL.value)
+            elif svc_name == 'SESSAD CRETEIL': allowed_services.append(ServiceType.SESSAD_CRETEIL.value)
+            elif svc_name == 'SESSAD TSA': allowed_services.append(ServiceType.SESSAD_TSA.value)
+            elif svc_name == 'SG': allowed_services.append(ServiceType.SG.value)
+            elif svc_name == 'SRU': allowed_services.append(ServiceType.SRU.value)
+            elif svc_name == 'SYNDICAT': allowed_services.append(ServiceType.SYNDICAT.value)
+            elif svc_name == 'TKITOI': allowed_services.append(ServiceType.TKITOI.value)
+            elif svc_name == 'UEEA': allowed_services.append(ServiceType.UEEA.value)
+            elif svc_name == 'UEMA': allowed_services.append(ServiceType.UEMA.value)
+            
+            # Fallback (Au cas où un nouveau service arrive sans mapping)
+            else:
+                allowed_services.append(svc_name)
 
+        # 3. SERVICES D'ORIGINE (GU-)
         elif group.startswith('GU-'):
             origin_services.append(group.replace('GU-', ''))
 
@@ -96,9 +146,7 @@ def login():
                 user.fullname = str(user_entry.displayName) if user_entry.displayName else clean_user
                 user.email = str(user_entry.mail) if user_entry.mail else f"{clean_user}@ilvm.lan"
                 
-                # Vérifier la validité du rôle dans le contexte de la base de données
-                # Si la base de données ne prend pas en charge le rôle (par exemple DIRECTEUR n'est pas dans l'énumération), cette affectation est correcte en Python
-                # mais le commit échouera.
+                # Mise à jour des droits
                 user.role = role
                 user.set_origin_services(origins)
                 user.set_allowed_services(alloweds)
@@ -109,12 +157,9 @@ def login():
                     db.session.commit()
                 except (DataError, StatementError) as db_err:
                     db.session.rollback()
-                    if "invalid input value for enum" in str(db_err) or "InvalidTextRepresentation" in str(db_err):
-                        flash("Erreur Base de Données : Le rôle 'DIRECTEUR' n'est pas reconnu par la base. Veuillez exécuter la migration ou 'ALTER TYPE userrole ADD VALUE ''DIRECTEUR'';' dans PostgreSQL.", "danger")
-                        print(f"ERREUR ENUM BDD: {db_err}")
-                        return render_template('auth/login.html')
-                    else:
-                        raise db_err
+                    flash(f"Erreur Base de Données (Enum) : {db_err}", "danger")
+                    print(f"ERREUR BDD: {db_err}")
+                    return render_template('auth/login.html')
 
                 login_user(user)
                 return redirect_by_role(user)
@@ -131,30 +176,14 @@ def login():
 @login_required
 @nocache
 def logout():
-    session.clear() # Vide tout le cache session server-side
+    session.clear()
     logout_user()
     flash("Déconnecté.", "info")
     return redirect(url_for('auth.login'))
 
 def redirect_by_role(user):
-    """
-    Logique de redirection stricte :
-    1. ADMIN -> Solver Dashboard
-    2. DIRECTEUR / MANAGER -> Manager Dashboard (Validation)
-    3. SOLVER -> Solver Dashboard (Traitement)
-    4. USER -> Portail
-    """
-    # Conversion robuste en string pour comparaison
     role = str(user.role.value).upper() if hasattr(user.role, 'value') else str(user.role).upper()
-    
-    if 'ADMIN' in role:
-        return redirect(url_for('tickets.solver_dashboard'))
-    
-    # Correction pour le DIRECTEUR qui était renvoyé vers le portail user par erreur
-    if 'DIRECTEUR' in role or 'MANAGER' in role:
-        return redirect(url_for('tickets.manager_dashboard'))
-        
-    if 'SOLVER' in role:
-        return redirect(url_for('tickets.solver_dashboard'))
-    
+    if 'ADMIN' in role: return redirect(url_for('tickets.solver_dashboard'))
+    if 'DIRECTEUR' in role or 'MANAGER' in role: return redirect(url_for('tickets.manager_dashboard'))
+    if 'SOLVER' in role: return redirect(url_for('tickets.solver_dashboard'))
     return redirect(url_for('main.user_portal'))

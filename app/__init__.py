@@ -54,4 +54,8 @@ def create_app(config_name='default'):
     from .routes.api import api_bp
     app.register_blueprint(api_bp)
 
+    # NOUVEAU : Module FCPI
+    from .routes.fcpi import fcpi_bp
+    app.register_blueprint(fcpi_bp)
+
     return app

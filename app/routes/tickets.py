@@ -162,7 +162,7 @@ def new_ticket(service_name):
                 except: pass
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, make_response, send_file
 from flask_login import login_required, current_user
-from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User
+from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus
 from app import db
 from datetime import datetime
 import json
@@ -397,13 +397,16 @@ def view_ticket(ticket_uid):
 @nocache
 def manager_dashboard():
     try:
-        if not check_permission(['MANAGER', 'DIRECTEUR', 'ADMIN']):
-            if 'SOLVER' in safe_role_str(current_user): return redirect(url_for('tickets.solver_dashboard'))
+        # Vérif Droits
+        role_str = safe_role_str(current_user)
+        if not ('MANAGER' in role_str or 'DIRECTEUR' in role_str or 'ADMIN' in role_str):
+            if 'SOLVER' in role_str: return redirect(url_for('tickets.solver_dashboard'))
             return render_template('errors/catdance.html'), 403
         
         my_origins = current_user.get_origin_services() 
         my_targets = current_user.get_allowed_services()
         
+        # 1. Tickets Classiques N1
         tickets_n1 = []
         if my_origins: 
             tickets_n1 = Ticket.query.filter(
@@ -412,19 +415,70 @@ def manager_dashboard():
                 Ticket.author_id != current_user.id
             ).all()
 
+        # 2. Tickets Classiques N2
         tickets_n2 = []
         if my_targets:
-            base_query = Ticket.query.filter(Ticket.target_service.in_(my_targets))
-            if 'DAF' in my_targets:
-                if current_user.role == UserRole.DIRECTEUR:
-                    candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE])).all()
+            try:
+                base_query = Ticket.query.filter(Ticket.target_service.in_(my_targets))
+                if 'DAF' in my_targets:
+                    if 'DIRECTEUR' in role_str:
+                        candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE])).all()
+                    else:
+                        candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
                 else:
                     candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
-            else:
-                candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
-            tickets_n2 = candidates
+                tickets_n2 = candidates
+            except Exception:
+                tickets_n2 = []
 
-        return render_template('tickets/manager_dashboard.html', tickets_n1=tickets_n1, tickets_n2=tickets_n2)
+        # --- LOGIQUE FCPI (RECRUTEMENT) UNIVERSELLE ---
+        fcpi_to_validate = []
+        
+        # Scope de l'utilisateur : Services qu'il dirige ou gère
+        # On normalise en MAJUSCULES pour comparer
+        user_scope = set([s.upper() for s in (my_targets + my_origins)])
+        
+        # Construction de la requête
+        query = Recruitment.query
+        
+        # Si Admin, il voit tout. Sinon, filtrage strict.
+        if 'ADMIN' not in role_str:
+            # Si c'est un RH, il voit TOUT (car les RH gèrent le recrutement global)
+            if 'DRH' in user_scope or 'RH' in user_scope:
+                pass # Pas de filtre service
+            elif user_scope:
+                # Le manager SESSAD ne voit que les FCPI où service_agent = SESSAD
+                # Attention: service_agent dans la DB doit correspondre au nom du service
+                # On utilise une recherche insensible à la casse si possible, ou une liste
+                # Ici on suppose que le nom stocké est exact.
+                # Pour être sûr, on récupère tout et on filtre en Python (plus sûr avec les accents/casse)
+                pass 
+            else:
+                query = None # Pas de droits, pas de vue
+        
+        if query:
+            # Filtrage par étape de validation
+            status_filter = None
+            if 'DIRECTEUR' in role_str or 'ADMIN' in role_str:
+                status_filter = RecruitmentStatus.WAITING_RH_DIR
+            elif 'MANAGER' in role_str:
+                status_filter = RecruitmentStatus.WAITING_RH_MGR
+                
+            raw_results = query.filter_by(status=status_filter).all()
+            
+            # Filtrage Python final pour la sécurité des services (hors Admin/RH)
+            if 'ADMIN' in role_str or 'DRH' in user_scope or 'RH' in user_scope:
+                fcpi_to_validate = raw_results
+            else:
+                # Filtrage manuel : est-ce que le service de l'agent est dans mon scope ?
+                for r in raw_results:
+                    if r.service_agent and r.service_agent.upper() in user_scope:
+                        fcpi_to_validate.append(r)
+
+        return render_template('tickets/manager_dashboard.html', 
+                               tickets_n1=tickets_n1, 
+                               tickets_n2=tickets_n2, 
+                               fcpi_requests=fcpi_to_validate)
     except Exception as e:
         flash(f"Erreur Dashboard: {e}", "danger")
         return redirect(url_for('main.user_portal'))

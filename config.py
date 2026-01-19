@@ -13,7 +13,7 @@ class Config:
     
     # Configuration Uploads
     UPLOAD_FOLDER = os.path.join(basedir, 'app/static/uploads')
-    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max
+    MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20MB max
 
     MAIL_SERVER = os.environ.get('MAIL_SERVER') or '192.168.1.4'
     MAIL_PORT = int(os.environ.get('MAIL_PORT') or 25)

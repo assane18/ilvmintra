@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-10 px-4">
+    
+    <!-- HEADER -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 dark:text-white uppercase tracking-tight">Fiche FCPI <span class="text-pink-600">#{{ rec.uid_public }}</span></h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">
+                Agent: {{ rec.nom_agent }} {{ rec.prenom_agent }} • Service: {{ rec.service_agent }}
+            </p>
+        </div>
+        
+        <div class="flex gap-3">
+             <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
+            </a>
+            
+            <!-- STATUT GLOBAL (CLÔTURE AUTO SI TOUT EST FINI) -->
+            {% if rec.is_fully_completed %}
+            <span class="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 bg-emerald-600 text-white shadow-lg shadow-emerald-200">
+                <i data-lucide="check-check" class="w-4 h-4"></i> Dossier Clôturé
+            </span>
+            {% else %}
+            <span class="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2
+                {% if rec.status.value == 'VALIDATION_RH_MANAGER' %}bg-orange-100 text-orange-700
+                {% elif rec.status.value == 'VALIDATION_RH_DIRECTEUR' %}bg-purple-100 text-purple-700
+                {% elif rec.status.value == 'REFUSE' %}bg-red-100 text-red-700
+                {% else %}bg-blue-100 text-blue-700{% endif %}">
+                {{ rec.status.value }}
+            </span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- MAIN CONTENT (Recap) -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- INFO AGENT -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Informations Agent</h3>
+                <div class="grid grid-cols-2 gap-y-4 text-sm">
+                    <div><span class="block text-slate-400 text-xs">Nom Prénom</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.nom_agent }} {{ rec.prenom_agent }}</span></div>
+                    <div><span class="block text-slate-400 text-xs">Date d'entrée</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.date_entree.strftime('%d/%m/%Y') }}</span></div>
+                    <div><span class="block text-slate-400 text-xs">Fonction</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.fonction }}</span></div>
+                    <div><span class="block text-slate-400 text-xs">Unité (UF)</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.uf_agent }}</span></div>
+                </div>
+            </div>
+
+            <!-- INFO RH -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <h3 class="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">Données RH</h3>
+                <div class="grid grid-cols-2 gap-y-4 text-sm">
+                    <div><span class="block text-slate-400 text-xs">Type Contrat</span>
+                        <span class="font-bold text-slate-800 dark:text-white">
+                            {% if rec.contractuel %}Contractuel ({{ rec.date_debut_contrat.strftime('%d/%m/%Y') }} - {{ rec.date_fin_contrat.strftime('%d/%m/%Y') }})
+                            {% else %}Titulaire{% endif %}
+                        </span>
+                    </div>
+                    <div><span class="block text-slate-400 text-xs">Temps de travail</span>
+                        <span class="font-bold text-slate-800 dark:text-white">{{ rec.temps_travail }} {% if rec.pourcentage_temps %}({{ rec.pourcentage_temps }}){% endif %}</span>
+                    </div>
+                    <div><span class="block text-slate-400 text-xs">Condition</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.condition_recrutement }}</span></div>
+                    <div><span class="block text-slate-400 text-xs">Motif</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.motif_recrutement }}</span></div>
+                </div>
+                
+                {% if rec.file_cv or rec.file_fiche_poste %}
+                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700 flex gap-4">
+                    {% if rec.file_cv %}
+                    <a href="{{ url_for('static', filename='uploads/fcpi/' + rec.uid_public + '/' + rec.file_cv) }}" target="_blank" class="flex items-center gap-2 text-xs font-bold text-blue-600 hover:underline"><i data-lucide="file-text" class="w-4 h-4"></i> Voir CV</a>
+                    {% endif %}
+                    {% if rec.file_fiche_poste %}
+                    <a href="{{ url_for('static', filename='uploads/fcpi/' + rec.uid_public + '/' + rec.file_fiche_poste) }}" target="_blank" class="flex items-center gap-2 text-xs font-bold text-blue-600 hover:underline"><i data-lucide="file-text" class="w-4 h-4"></i> Voir Fiche Poste</a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- BESOINS LOGISTIQUES -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <h3 class="text-xs font-black text-blue-400 uppercase tracking-widest mb-4">Logistique & IT</h3>
+                <div class="space-y-4 text-sm">
+                    <div>
+                        <span class="block text-slate-400 text-xs">Matériel demandé</span>
+                        <div class="flex gap-2 mt-1">
+                            {% for m in rec.materiels_demandes.split(',') %}
+                            <span class="bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded text-xs font-bold">{{ m }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="block text-slate-400 text-xs">Accès IT</span>
+                        <p class="font-medium text-slate-800 dark:text-white bg-slate-50 dark:bg-slate-900 p-3 rounded-lg mt-1">{{ rec.acces_informatique }}</p>
+                    </div>
+                    <div>
+                        <span class="block text-slate-400 text-xs">Sécurité / Badge</span>
+                        <p class="font-medium text-slate-800 dark:text-white mt-1">{{ rec.localisation_poste }} <span class="text-slate-400">-</span> {{ rec.commentaire_securite }}</p>
+                    </div>
+                    {% if rec.imago_active %}
+                    <div class="bg-indigo-50 dark:bg-indigo-900/20 p-3 rounded-lg border border-indigo-100 dark:border-indigo-800">
+                        <span class="font-bold text-indigo-600 dark:text-indigo-400 text-xs uppercase flex items-center gap-2"><i data-lucide="users" class="w-3 h-3"></i> Compte Imago Requis</span>
+                        <p class="text-xs text-indigo-800 dark:text-indigo-200 mt-1">Mobilité : {{ rec.imago_mobilite }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+
+        <!-- SIDEBAR ACTIONS & SUIVI -->
+        <div class="space-y-6">
+            
+            <!-- BOX AUTEUR -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-3 mb-2">
+                    <div class="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center font-black text-slate-500">{{ rec.author.fullname[0] }}</div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-900 dark:text-white">{{ rec.author.fullname }}</p>
+                        <p class="text-xs text-slate-400 uppercase font-bold">Demandeur</p>
+                    </div>
+                </div>
+                <p class="text-xs text-slate-400 mt-2">Créé le {{ rec.created_at.strftime('%d/%m/%Y à %H:%M') }}</p>
+            </div>
+
+            <!-- BOX VALIDATION (Si pas encore dispatché) -->
+            {% if rec.status.value != 'DISPATCHE_AUX_SERVICES' and rec.status.value != 'REFUSE' %}
+            <div class="bg-slate-900 dark:bg-blue-900 p-6 rounded-3xl shadow-xl text-white">
+                <h3 class="text-xs font-black text-slate-400 dark:text-blue-300 uppercase tracking-widest mb-4">Validation Requise</h3>
+                
+                <form action="{{ url_for('fcpi.validate_fcpi', id=rec.id, action='validate') }}" method="POST" class="mb-4">
+                    <button type="submit" onclick="return confirm('Valider cette demande ?')" class="w-full bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 rounded-xl shadow-lg shadow-emerald-900/20 transition uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i> Valider
+                    </button>
+                    <p class="text-[10px] text-slate-400 mt-2 text-center">
+                        {% if rec.status.value == 'VALIDATION_RH_MANAGER' %}Vous validez en tant que Manager RH.{% else %}Vous validez en tant que Directeur RH.{% endif %}
+                    </p>
+                </form>
+
+                <div class="border-t border-slate-700 my-4"></div>
+
+                <form action="{{ url_for('fcpi.validate_fcpi', id=rec.id, action='refuse') }}" method="POST">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase mb-2 block">Motif du refus</label>
+                    <textarea name="refusal_comment" class="w-full bg-slate-800 text-white text-xs p-3 rounded-lg border border-slate-700 mb-3 focus:outline-none focus:border-red-500" rows="2" placeholder="Expliquez la raison..." required></textarea>
+                    <button type="submit" onclick="return confirm('Refuser cette demande ?')" class="w-full bg-red-600 hover:bg-red-500 text-white font-black py-3 rounded-xl shadow-lg transition uppercase text-xs tracking-widest flex items-center justify-center gap-2">
+                        <i data-lucide="x" class="w-4 h-4"></i> Refuser
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- BOX STATUS FINAL : SUIVI DES SERVICES -->
+            {% if rec.status.value == 'DISPATCHE_AUX_SERVICES' %}
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest">Suivi des Services</h3>
+                    {% if rec.is_fully_completed %}
+                    <span class="text-xs font-bold text-emerald-600 flex items-center gap-1"><i data-lucide="check-circle" class="w-3 h-3"></i> 100%</span>
+                    {% else %}
+                    <span class="text-xs font-bold text-blue-600 flex items-center gap-1"><i data-lucide="loader" class="w-3 h-3 animate-spin"></i> En cours</span>
+                    {% endif %}
+                </div>
+                
+                <div class="space-y-3">
+                    {% for t in rec.get_child_tickets_objects() %}
+                    <div class="flex items-center justify-between p-3 rounded-xl border transition
+                        {% if t.status.value == 'TERMINE' %}bg-emerald-50 dark:bg-emerald-900/10 border-emerald-100 dark:border-emerald-800
+                        {% else %}bg-slate-50 dark:bg-slate-700 border-slate-100 dark:border-slate-600{% endif %}">
+                        
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center
+                                {% if t.target_service.value == 'INFORMATIQUE' %}bg-blue-100 text-blue-600
+                                {% elif t.target_service.value == 'SECU' %}bg-orange-100 text-orange-600
+                                {% elif t.target_service.value == 'DRH' %}bg-purple-100 text-purple-600
+                                {% else %}bg-slate-200 text-slate-600{% endif %}">
+                                {% if t.target_service.value == 'INFORMATIQUE' %}<i data-lucide="monitor" class="w-4 h-4"></i>
+                                {% elif t.target_service.value == 'SECU' %}<i data-lucide="key" class="w-4 h-4"></i>
+                                {% elif t.target_service.value == 'DRH' %}<i data-lucide="briefcase" class="w-4 h-4"></i>
+                                {% else %}<i data-lucide="tag" class="w-4 h-4"></i>{% endif %}
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-slate-700 dark:text-slate-200">{{ t.target_service.value }}</p>
+                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="text-[10px] text-slate-400 hover:text-blue-500 hover:underline">#{{ t.uid_public }}</a>
+                            </div>
+                        </div>
+
+                        <div>
+                            {% if t.status.value == 'TERMINE' %}
+                            <span class="inline-flex items-center justify-center w-6 h-6 bg-emerald-500 text-white rounded-full">
+                                <i data-lucide="check" class="w-3 h-3"></i>
+                            </span>
+                            {% else %}
+                            <span class="text-[10px] font-bold text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">En cours</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if rec.is_fully_completed %}
+                <div class="mt-4 p-3 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 rounded-xl text-center text-xs font-bold">
+                    Tous les services ont validé.<br>Recrutement clôturé.
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+             {% if rec.status.value == 'REFUSE' %}
+            <div class="bg-red-50 dark:bg-red-900/20 p-6 rounded-3xl border border-red-100 dark:border-red-800">
+                <div class="flex items-center gap-3 mb-2 text-red-700 dark:text-red-400">
+                    <i data-lucide="x-circle" class="w-6 h-6"></i>
+                    <span class="font-black text-sm uppercase">Demande Refusée</span>
+                </div>
+                <p class="text-xs text-red-800 dark:text-red-200 italic">"{{ rec.refusal_reason }}"</p>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+<script>lucide.createIcons();</script>
+{% endblock %}

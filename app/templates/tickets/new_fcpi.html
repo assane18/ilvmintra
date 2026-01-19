@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="flex justify-center items-start min-h-[80vh] pt-10 pb-20 px-4">
+    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-4xl relative transition-colors duration-300">
+        
+        <a href="{{ url_for('main.user_portal') }}" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+            <i data-lucide="x" class="w-6 h-6"></i>
+        </a>
+
+        <div class="text-center mb-8">
+            <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+                <i data-lucide="users" class="w-8 h-8"></i>
+            </div>
+            <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Fiche Création Poste & Intégration</h1>
+            <p class="text-slate-500 dark:text-slate-400">Processus de recrutement et d'onboarding.</p>
+        </div>
+
+        <form method="POST" enctype="multipart/form-data" class="space-y-8">
+            
+            <!-- 1. IDENTITÉ AGENT -->
+            <div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <h3 class="font-bold text-slate-700 dark:text-white mb-4 flex items-center"><i data-lucide="user" class="w-5 h-5 mr-2"></i> Données de l'agent</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label-tiny">Date d'entrée</label>
+                        <input type="date" name="fcpi_date_entree" class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="label-tiny">Service</label>
+                        <input type="text" name="fcpi_service" class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="label-tiny">Nom</label>
+                        <input type="text" name="fcpi_nom" class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="label-tiny">Prénom</label>
+                        <input type="text" name="fcpi_prenom" class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="label-tiny">Fonction</label>
+                        <input type="text" name="fcpi_fonction" class="input-field" required>
+                    </div>
+                    <div>
+                        <label class="label-tiny">Unité Fonctionnelle (UF)</label>
+                        <input type="text" name="fcpi_uf" class="input-field">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. CONTRAT RH -->
+            <div class="bg-blue-50 dark:bg-blue-900/20 p-6 rounded-2xl border border-blue-200 dark:border-blue-800">
+                <h3 class="font-bold text-blue-800 dark:text-blue-300 mb-4 flex items-center"><i data-lucide="briefcase" class="w-5 h-5 mr-2"></i> Données Contractuelles (DRH)</h3>
+                
+                <div class="mb-4">
+                    <label class="label-tiny text-blue-600">Type de contrat</label>
+                    <select name="fcpi_contractuel" id="contractuel" onchange="toggleDates()" class="input-field cursor-pointer">
+                        <option value="Oui">Contractuel (CDD/CDI)</option>
+                        <option value="Non">Titulaire / Autre</option>
+                    </select>
+                </div>
+
+                <div id="dates_contrat" class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="label-tiny">Début contrat</label>
+                        <input type="date" name="fcpi_debut_contrat" class="input-field">
+                    </div>
+                    <div>
+                        <label class="label-tiny">Fin contrat</label>
+                        <input type="date" name="fcpi_fin_contrat" class="input-field">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="label-tiny">Conditions</label>
+                        <select name="fcpi_condition" class="input-field">
+                            <option value="Jour">Jour</option>
+                            <option value="Nuit">Nuit</option>
+                            <option value="Week-end">Week-end</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="label-tiny">Temps travail</label>
+                        <select name="fcpi_temps" id="temps" onchange="togglePourcentage()" class="input-field">
+                            <option value="Plein">Temps Plein</option>
+                            <option value="Partiel">Temps Partiel</option>
+                            <option value="Non complet">Temps Non Complet</option>
+                        </select>
+                    </div>
+                    <div id="pourcentage_div" class="hidden">
+                        <label class="label-tiny">Pourcentage (%)</label>
+                        <input type="text" name="fcpi_pourcentage" class="input-field" placeholder="Ex: 80%">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="label-tiny">Motif Recrutement</label>
+                    <select name="fcpi_motif" class="input-field">
+                        <option value="Vacant">Poste Vacant</option>
+                        <option value="Remplacement">Remplacement</option>
+                        <option value="Surcroit">Surcroît d'activité</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 mb-4">
+                    <input type="checkbox" name="fcpi_simulation" class="w-5 h-5 text-blue-600 rounded">
+                    <span class="text-sm text-slate-700 dark:text-slate-300 font-bold">Demander une simulation de salaire</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="label-tiny">CV (PDF)</label>
+                        <input type="file" name="fcpi_cv" accept=".pdf" class="input-field text-sm">
+                    </div>
+                    <div>
+                        <label class="label-tiny">Fiche de Poste (PDF)</label>
+                        <input type="file" name="fcpi_fiche_poste" accept=".pdf" class="input-field text-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. LOGISTIQUE & SECU -->
+            <div class="bg-orange-50 dark:bg-orange-900/20 p-6 rounded-2xl border border-orange-200 dark:border-orange-800">
+                <h3 class="font-bold text-orange-800 dark:text-orange-300 mb-4 flex items-center"><i data-lucide="key" class="w-5 h-5 mr-2"></i> Badges, Clefs & Locaux</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="label-tiny">Localisation Poste de Travail</label>
+                        <input type="text" name="fcpi_localisation" class="input-field" placeholder="Bureau, Etage...">
+                    </div>
+                    <div>
+                        <label class="label-tiny">Photo (Facultatif)</label>
+                        <input type="file" name="fcpi_photo" accept="image/*" class="input-field text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="label-tiny">Commentaire Badge/Clefs</label>
+                    <textarea name="fcpi_badge_com" rows="2" class="input-field" placeholder="Droits d'accès spécifiques..."></textarea>
+                </div>
+            </div>
+
+            <!-- 4. IMAGO -->
+            <div class="bg-purple-50 dark:bg-purple-900/20 p-6 rounded-2xl border border-purple-200 dark:border-purple-800">
+                <h3 class="font-bold text-purple-800 dark:text-purple-300 mb-4 flex items-center"><i data-lucide="smartphone" class="w-5 h-5 mr-2"></i> Imago</h3>
+                <div class="flex items-center gap-4 mb-3">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" name="fcpi_imago" id="imago_check" onchange="toggleImago()" class="w-5 h-5 text-purple-600 rounded">
+                        <span class="font-bold text-slate-700 dark:text-slate-300">Besoin Imago (Mobilité)</span>
+                    </label>
+                </div>
+                <div id="imago_sites" class="hidden">
+                    <label class="label-tiny">Sites d'intervention</label>
+                    <input type="text" name="fcpi_imago_sites" class="input-field" placeholder="Lister les sites...">
+                </div>
+            </div>
+
+            <!-- 5. INFORMATIQUE -->
+            <div class="bg-slate-100 dark:bg-slate-700 p-6 rounded-2xl border border-slate-300 dark:border-slate-600">
+                <h3 class="font-bold text-slate-700 dark:text-white mb-4 flex items-center"><i data-lucide="monitor" class="w-5 h-5 mr-2"></i> Informatique</h3>
+                
+                <label class="label-tiny mb-2">Matériel requis</label>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <label class="flex items-center gap-2"><input type="checkbox" name="fcpi_materiel" value="Tel Fixe" class="rounded"> Tel Fixe</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="fcpi_materiel" value="Tel Portable" class="rounded"> Tel Portable</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="fcpi_materiel" value="PC Fixe" class="rounded"> PC Fixe</label>
+                    <label class="flex items-center gap-2"><input type="checkbox" name="fcpi_materiel" value="PC Portable" class="rounded"> PC Portable</label>
+                </div>
+
+                <div>
+                    <label class="label-tiny">Besoins accès informatique (Dossiers, Logiciels...)</label>
+                    <textarea name="fcpi_acces" rows="3" class="input-field"></textarea>
+                </div>
+            </div>
+
+            <button type="submit" class="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg flex justify-center items-center transform transition hover:scale-[1.01]">
+                <span>Soumettre la demande RH</span>
+                <i data-lucide="send" class="ml-2 w-5 h-5"></i>
+            </button>
+
+        </form>
+    </div>
+</div>
+
+<script>
+    function toggleDates() {
+        const val = document.getElementById('contractuel').value;
+        const div = document.getElementById('dates_contrat');
+        if (val === 'Non') div.classList.remove('hidden');
+        else div.classList.add('hidden'); // Ajuster selon logique inverse si besoin
+    }
+    
+    function togglePourcentage() {
+        const val = document.getElementById('temps').value;
+        const div = document.getElementById('pourcentage_div');
+        if (val !== 'Plein') div.classList.remove('hidden');
+        else div.classList.add('hidden');
+    }
+
+    function toggleImago() {
+        const checked = document.getElementById('imago_check').checked;
+        const div = document.getElementById('imago_sites');
+        if (checked) div.classList.remove('hidden');
+        else div.classList.add('hidden');
+    }
+</script>
+
+<style>
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; display: block; letter-spacing: 0.1em; }
+    .input-field { width: 100%; background-color: white; border: 1px solid #cbd5e1; padding: 0.75rem; border-radius: 0.5rem; outline: none; }
+    .dark .input-field { background-color: #1e293b; border-color: #475569; color: white; }
+</style>
+{% endblock %}
