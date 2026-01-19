@@ -82,7 +82,7 @@
     <div class="container mx-auto px-4 py-12">
         <!-- Message de bienvenue -->
         <div class="mb-12 text-center">
-            <h1 class="text-4xl font-black text-slate-900 dark:text-white mb-2">Bonjour, <span class="text-blue-600">{{ current_user.fullname.split()[0] }}</span> <br> comment pouvons-nous vous aider ? </h1>
+            <h1 class="text-4xl font-black text-slate-900 dark:text-white mb-2">Bonjour, <span class="text-blue-600">{{ current_user.fullname.split()[0] }}</span> <br> Comment pouvons-nous vous aider ? </h1>
             <p class="text-slate-500 dark:text-slate-400 font-medium">Sélectionnez un service pour créer une nouvelle demande</p>
         </div>
 
@@ -134,6 +134,21 @@
                 </div>
             </a>
 
+            <!-- CARTE IMAGO -->
+            <a href="{{ url_for('tickets.new_ticket', service_name='IMAGO') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="layers" class="w-24 h-24 text-indigo-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    <i data-lucide="layers" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Dépannage Imago</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Assistance logiciel métier, erreurs, accès...</p>
+                <div class="mt-4 flex items-center text-indigo-600 dark:text-indigo-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
             <!-- Carte Généraux -->
             <a href="{{ url_for('tickets.new_ticket', service_name='GEN') }}" class="card-service bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -167,7 +182,6 @@
             </a>
 
         </div>
-
 
         <!-- Section "Mes dernières demandes" -->
         <div class="max-w-4xl mx-auto">

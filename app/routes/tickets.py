@@ -14,171 +14,6 @@ from app.emails import send_email
 
 tickets_bp = Blueprint('tickets', __name__)
 
-# --- UTILITAIRES ---
-def nocache(view):
-    """Décorateur pour empêcher la mise en cache navigateur."""
-    @wraps(view)
-    def no_cache(*args, **kwargs):
-        response = make_response(view(*args, **kwargs))
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate, private, max-age=0'
-        return response
-    return no_cache
-
-def create_notification(user, message, category='info', link=None):
-    if user:
-        n = Notification(user=user, message=message, category=category, link=link)
-        db.session.add(n)
-
-def get_hostname_from_ip(ip_address):
-    try: return socket.gethostbyaddr(ip_address)[0]
-    except: return ip_address
-
-def check_permission(required_roles):
-    try:
-        current_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
-        if 'ADMIN' in current_role: return True
-        for req in required_roles:
-            if req in current_role: return True
-    except Exception as e:
-        return False
-    return False
-
-# --- ROUTES ---
-
-@tickets_bp.route('/new/<service_name>', methods=['GET', 'POST'])
-@login_required
-@nocache
-def new_ticket(service_name):
-    # ... (Code existant inchangé jusqu'au return du POST) ...
-    # Je copie le code existant et j'indique où il se termine pour être concis
-    # LE CODE EXISTANT DE new_ticket RESTE IDENTIQUE A CELUI QUE TU AS DÉJA
-    try:
-        service_enum = ServiceType[service_name.upper()]
-    except KeyError:
-        return redirect(url_for('main.user_portal'))
-
-    user_origins = current_user.get_origin_services()
-
-    if request.method == 'POST':
-        category = request.form.get('category_ticket', 'Standard')
-
-        if service_name == 'DAF' and category == 'Standard':
-            category = 'Bon de Commande'
-
-        selected_origin = request.form.get('selected_origin')
-        if not selected_origin:
-            selected_origin = user_origins[0] if user_origins else "INCONNU"
-            
-        hostname_saisi = request.form.get('hostname')
-        final_hostname = hostname_saisi if hostname_saisi else get_hostname_from_ip(request.remote_addr)
-
-        title = request.form.get('title')
-        description = request.form.get('description')
-        
-        if service_name == 'DAF' and category == 'Bon de Commande':
-             fournisseur = request.form.get('daf_fournisseur_nom', 'Inconnu')
-             title = f"Bon de Commande - {fournisseur}"
-             description = request.form.get('description_daf', '')
-
-        role = current_user.role
-        if service_enum == ServiceType.INFO and category == "Incident Standard":
-            status = TicketStatus.PENDING
-        else:
-            if role == UserRole.USER: status = TicketStatus.VALIDATION_N1
-            elif role == UserRole.MANAGER: status = TicketStatus.VALIDATION_N1
-            elif role == UserRole.DIRECTEUR: status = TicketStatus.VALIDATION_N2
-            elif role == UserRole.ADMIN: status = TicketStatus.PENDING
-            else: status = TicketStatus.VALIDATION_N1
-
-        today_str = datetime.now().strftime('%Y%m%d')
-        base_query = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%"))
-        count = base_query.count()
-        
-        saved = False
-        attempts = 0
-        while not saved and attempts < 5:
-            attempts += 1
-            count += 1
-            uid = f"{today_str}-{str(count).zfill(3)}"
-            
-            daf_lignes = []
-            if service_name == 'DAF':
-                for i in range(1, 51):
-                    des = request.form.get(f'daf_designation_{i}')
-                    if des: daf_lignes.append({'designation': des, 'ref': request.form.get(f'daf_ref_{i}'), 'qte': request.form.get(f'daf_qte_{i}'), 'pu': request.form.get(f'daf_pu_{i}'), 'total': request.form.get(f'daf_total_{i}')})
-            
-            daf_files = []
-            daf_rib_filename = None
-            
-            if request.files and service_name == 'DAF':
-                upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
-                os.makedirs(upload_path, exist_ok=True)
-                
-                for i in range(1, 5):
-                    file = request.files.get(f'devis_{i}')
-                    if file and file.filename != '':
-                        filename = secure_filename(file.filename)
-                        file.save(os.path.join(upload_path, filename))
-                        daf_files.append(filename)
-                
-                file_rib = request.files.get('daf_rib')
-                if file_rib and file_rib.filename != '':
-                    daf_rib_filename = secure_filename(f"RIB_{file_rib.filename}")
-                    file_rib.save(os.path.join(upload_path, daf_rib_filename))
-
-            supplier_status = request.form.get('supplier_status')
-            is_new_supplier = True if supplier_status == 'new' else False
-
-            t = Ticket(
-                title=title,
-                description=description,
-                author=current_user,
-                target_service=service_enum,
-                status=status,
-                uid_public=uid,
-                category_ticket=category,
-                service_demandeur=selected_origin,
-                tel_demandeur=request.form.get('tel_demandeur'),
-                hostname=final_hostname,
-                lieu_installation=request.form.get('lieu_installation_user') or request.form.get('lieu_installation_mat'),
-                new_user_fullname=f"{request.form.get('new_user_nom')} {request.form.get('new_user_prenom')}",
-                new_user_service=request.form.get('new_user_service'),
-                new_user_acces=request.form.get('new_user_acces'),
-                materiel_list=request.form.get('materiel_list'),
-                destinataire_materiel=request.form.get('destinataire_materiel'),
-                service_destinataire=request.form.get('service_destinataire'),
-                daf_lieu_livraison=request.form.get('daf_lieu_livraison'),
-                daf_fournisseur_nom=request.form.get('daf_fournisseur_nom'),
-                daf_fournisseur_email=request.form.get('daf_fournisseur_email'),
-                daf_type_prix=request.form.get('daf_type_prix'),
-                daf_uf=request.form.get('daf_uf'),
-                daf_budget_affecte=request.form.get('daf_budget'),
-                daf_new_supplier=is_new_supplier,
-                daf_siret=request.form.get('daf_siret'),
-                daf_fournisseur_tel_comment=request.form.get('daf_fournisseur_tel'),
-                daf_rib_file=daf_rib_filename,
-                daf_lignes_json=json.dumps(daf_lignes),
-                daf_files_json=json.dumps(daf_files)
-            )
-            
-            if request.form.get('new_user_date'):
-                try: t.new_user_date = datetime.strptime(request.form.get('new_user_date'), '%Y-%m-%d')
-                except: pass
-from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, make_response, send_file
-from flask_login import login_required, current_user
-from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus
-from app import db
-from datetime import datetime
-import json
-import os
-import socket
-import pandas as pd
-from werkzeug.utils import secure_filename
-from sqlalchemy.exc import IntegrityError
-from functools import wraps
-
-tickets_bp = Blueprint('tickets', __name__)
-
 # --- HELPERS ---
 
 def nocache(view):
@@ -239,21 +74,24 @@ def new_ticket(service_name):
         title = request.form.get('title')
         description = request.form.get('description')
         
+        # Cas particuliers de titre/catégorie
         if service_name == 'DAF' and category == 'Bon de Commande':
              fournisseur = request.form.get('daf_fournisseur_nom', 'Inconnu')
              title = f"Bon de Commande - {fournisseur}"
              description = request.form.get('description_daf', '')
+        
+        if service_name == 'IMAGO':
+            category = 'Dépannage Imago'
 
         role = current_user.role
         
-        # --- LOGIQUE DE WORKFLOW (MODIFIÉE) ---
+        # --- LOGIQUE DE WORKFLOW ---
         
-        # 1. Workflow Simplifié INFORMATIQUE (Incident / Standard)
-        # On saute les validations N1/N2, direct au pool technique.
-        if service_enum == ServiceType.INFO and category in ["Standard", "Incident Standard"]:
+        # 1. Workflow Simplifié INFORMATIQUE et IMAGO
+        if (service_enum == ServiceType.INFO and category in ["Standard", "Incident Standard"]) or (service_enum == ServiceType.IMAGO):
             status = TicketStatus.PENDING
             
-        # 2. Workflow Standard (DAF, Services Généraux, etc.)
+        # 2. Workflow Standard
         else:
             if role == UserRole.USER: status = TicketStatus.VALIDATION_N1
             elif role == UserRole.MANAGER: status = TicketStatus.VALIDATION_N1
@@ -279,28 +117,42 @@ def new_ticket(service_name):
                     'total': request.form.get(f'daf_total_{i}')
                 })
         
-        daf_files = []
+        # --- GESTION DES FICHIERS (COMMUN + DAF) ---
+        daf_files = [] # Cette liste contiendra toutes les pièces jointes (Screenshots + Devis)
         daf_rib_filename = None
         
-        if request.files and service_name == 'DAF':
+        if request.files:
             upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
-            os.makedirs(upload_path, exist_ok=True)
             
-            for i in range(1, 5):
-                file = request.files.get(f'devis_{i}')
-                if file and file.filename != '':
-                    try:
-                        filename = secure_filename(file.filename)
-                        file.save(os.path.join(upload_path, filename))
-                        daf_files.append(filename)
-                    except: pass
-            
-            file_rib = request.files.get('daf_rib')
-            if file_rib and file_rib.filename != '':
+            # 1. Capture d'écran / Photo (Pour TOUS les tickets)
+            screenshot_file = request.files.get('screenshot')
+            if screenshot_file and screenshot_file.filename != '':
                 try:
-                    daf_rib_filename = secure_filename(f"RIB_{file_rib.filename}")
-                    file_rib.save(os.path.join(upload_path, daf_rib_filename))
-                except: pass
+                    os.makedirs(upload_path, exist_ok=True)
+                    s_filename = secure_filename(f"CAPTURE_{screenshot_file.filename}")
+                    screenshot_file.save(os.path.join(upload_path, s_filename))
+                    daf_files.append(s_filename) # On ajoute à la liste commune
+                except Exception as e:
+                    print(f"Erreur upload screenshot: {e}")
+
+            # 2. Devis DAF (Uniquement si service DAF)
+            if service_name == 'DAF':
+                os.makedirs(upload_path, exist_ok=True) # Ensure path exists
+                for i in range(1, 5):
+                    file = request.files.get(f'devis_{i}')
+                    if file and file.filename != '':
+                        try:
+                            filename = secure_filename(file.filename)
+                            file.save(os.path.join(upload_path, filename))
+                            daf_files.append(filename)
+                        except: pass
+                
+                file_rib = request.files.get('daf_rib')
+                if file_rib and file_rib.filename != '':
+                    try:
+                        daf_rib_filename = secure_filename(f"RIB_{file_rib.filename}")
+                        file_rib.save(os.path.join(upload_path, daf_rib_filename))
+                    except: pass
 
         supplier_status = request.form.get('supplier_status')
         is_new_supplier = True if supplier_status == 'new' else False
@@ -328,7 +180,7 @@ def new_ticket(service_name):
             daf_fournisseur_tel_comment=request.form.get('daf_fournisseur_tel'),
             daf_rib_file=daf_rib_filename,
             daf_lignes_json=json.dumps(daf_lignes),
-            daf_files_json=json.dumps(daf_files)
+            daf_files_json=json.dumps(daf_files) # Sauvegarde de la liste des fichiers
         )
         
         if request.form.get('new_user_date'):
@@ -343,7 +195,7 @@ def new_ticket(service_name):
             flash(f"Erreur DB: {e}", "danger")
             return redirect(url_for('main.user_portal'))
 
-        # NOTIFICATIONS AUTOMATIQUES SELON STATUT
+        # NOTIFICATIONS AUTOMATIQUES
         if status == TicketStatus.VALIDATION_N1:
             managers = User.query.filter(User.role.in_([UserRole.MANAGER, UserRole.DIRECTEUR])).all()
             for mgr in managers:
@@ -351,10 +203,9 @@ def new_ticket(service_name):
                     create_notification(mgr, f"Validation requise : {uid}", 'warning', url_for('tickets.manager_dashboard'))
                     
         elif status == TicketStatus.PENDING:
-            # Pour l'INFO simplifiée, on notifie directement les techs
             solvers = User.query.filter(User.role.in_([UserRole.SOLVER, UserRole.ADMIN])).all()
             for s in solvers:
-                 if s.role == UserRole.ADMIN or service_name in s.get_allowed_services():
+                 if s.role == UserRole.ADMIN or 'SOLVER' in str(s.role):
                     create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
 
         flash(f'Demande {uid} enregistrée.', 'success')
@@ -388,8 +239,17 @@ def view_ticket(ticket_uid):
             db.session.add(msg)
             db.session.commit()
             return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+        
+        # --- C'EST ICI LA CLÉ DU PROBLÈME ---
+        # On récupère la liste des fichiers JSON pour l'envoyer au template
+        attached_files = []
+        if ticket.daf_files_json:
+            try:
+                attached_files = json.loads(ticket.daf_files_json)
+            except:
+                pass
             
-        return render_template('tickets/detail.html', ticket=ticket)
+        return render_template('tickets/detail.html', ticket=ticket, attached_files=attached_files)
 
     except Exception as e:
         print(f"ERREUR VIEW TICKET: {e}")
@@ -410,7 +270,6 @@ def manager_dashboard():
         my_origins = current_user.get_origin_services() 
         my_targets = current_user.get_allowed_services()
         
-        # 1. Tickets Classiques N1
         tickets_n1 = []
         if my_origins: 
             tickets_n1 = Ticket.query.filter(
@@ -419,7 +278,6 @@ def manager_dashboard():
                 Ticket.author_id != current_user.id
             ).all()
 
-        # 2. Tickets Classiques N2
         tickets_n2 = []
         if my_targets:
             try:
@@ -435,29 +293,20 @@ def manager_dashboard():
             except Exception:
                 tickets_n2 = []
 
-        # --- 3. PARTIE FCPI (RECRUTEMENTS) ---
-        # C'est ici qu'on récupère les demandes pour l'onglet RH
         fcpi_requests = []
         role = str(current_user.role.value).upper()
         user_services = current_user.get_allowed_services()
-        
-        # Vérifie si l'utilisateur fait partie des RH (ou est Admin)
         is_rh_team = 'DRH' in user_services or 'RH' in user_services or 'ADMIN' in role
 
         if is_rh_team:
-            # Si Manager RH -> Voit les "Waiting RH Mgr"
             if 'MANAGER' in role or 'ADMIN' in role:
                 mgr_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_MGR).all()
                 fcpi_requests.extend(mgr_fcpi)
-            
-            # Si Directeur RH -> Voit les "Waiting RH Dir"
             if 'DIRECTEUR' in role or 'ADMIN' in role:
                 dir_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_DIR).all()
                 fcpi_requests.extend(dir_fcpi)
         
-        # Dédoublonnage (au cas où un admin récupère deux fois la même liste)
         fcpi_requests = list({r.id: r for r in fcpi_requests}.values())
-        # Tri par date (plus récent en premier)
         fcpi_requests.sort(key=lambda x: x.created_at, reverse=True)
 
         return render_template('tickets/manager_dashboard.html', 
@@ -577,21 +426,55 @@ def solver_dashboard():
         my_targets = current_user.get_allowed_services() 
         user_role = safe_role_str(current_user)
         
+        # --- FIX 1 : Forcer l'ajout de IMAGO dans la liste des cibles si rôle présent ---
+        if 'IMAGO' in user_role or 'GS-IMAGO' in user_role:
+             if my_targets is None: my_targets = []
+             # On vérifie si IMAGO est déjà dedans en tant qu'Enum
+             if ServiceType.IMAGO not in my_targets:
+                 my_targets.append(ServiceType.IMAGO)
+        
         if user_role in ['MANAGER', 'DIRECTEUR'] and not my_targets:
              flash("Aucun service technique assigné.", "warning")
              return redirect(url_for('tickets.manager_dashboard'))
 
         query = Ticket.query.filter(Ticket.status != TicketStatus.DONE)
         
+        # --- FIX 2 : Comparaison Robuste (Enum vs String) lors du filtrage global ---
         if 'ADMIN' not in user_role and my_targets:
             tickets_all = query.all()
-            tickets_pool = [t for t in tickets_all if t.get_safe_target_service() in my_targets]
+            tickets_pool = []
+            for t in tickets_all:
+                # On vérifie si le service cible du ticket est dans mes cibles autorisées
+                # On compare t.target_service (Enum ou String) avec les éléments de my_targets (Enum)
+                is_allowed = False
+                for target in my_targets:
+                    # Comparaison directe ou conversion en string pour être sûr
+                    if t.target_service == target or str(t.target_service) == str(target):
+                        is_allowed = True
+                        break
+                if is_allowed:
+                    tickets_pool.append(t)
         else:
             tickets_pool = query.all()
 
-        pending_tickets = [t for t in tickets_pool if t.solver_id is None and t.get_safe_status() == 'EN_ATTENTE_TRAITEMENT']
+        pending_tickets = [t for t in tickets_pool if t.solver_id is None and (t.status == TicketStatus.PENDING or str(t.status.value) in ['En attente traitement', 'En attente de prise en charge'])]
         
-        pool_standard = [t for t in pending_tickets if not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard']]
+        # CREATION DES POOLS DE TICKETS
+        
+        # FIX 3 : Filtrer le pool IMAGO de manière très permissive (string ou enum)
+        pool_imago = [
+            t for t in pending_tickets 
+            if str(t.target_service) == 'IMAGO' or t.target_service == ServiceType.IMAGO
+        ]
+
+        # On exclut Imago du standard
+        pool_standard = [
+            t for t in pending_tickets 
+            if (not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard']) 
+            and str(t.target_service) != 'IMAGO' and t.target_service != ServiceType.IMAGO
+        ]
+        
+        
         pool_users = [t for t in pending_tickets if t.category_ticket == 'Nouvel Utilisateur']
         pool_materiel = [t for t in pending_tickets if t.category_ticket == 'Matériel']
         pool_bons = [t for t in pending_tickets if t.category_ticket == 'Bon de Commande']
@@ -601,7 +484,7 @@ def solver_dashboard():
         hist_query = Ticket.query.filter_by(status=TicketStatus.DONE)
         history_all = hist_query.order_by(Ticket.closed_at.desc()).limit(20).all()
         if 'ADMIN' not in user_role and my_targets:
-            history = [t for t in history_all if t.get_safe_target_service() in my_targets]
+            history = [t for t in history_all if t.target_service in my_targets]
         else:
             history = history_all
 
@@ -614,7 +497,17 @@ def solver_dashboard():
         }
         team_solvers = User.query.filter(User.role == UserRole.SOLVER).all()
 
-        return render_template('tickets/service_dashboard.html', stats=stats, pool_standard=pool_standard, pool_users=pool_users, pool_materiel=pool_materiel, pool_bons=pool_bons, mine=mine, history=history, solvers=team_solvers, services=ServiceType)
+        return render_template('tickets/service_dashboard.html', 
+                               stats=stats, 
+                               pool_standard=pool_standard, 
+                               pool_users=pool_users, 
+                               pool_materiel=pool_materiel, 
+                               pool_bons=pool_bons,
+                               pool_imago=pool_imago,
+                               mine=mine, 
+                               history=history, 
+                               solvers=team_solvers, 
+                               services=ServiceType)
     except Exception as e:
         return render_template('base.html', content=f"<h1>Erreur 500 Dashboard</h1><p>{e}</p>")
         

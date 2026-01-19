@@ -1,161 +1,184 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto py-6 dark:bg-slate-950 transition-colors duration-300">
+<div class="max-w-6xl mx-auto py-6 dark:bg-slate-950 transition-colors duration-300 px-4 min-h-screen">
     <!-- Header -->
-    <div class="mb-8 flex items-center justify-between">
+    <div class="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
             <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Détail Ticket</h1>
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Référence : <span class="font-mono text-blue-600 dark:text-blue-400">{{ ticket.uid_public }}</span></p>
         </div>
-        {% if 'SOLVER' in current_user.role|string or 'ADMIN' in current_user.role|string %}
-            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard</a>
-        {% else %}
-            <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition"><i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail</a>
-        {% endif %}
+        
+        <div class="flex gap-2">
+            {% if 'SOLVER' in current_user.role|string or 'ADMIN' in current_user.role|string %}
+                <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard
+                </a>
+            {% else %}
+                <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
+                </a>
+            {% endif %}
+        </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="lg:col-span-1 space-y-6">
-            <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700">
-                <!-- Info Ticket Standard -->
-                <div class="flex items-center gap-4 mb-6">
-                    <div class="w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg {% if ticket.target_service.value == 'DAF' %}bg-purple-600 text-white{% else %}bg-blue-600 text-white{% endif %}">
-                        {% if ticket.target_service.value == 'DAF' %}<i data-lucide="banknote" class="w-6 h-6"></i>{% else %}<i data-lucide="monitor" class="w-6 h-6"></i>{% endif %}
+        
+        <!-- SECTION GAUCHE : INFOS TICKET -->
+        <div class="lg:col-span-2 space-y-6">
+            
+            <!-- Carte Info Principale -->
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden">
+                <div class="flex justify-between items-start mb-6">
+                    <div class="space-y-1">
+                        <span class="inline-block px-2 py-1 rounded text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            {{ ticket.target_service.value }}
+                        </span>
+                        <h2 class="text-2xl font-bold text-slate-900 dark:text-white">{{ ticket.title }}</h2>
                     </div>
-                    <div>
-                        <h2 class="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wide">{{ ticket.target_service.value }}</h2>
-                        <span class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+                    
+                    <div class="flex flex-col items-end">
+                        <span class="px-3 py-1 rounded-full text-xs font-black uppercase tracking-widest
+                            {% if 'VALIDATION' in ticket.status.value %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300
+                            {% elif 'COURS' in ticket.status.value or 'PROGRESS' in ticket.status.value or 'TRAITEMENT' in ticket.status.value %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300
+                            {% elif 'TERMINE' in ticket.status.value %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300
+                            {% else %}bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400{% endif %}">
+                            {{ ticket.status.value }}
+                        </span>
+                        <span class="text-[10px] font-bold text-slate-400 mt-2">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
                     </div>
-                </div>
-                <h3 class="text-lg font-black text-slate-900 dark:text-white leading-tight uppercase mb-4">{{ ticket.title }}</h3>
-                <div class="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600 text-sm font-medium text-slate-600 dark:text-slate-300 mb-6">{{ ticket.description }}</div>
-                
-                <!-- COORDONNÉES -->
-                <div class="grid grid-cols-2 gap-4 mb-6 pb-6 border-b border-slate-100 dark:border-slate-700">
-                     <div><span class="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Service Demandeur</span><span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1"><i data-lucide="building" class="w-3 h-3 text-slate-400 dark:text-slate-500"></i> {{ ticket.service_demandeur or '-' }}</span></div>
-                     <div><span class="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest block mb-1">Tél / Poste</span><span class="text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3 text-slate-400 dark:text-slate-500"></i> {{ ticket.tel_demandeur or '-' }}</span></div>
                 </div>
 
-                <!-- SPECIFIQUE DAF (DÉTAILS) -->
-                {% if ticket.target_service.value == 'DAF' %}
-                <div class="space-y-4 mb-4 bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800">
-                    <div class="flex justify-between items-center text-xs pb-2 border-b border-purple-200 dark:border-purple-700"><span class="font-bold text-purple-400 uppercase text-[10px]">Livraison</span><span class="font-black text-purple-900 dark:text-purple-100">{{ ticket.daf_lieu_livraison }}</span></div>
-                    <div class="space-y-2 pt-2">
-                        <p class="text-[10px] font-black text-purple-400 uppercase tracking-widest">Fournisseur</p>
-                        <div class="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            <p>{{ ticket.daf_fournisseur_nom }}</p>
-                            <p class="font-normal text-slate-500 dark:text-slate-400">{{ ticket.daf_fournisseur_tel }}</p>
-                            <p class="font-normal text-slate-500 dark:text-slate-400">{{ ticket.daf_fournisseur_email }}</p>
+                <div class="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-8">
+                    {{ ticket.description }}
+                </div>
+
+                <div class="grid grid-cols-2 gap-6 border-t border-slate-100 dark:border-slate-800 pt-6">
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Demandeur</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
+                                {{ ticket.author.fullname[:1] }}
+                            </div>
+                            <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.author.fullname }}</p>
                         </div>
                     </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Origine</p>
+                        <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.service_demandeur }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Poste / Bureau</p>
+                        <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.hostname or 'Non renseigné' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Téléphone</p>
+                        <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.tel_demandeur or 'Non renseigné' }}</p>
+                    </div>
                 </div>
-                
-                <!-- Tableau des articles (JSON) -->
-                {% set lignes = ticket.get_daf_lignes() %}
-                {% if lignes %}
-                <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-4">
-                    <table class="w-full text-[10px] text-slate-600 dark:text-slate-300">
-                        <thead class="bg-slate-50 dark:bg-slate-700 font-black uppercase text-slate-500 dark:text-slate-400"><tr><th class="p-2 text-left">Désignation</th><th class="p-2 text-center">Qté</th><th class="p-2 text-right">Total</th></tr></thead>
-                        <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                            {% for l in lignes %}
-                            <tr><td class="p-2">{{ l.designation }}</td><td class="p-2 text-center">{{ l.qte }}</td><td class="p-2 text-right font-bold">{{ l.total }} €</td></tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% endif %}
+            </div>
 
-                <!-- Fichiers Devis -->
-                {% set files = ticket.get_daf_files() %}
-                {% if files %}
-                <div class="space-y-2">
-                    <p class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Devis Joints</p>
-                    {% for f in files %}
-                    <a href="{{ url_for('static', filename='uploads/tickets/' + ticket.uid_public + '/' + f) }}" target="_blank" class="block bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 p-2 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-600 flex items-center gap-2">
-                        <i data-lucide="file-text" class="w-4 h-4"></i> {{ f }}
-                    </a>
+            <!-- --- AJOUT : ZONE PHOTOS / PIÈCES JOINTES --- -->
+            {% if attached_files %}
+            <div class="bg-white dark:bg-slate-900 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h3 class="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+                    <i data-lucide="image" class="w-5 h-5 text-blue-500"></i> Captures & Fichiers
+                </h3>
+                
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {% for file in attached_files %}
+                        {% set file_ext = file.split('.')[-1].lower() %}
+                        {% set is_image = file_ext in ['png', 'jpg', 'jpeg', 'gif', 'webp'] %}
+                        
+                        <a href="{{ url_for('static', filename='uploads/tickets/' + ticket.uid_public + '/' + file) }}" target="_blank" 
+                           class="group relative block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition bg-slate-50 dark:bg-slate-950">
+                            
+                            {% if is_image %}
+                                <div class="aspect-video w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                                    <img src="{{ url_for('static', filename='uploads/tickets/' + ticket.uid_public + '/' + file) }}" 
+                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Fichier">
+                                </div>
+                                <div class="p-2 bg-white dark:bg-slate-900/90 absolute bottom-0 left-0 right-0 backdrop-blur-sm border-t border-slate-100 dark:border-slate-700">
+                                    <p class="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{{ file }}</p>
+                                </div>
+                            {% else %}
+                                <div class="aspect-video w-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50">
+                                    <i data-lucide="file-text" class="w-10 h-10 text-slate-400 group-hover:text-blue-500 transition"></i>
+                                </div>
+                                <div class="p-2 border-t border-slate-200 dark:border-slate-700">
+                                    <p class="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{{ file }}</p>
+                                </div>
+                            {% endif %}
+                        </a>
                     {% endfor %}
                 </div>
-                {% endif %}
-                
-                {% endif %}
-
-                <!-- (Autres blocs Info... inchangés) -->
-                
-                 <!-- Statut -->
-                <div class="flex justify-between items-center border-t border-slate-100 dark:border-slate-700 pt-4 mt-6">
-                    <span class="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest">Statut</span>
-                    <span class="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">{{ ticket.status.value }}</span>
-                </div>
-            </div>
-
-            <!-- Intervenants & Actions (Inchangés) -->
-             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-500 dark:text-slate-300 font-black text-xs">{{ ticket.author.username[0]|upper }}</div>
-                    <div>
-                        <p class="text-sm font-bold text-slate-900 dark:text-white">{{ ticket.author.fullname }}</p>
-                        <p class="text-[9px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-wide">Demandeur</p>
-                    </div>
-                </div>
-                {% if ticket.solver %}
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs">{{ ticket.solver.username[0]|upper }}</div>
-                    <div>
-                        <p class="text-sm font-bold text-slate-900 dark:text-white">{{ ticket.solver.fullname }}</p>
-                        <p class="text-[9px] text-blue-500 dark:text-blue-400 font-bold uppercase tracking-wide">Technicien</p>
-                    </div>
-                </div>
-                {% endif %}
-            </div>
-            
-            {% if current_user.role.value == 'SOLVER' and ticket.status.value != 'TERMINE' %}
-            <div class="bg-slate-900 dark:bg-slate-700 p-6 rounded-3xl text-white shadow-2xl">
-                <h3 class="text-[10px] font-black text-slate-400 dark:text-slate-300 uppercase tracking-widest mb-4">Actions Rapides</h3>
-                {% if not ticket.solver %}
-                <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="block w-full py-3 bg-blue-600 hover:bg-blue-500 rounded-xl text-center font-black text-xs uppercase tracking-widest transition">Prendre en charge</a>
-                {% else %}
-                <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" onclick="return confirm('Clôturer le ticket ?')" class="block w-full py-3 bg-emerald-600 hover:bg-emerald-500 rounded-xl text-center font-black text-xs uppercase tracking-widest transition">Terminer le ticket</a>
-                {% endif %}
             </div>
             {% endif %}
+            <!-- --- FIN ZONE PHOTOS --- -->
+
         </div>
 
-        <!-- CHAT (Inchangé) -->
-        <div class="lg:col-span-2 flex flex-col h-[750px] bg-white dark:bg-slate-800 rounded-3xl shadow-xl border border-slate-100 dark:border-slate-700 overflow-hidden relative">
-            <div class="p-5 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-800 flex justify-between items-center z-10">
-                <h3 class="font-black text-slate-800 dark:text-white uppercase text-xs tracking-widest flex items-center gap-2"><i data-lucide="message-circle" class="w-4 h-4 text-blue-600 dark:text-blue-400"></i> Fil de discussion</h3>
-            </div>
-            <div class="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50 dark:bg-slate-900/50" id="chatContainer">
-                <div class="flex justify-center"><span class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-400 dark:text-slate-300 px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">Ticket ouvert le {{ ticket.created_at.strftime('%d/%m à %H:%M') }}</span></div>
-                {% for msg in ticket.messages %}
-                <div class="flex flex-col {% if msg.author_id == current_user.id %}items-end{% else %}items-start{% endif %} animate-fadeIn">
-                    <div class="max-w-[80%] {% if msg.author_id == current_user.id %}bg-slate-900 dark:bg-blue-600 text-white rounded-tr-none{% else %}bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-200 rounded-tl-none{% endif %} px-5 py-4 rounded-2xl shadow-sm">
-                        <p class="text-sm font-bold">{{ msg.content }}</p>
-                    </div>
-                    <span class="text-[9px] font-black text-slate-400 dark:text-slate-500 mt-2 px-2 uppercase tracking-wide">{{ msg.author.fullname }} • {{ msg.timestamp.strftime('%H:%M') }}</span>
+        <!-- SECTION DROITE : CHAT -->
+        <div class="lg:col-span-1">
+            <div class="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col h-[600px] sticky top-6 overflow-hidden">
+                <div class="p-4 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-100 dark:border-slate-800">
+                    <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm flex items-center gap-2">
+                        <i data-lucide="message-circle" class="w-4 h-4"></i> Discussion
+                    </h3>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-4 space-y-4 bg-white dark:bg-slate-900" id="chatContainer">
+                    {% if ticket.messages %}
+                        {% for msg in ticket.messages %}
+                        <div class="flex flex-col {% if msg.author_id == current_user.id %}items-end{% else %}items-start{% endif %} animate-fadeIn">
+                            <span class="text-[10px] text-slate-400 mb-1 px-1">{{ msg.author.fullname }} • {{ msg.timestamp.strftime('%d/%m %H:%M') }}</span>
+                            <div class="px-4 py-2 rounded-2xl text-sm max-w-[90%] shadow-sm
+                                {% if msg.author_id == current_user.id %}
+                                    bg-blue-600 text-white rounded-br-none
+                                {% else %}
+                                    bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 rounded-bl-none border border-slate-200 dark:border-slate-700
+                                {% endif %}">
+                                {{ msg.content }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="h-full flex flex-col items-center justify-center text-slate-400 text-center px-6">
+                            <i data-lucide="message-square-dashed" class="w-12 h-12 mb-2 opacity-50"></i>
+                            <p class="text-xs font-medium">Aucun message.<br>Posez une question si besoin.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                {% if ticket.status.value != 'TERMINE' and ticket.status.value != 'REFUSE' %}
+                <div class="p-3 bg-slate-50 dark:bg-slate-950/30 border-t border-slate-100 dark:border-slate-800">
+                    <form method="POST" class="flex gap-2">
+                        <input type="text" name="message" class="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-500 outline-none transition" placeholder="Votre message..." autocomplete="off" required>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-xl transition shadow-sm flex items-center justify-center"><i data-lucide="send" class="w-5 h-5"></i></button>
+                    </form>
                 </div>
                 {% else %}
-                <div class="flex flex-col items-center justify-center h-full opacity-40"><i data-lucide="message-square" class="w-12 h-12 text-slate-300 dark:text-slate-600 mb-2"></i><p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Aucun message</p></div>
-                {% endfor %}
+                <div class="p-4 bg-slate-50 dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 text-center">
+                    <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Ticket clôturé</p>
+                </div>
+                {% endif %}
             </div>
-            {% if ticket.status.value != 'TERMINE' and ticket.status.value != 'REFUSE' %}
-            <div class="p-4 bg-white dark:bg-slate-800 border-t border-slate-100 dark:border-slate-700">
-                <form method="POST" class="flex gap-3">
-                    <input type="text" name="message" class="flex-1 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-5 py-4 text-sm font-bold text-slate-700 dark:text-slate-200 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-500 outline-none transition" placeholder="Écrivez votre message..." autocomplete="off" required>
-                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl transition shadow-lg shadow-blue-200 dark:shadow-none group"><i data-lucide="send" class="w-5 h-5 group-hover:translate-x-1 transition-transform"></i></button>
-                </form>
-            </div>
-            {% else %}
-            <div class="p-6 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700 text-center"><p class="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="lock" class="w-4 h-4"></i> Discussion close</p></div>
-            {% endif %}
         </div>
+
     </div>
 </div>
+
 <script>
     lucide.createIcons();
     const chatContainer = document.getElementById('chatContainer');
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    if(chatContainer) chatContainer.scrollTop = chatContainer.scrollHeight;
 </script>
+
+<style>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }
+</style>
 {% endblock %}
