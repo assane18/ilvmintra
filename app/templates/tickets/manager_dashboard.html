@@ -15,29 +15,38 @@
         </div>
     </div>
 
-    <!-- TABS -->
+    <!-- TABS (Avec Alpine.js fonctionnel) -->
     <div x-data="{ activeTab: 'n1' }" class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700 min-h-[600px]">
         
         <!-- Tab Headers -->
         <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+            <!-- Onglet N1 -->
             <button @click="activeTab = 'n1'" 
                 :class="{ 'border-b-2 border-blue-500 text-blue-600 bg-white dark:bg-slate-800 dark:text-blue-400': activeTab === 'n1', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n1' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
-                Validation Demandes Équipe (N1)
-                {% if tickets_n1|length > 0 %}
-                <span class="absolute top-3 right-4 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-                    {{ tickets_n1|length }}
-                </span>
+                Validation Équipe (N1)
+                {% if tickets_n1 %}
+                <span class="absolute top-3 right-4 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">{{ tickets_n1|length }}</span>
                 {% endif %}
             </button>
+            
+            <!-- Onglet N2 -->
             <button @click="activeTab = 'n2'" 
                 :class="{ 'border-b-2 border-purple-500 text-purple-600 bg-white dark:bg-slate-800 dark:text-purple-400': activeTab === 'n2', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n2' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
-                Validation Technique / Budget (N2)
-                {% if tickets_n2|length > 0 %}
-                <span class="absolute top-3 right-4 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">
-                    {{ tickets_n2|length }}
-                </span>
+                Validation Tech/Budget (N2)
+                {% if tickets_n2 %}
+                <span class="absolute top-3 right-4 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">{{ tickets_n2|length }}</span>
+                {% endif %}
+            </button>
+
+            <!-- Onglet FCPI (AJOUTÉ) -->
+            <button @click="activeTab = 'fcpi'" 
+                :class="{ 'border-b-2 border-pink-500 text-pink-600 bg-white dark:bg-slate-800 dark:text-pink-400': activeTab === 'fcpi', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'fcpi' }"
+                class="flex-1 py-4 text-center font-bold text-sm transition relative">
+                Recrutements (FCPI)
+                {% if fcpi_requests %}
+                <span class="absolute top-3 right-4 w-5 h-5 bg-pink-500 text-white text-xs rounded-full flex items-center justify-center animate-pulse">{{ fcpi_requests|length }}</span>
                 {% endif %}
             </button>
         </div>
@@ -163,6 +172,54 @@
             <div class="flex flex-col items-center justify-center py-20 text-slate-400">
                 <i data-lucide="check-circle" class="w-16 h-16 mb-4 opacity-20"></i>
                 <p>Aucune validation technique en attente.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- TAB CONTENT FCPI (LE VOICI !) -->
+        <div x-show="activeTab === 'fcpi'" class="p-6 animate-fadeIn" style="display: none;">
+            {% if fcpi_requests %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="text-xs font-bold text-slate-500 uppercase border-b border-slate-200 dark:border-slate-700">
+                            <th class="pb-3 pl-2">Réf</th>
+                            <th class="pb-3">Candidat / Agent</th>
+                            <th class="pb-3">Date Entrée</th>
+                            <th class="pb-3">Statut</th>
+                            <th class="pb-3 text-right pr-2">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                        {% for r in fcpi_requests %}
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                            <td class="py-4 pl-2 font-mono text-xs text-pink-500 font-bold">{{ r.uid_public }}</td>
+                            <td class="py-4">
+                                <span class="block font-bold text-slate-800 dark:text-white">{{ r.nom_agent }} {{ r.prenom_agent }}</span>
+                                <span class="text-xs text-slate-400">{{ r.service_agent }} - {{ r.fonction }}</span>
+                            </td>
+                            <td class="py-4 text-sm font-bold text-slate-700 dark:text-slate-300">
+                                {{ r.date_entree.strftime('%d/%m/%Y') }}
+                            </td>
+                            <td class="py-4">
+                                <span class="px-2 py-1 bg-pink-100 text-pink-700 rounded text-xs font-bold border border-pink-200">
+                                    {{ r.status.value }}
+                                </span>
+                            </td>
+                            <td class="py-4 text-right pr-2">
+                                <a href="{{ url_for('fcpi.view_fcpi', id=r.id) }}" class="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg shadow-md text-xs font-bold transition inline-flex items-center">
+                                    <i data-lucide="search" class="w-3 h-3 mr-2"></i> Examiner
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
+                <i data-lucide="user-plus" class="w-16 h-16 mb-4 opacity-20"></i>
+                <p>Aucune demande de recrutement en attente.</p>
             </div>
             {% endif %}
         </div>

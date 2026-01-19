@@ -17,7 +17,6 @@
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
             </a>
             
-            <!-- STATUT GLOBAL (CLÔTURE AUTO SI TOUT EST FINI) -->
             {% if rec.is_fully_completed %}
             <span class="px-4 py-2 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 bg-emerald-600 text-white shadow-lg shadow-emerald-200">
                 <i data-lucide="check-check" class="w-4 h-4"></i> Dossier Clôturé
@@ -40,9 +39,21 @@
         <div class="lg:col-span-2 space-y-6">
             
             <!-- INFO AGENT -->
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 relative overflow-hidden">
+                
+                <!-- PHOTO EN HAUT À DROITE -->
+                {% if rec.file_photo %}
+                <div class="absolute top-6 right-6">
+                    <a href="{{ url_for('static', filename='uploads/fcpi/' + rec.uid_public + '/' + rec.file_photo) }}" target="_blank">
+                        <img src="{{ url_for('static', filename='uploads/fcpi/' + rec.uid_public + '/' + rec.file_photo) }}" 
+                             alt="Photo Agent" 
+                             class="w-24 h-24 rounded-xl object-cover border-4 border-slate-100 dark:border-slate-600 shadow-lg hover:scale-105 transition">
+                    </a>
+                </div>
+                {% endif %}
+
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Informations Agent</h3>
-                <div class="grid grid-cols-2 gap-y-4 text-sm">
+                <div class="grid grid-cols-2 gap-y-4 text-sm pr-28"> <!-- Padding Right pour la photo -->
                     <div><span class="block text-slate-400 text-xs">Nom Prénom</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.nom_agent }} {{ rec.prenom_agent }}</span></div>
                     <div><span class="block text-slate-400 text-xs">Date d'entrée</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.date_entree.strftime('%d/%m/%Y') }}</span></div>
                     <div><span class="block text-slate-400 text-xs">Fonction</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.fonction }}</span></div>
@@ -65,6 +76,13 @@
                     </div>
                     <div><span class="block text-slate-400 text-xs">Condition</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.condition_recrutement }}</span></div>
                     <div><span class="block text-slate-400 text-xs">Motif</span><span class="font-bold text-slate-800 dark:text-white">{{ rec.motif_recrutement }}</span></div>
+                    
+                    <!-- AJOUT SIMULATION SALAIRE -->
+                    <div><span class="block text-slate-400 text-xs">Simulation Salaire</span>
+                        <span class="font-bold {{ 'text-purple-600' if rec.simulation_salaire else 'text-slate-800 dark:text-white' }}">
+                            {{ 'DEMANDÉE' if rec.simulation_salaire else 'Non demandée' }}
+                        </span>
+                    </div>
                 </div>
                 
                 {% if rec.file_cv or rec.file_fiche_poste %}

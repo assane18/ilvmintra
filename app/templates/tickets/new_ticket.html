@@ -49,7 +49,11 @@
             <div>
                 <label class="label-tiny">Type de demande</label>
                 <select name="category_ticket" id="category_ticket" onchange="toggleFormFields()" class="input-field cursor-pointer">
+                    <!-- Option Standard affichée UNIQUEMENT si ce n'est ni INFO ni DAF -->
+                    {% if service_name not in ['INFO', 'DAF'] %}
                     <option value="Standard">Demande Standard</option>
+                    {% endif %}
+
                     {% if service_name == 'INFO' %}
                     <option value="Incident Standard">Incident / Panne (Internet, PC...)</option>
                     <!-- Options Nouvel Utilisateur et Matériel retirées -->
@@ -72,8 +76,8 @@
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="label-tiny">Nom de la machine (Hostname)</label>
-                        <input type="text" name="hostname" class="input-field" placeholder="Auto-détection si vide">
+                        <label class="label-tiny">Service/Bureau</label>
+                        <input type="text" name="hostname" class="input-field" placeholder="Informatique">
                     </div>
                     <div>
                         <label class="label-tiny">Téléphone de contact</label>
@@ -309,6 +313,9 @@
         }
         document.getElementById('grandTotal').innerText = grandTotal.toFixed(2) + ' €';
     }
+
+    // Initialisation au chargement de la page pour ajuster l'affichage (important pour DAF)
+    document.addEventListener('DOMContentLoaded', toggleFormFields);
 </script>
 
 <style>

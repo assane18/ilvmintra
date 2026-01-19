@@ -70,6 +70,7 @@ def parse_ad_groups(groups_entry):
             elif svc_name == 'SECU': allowed_services.append(ServiceType.SECU.value)
             
             # Services Ajoutés (Mapping explicite pour éviter les erreurs de syntaxe AD)
+            elif svc_name == 'IMAGO': allowed_services.append(ServiceType.IMAGO.value)
             elif svc_name == 'ACCUEIL': allowed_services.append(ServiceType.ACCUEIL.value)
             elif svc_name == 'ARCHIPELLE': allowed_services.append(ServiceType.ARCHIPELLE.value)
             elif svc_name == 'CELLULE PARCOURS': allowed_services.append(ServiceType.CELLULE_PARCOURS.value)

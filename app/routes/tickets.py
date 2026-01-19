@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, make_response, send_file
 from flask_login import login_required, current_user
-from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User
+from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus
 from app import db
 from datetime import datetime
 import json
@@ -61,6 +61,10 @@ def new_ticket(service_name):
 
     if request.method == 'POST':
         category = request.form.get('category_ticket', 'Standard')
+
+        if service_name == 'DAF' and category == 'Standard':
+            category = 'Bon de Commande'
+
         selected_origin = request.form.get('selected_origin')
         if not selected_origin:
             selected_origin = user_origins[0] if user_origins else "INCONNU"
@@ -431,54 +435,36 @@ def manager_dashboard():
             except Exception:
                 tickets_n2 = []
 
-        # --- LOGIQUE FCPI (RECRUTEMENT) UNIVERSELLE ---
-        fcpi_to_validate = []
+        # --- 3. PARTIE FCPI (RECRUTEMENTS) ---
+        # C'est ici qu'on récupère les demandes pour l'onglet RH
+        fcpi_requests = []
+        role = str(current_user.role.value).upper()
+        user_services = current_user.get_allowed_services()
         
-        # Scope de l'utilisateur : Services qu'il dirige ou gère
-        # On normalise en MAJUSCULES pour comparer
-        user_scope = set([s.upper() for s in (my_targets + my_origins)])
-        
-        # Construction de la requête
-        query = Recruitment.query
-        
-        # Si Admin, il voit tout. Sinon, filtrage strict.
-        if 'ADMIN' not in role_str:
-            # Si c'est un RH, il voit TOUT (car les RH gèrent le recrutement global)
-            if 'DRH' in user_scope or 'RH' in user_scope:
-                pass # Pas de filtre service
-            elif user_scope:
-                # Le manager SESSAD ne voit que les FCPI où service_agent = SESSAD
-                # Attention: service_agent dans la DB doit correspondre au nom du service
-                # On utilise une recherche insensible à la casse si possible, ou une liste
-                # Ici on suppose que le nom stocké est exact.
-                # Pour être sûr, on récupère tout et on filtre en Python (plus sûr avec les accents/casse)
-                pass 
-            else:
-                query = None # Pas de droits, pas de vue
-        
-        if query:
-            # Filtrage par étape de validation
-            status_filter = None
-            if 'DIRECTEUR' in role_str or 'ADMIN' in role_str:
-                status_filter = RecruitmentStatus.WAITING_RH_DIR
-            elif 'MANAGER' in role_str:
-                status_filter = RecruitmentStatus.WAITING_RH_MGR
-                
-            raw_results = query.filter_by(status=status_filter).all()
+        # Vérifie si l'utilisateur fait partie des RH (ou est Admin)
+        is_rh_team = 'DRH' in user_services or 'RH' in user_services or 'ADMIN' in role
+
+        if is_rh_team:
+            # Si Manager RH -> Voit les "Waiting RH Mgr"
+            if 'MANAGER' in role or 'ADMIN' in role:
+                mgr_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_MGR).all()
+                fcpi_requests.extend(mgr_fcpi)
             
-            # Filtrage Python final pour la sécurité des services (hors Admin/RH)
-            if 'ADMIN' in role_str or 'DRH' in user_scope or 'RH' in user_scope:
-                fcpi_to_validate = raw_results
-            else:
-                # Filtrage manuel : est-ce que le service de l'agent est dans mon scope ?
-                for r in raw_results:
-                    if r.service_agent and r.service_agent.upper() in user_scope:
-                        fcpi_to_validate.append(r)
+            # Si Directeur RH -> Voit les "Waiting RH Dir"
+            if 'DIRECTEUR' in role or 'ADMIN' in role:
+                dir_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_DIR).all()
+                fcpi_requests.extend(dir_fcpi)
+        
+        # Dédoublonnage (au cas où un admin récupère deux fois la même liste)
+        fcpi_requests = list({r.id: r for r in fcpi_requests}.values())
+        # Tri par date (plus récent en premier)
+        fcpi_requests.sort(key=lambda x: x.created_at, reverse=True)
 
         return render_template('tickets/manager_dashboard.html', 
-                               tickets_n1=tickets_n1, 
-                               tickets_n2=tickets_n2, 
-                               fcpi_requests=fcpi_to_validate)
+                            tickets_n1=tickets_n1, 
+                            tickets_n2=tickets_n2, 
+                            fcpi_requests=fcpi_requests)
+
     except Exception as e:
         flash(f"Erreur Dashboard: {e}", "danger")
         return redirect(url_for('main.user_portal'))

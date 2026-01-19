@@ -32,6 +32,7 @@ class ServiceType(str, enum.Enum):
     AUTRE = "AUTRE"
 
     # Nouveaux Services Ajoutés
+    IMAGO = "IMAGO"  
     ACCUEIL = "Accueil"
     ARCHIPELLE = "Archipelle"
     CELLULE_PARCOURS = "Cellule Parcours"
