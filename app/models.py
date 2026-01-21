@@ -33,7 +33,7 @@ class ServiceType(str, enum.Enum):
     AUTRE = "AUTRE"
     IMAGO = "IMAGO"  
 
-    # Tous les Services Établissements (Restaurés pour éviter le crash portail)
+    # Tous les Services Établissements
     ACCUEIL = "Accueil"
     ARCHIPELLE = "Archipelle"
     CELLULE_PARCOURS = "Cellule Parcours"
@@ -82,15 +82,13 @@ class User(UserMixin, db.Model):
     email = db.Column(db.String(120))
     role = db.Column(db.Enum(UserRole), default=UserRole.USER)
     
-    # Stockage JSON pour compatibilité et flexibilité
+    # Stockage JSON
     origin_services_json = db.Column(db.Text, default='[]')
     allowed_services_json = db.Column(db.Text, default='[]')
     
     location = db.Column(db.String(100), nullable=True)
     notifications = db.relationship('Notification', backref='user', lazy='dynamic')
 
-    # --- PROPRIÉTÉ MAGIQUE DE COMPATIBILITÉ ---
-    # Permet au code existant (main.py) d'accéder à user.service sans planter
     @property
     def service(self):
         origins = self.get_origin_services()
@@ -101,6 +99,7 @@ class User(UserMixin, db.Model):
         except: self.origin_services_json = '[]'
 
     def get_origin_services(self):
+        if not self.origin_services_json: return []
         try: return json.loads(self.origin_services_json) or []
         except: return []
 
@@ -109,6 +108,7 @@ class User(UserMixin, db.Model):
         except: self.allowed_services_json = '[]'
 
     def get_allowed_services(self):
+        if not self.allowed_services_json: return []
         try: return json.loads(self.allowed_services_json) or []
         except: return []
 
@@ -175,13 +175,22 @@ class Ticket(db.Model):
 
     def get_daf_lignes(self):
         if not self.daf_lignes_json: return []
-        try: return json.loads(self.daf_lignes_json)
+        try: return json.loads(self.daf_lignes_json) or []
         except: return []
 
     def get_daf_files(self):
         if not self.daf_files_json: return []
-        try: return json.loads(self.daf_files_json)
+        try: return json.loads(self.daf_files_json) or []
         except: return []
+
+    @property
+    def author_name(self):
+        """Retourne le nom de l'auteur ou 'Inconnu' si supprimé."""
+        return self.author.username if self.author else "Utilisateur supprimé"
+
+    def __repr__(self):
+        # IMPORTANT: Ne pas inclure de relations (author, solver) ici pour éviter la récursion
+        return f'<Ticket {self.uid_public}>'
 
 class Recruitment(db.Model):
     __tablename__ = 'recruitments'
@@ -218,12 +227,14 @@ class Recruitment(db.Model):
     child_tickets_ids = db.Column(db.Text, default='[]') 
 
     def get_child_tickets(self):
-        try: return json.loads(self.child_tickets_ids)
+        if not self.child_tickets_ids: return []
+        try: return json.loads(self.child_tickets_ids) or []
         except: return []
 
     def get_child_tickets_objects(self):
         ids = self.get_child_tickets()
         if not ids: return []
+        # Utilisation de in_ avec une liste vide peut causer des erreurs SQL sur certaines DB, d'où la vérif ci-dessus
         return Ticket.query.filter(Ticket.id.in_(ids)).all()
 
     @property
@@ -231,6 +242,15 @@ class Recruitment(db.Model):
         tickets = self.get_child_tickets_objects()
         if not tickets: return False
         return all(t.status == TicketStatus.DONE for t in tickets)
+
+    @property
+    def author_name(self):
+        """Retourne le nom de l'auteur ou 'Inconnu' si supprimé."""
+        return self.author.username if self.author else "Utilisateur supprimé"
+
+    def __repr__(self):
+        # IMPORTANT: Ne pas inclure de relations ici
+        return f'<Recruitment {self.uid_public}>'
 
 class TicketMessage(db.Model):
     __tablename__ = 'ticket_messages'

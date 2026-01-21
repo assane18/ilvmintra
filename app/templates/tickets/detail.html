@@ -30,8 +30,8 @@
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Portail
             </a>
         {% elif 'MANAGER' in current_user.role.value or 'DIRECTEUR' in current_user.role.value %}
-             <a href="{{ url_for('tickets.manager_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
-                <i data-lucide="arrow-left" class="w-4 h-4"></i> Dashboard
+             <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Espace Tech
             </a>
         {% else %}
              <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
