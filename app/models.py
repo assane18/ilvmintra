@@ -14,6 +14,7 @@ class UserRole(str, enum.Enum):
 class TicketStatus(str, enum.Enum):
     VALIDATION_N1 = "VALIDATION_HIERARCHIQUE"
     VALIDATION_N2 = "VALIDATION_TECHNIQUE"
+    VALIDATION_DAF_MANAGER = "VALIDATION_DAF_MANAGER"
     DAF_SIGNATURE = "SIGNATURE_DIRECTEUR"
     PENDING = "EN_ATTENTE_TRAITEMENT"
     IN_PROGRESS = "EN_COURS"
@@ -22,17 +23,17 @@ class TicketStatus(str, enum.Enum):
     DONE = "TERMINE"
 
 class ServiceType(str, enum.Enum):
-    # Services Historiques
+    # Services Supports
     INFO = "INFORMATIQUE"
     DAF = "DAF"
     GEN = "GENERAUX"
     TECH = "TECHNIQUE"
     DRH = "DRH"
-    SECU = "SECU" # Badge / Accès
+    SECU = "SECU"
     AUTRE = "AUTRE"
-
-    # Nouveaux Services Ajoutés
     IMAGO = "IMAGO"  
+
+    # Tous les Services Établissements (Restaurés pour éviter le crash portail)
     ACCUEIL = "Accueil"
     ARCHIPELLE = "Archipelle"
     CELLULE_PARCOURS = "Cellule Parcours"
@@ -80,10 +81,20 @@ class User(UserMixin, db.Model):
     fullname = db.Column(db.String(120))
     email = db.Column(db.String(120))
     role = db.Column(db.Enum(UserRole), default=UserRole.USER)
+    
+    # Stockage JSON pour compatibilité et flexibilité
     origin_services_json = db.Column(db.Text, default='[]')
     allowed_services_json = db.Column(db.Text, default='[]')
+    
     location = db.Column(db.String(100), nullable=True)
     notifications = db.relationship('Notification', backref='user', lazy='dynamic')
+
+    # --- PROPRIÉTÉ MAGIQUE DE COMPATIBILITÉ ---
+    # Permet au code existant (main.py) d'accéder à user.service sans planter
+    @property
+    def service(self):
+        origins = self.get_origin_services()
+        return origins[0] if origins else "AUCUN"
 
     def set_origin_services(self, services_list):
         try: self.origin_services_json = json.dumps(services_list)
@@ -124,9 +135,8 @@ class Ticket(db.Model):
     tel_demandeur = db.Column(db.String(20), nullable=True)
     lieu_installation = db.Column(db.String(100), nullable=True)
     
-    # NOUVEAU CHAMP DRH
+    # Champs DRH/FCPI
     rdv_date = db.Column(db.DateTime, nullable=True)
-    
     new_user_fullname = db.Column(db.String(150), nullable=True)
     new_user_service = db.Column(db.String(100), nullable=True)
     new_user_acces = db.Column(db.String(255), nullable=True)
@@ -134,6 +144,8 @@ class Ticket(db.Model):
     materiel_list = db.Column(db.Text, nullable=True)
     destinataire_materiel = db.Column(db.String(150), nullable=True)
     service_destinataire = db.Column(db.String(100), nullable=True)
+    
+    # Champs DAF
     daf_lieu_livraison = db.Column(db.String(100))
     daf_fournisseur_nom = db.Column(db.String(100))
     daf_fournisseur_tel = db.Column(db.String(50))
@@ -179,16 +191,12 @@ class Recruitment(db.Model):
     author = db.relationship('User', backref='my_recruitments')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     status = db.Column(db.Enum(RecruitmentStatus), default=RecruitmentStatus.WAITING_RH_MGR)
-    
-    # --- Données Agent ---
     date_entree = db.Column(db.DateTime)
     nom_agent = db.Column(db.String(100))
     prenom_agent = db.Column(db.String(100))
     fonction = db.Column(db.String(100))
     service_agent = db.Column(db.String(100))
     uf_agent = db.Column(db.String(50))
-    
-    # --- DRH ---
     contractuel = db.Column(db.Boolean, default=False)
     date_debut_contrat = db.Column(db.DateTime, nullable=True)
     date_fin_contrat = db.Column(db.DateTime, nullable=True)
@@ -197,25 +205,15 @@ class Recruitment(db.Model):
     pourcentage_temps = db.Column(db.String(20), nullable=True)
     motif_recrutement = db.Column(db.String(50)) 
     simulation_salaire = db.Column(db.Boolean, default=False)
-    
-    # --- Badge & Clefs ---
     localisation_poste = db.Column(db.String(100))
     commentaire_securite = db.Column(db.Text)
-    
-    # --- Imago ---
     imago_active = db.Column(db.Boolean, default=False)
     imago_mobilite = db.Column(db.String(200), nullable=True)
-    
-    # --- Informatique ---
     materiels_demandes = db.Column(db.String(255))
     acces_informatique = db.Column(db.Text)
-    
-    # --- Fichiers ---
     file_cv = db.Column(db.String(255))
     file_fiche_poste = db.Column(db.String(255))
     file_photo = db.Column(db.String(255))
-    
-    # --- Workflow ---
     refusal_reason = db.Column(db.Text)
     child_tickets_ids = db.Column(db.Text, default='[]') 
 

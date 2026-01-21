@@ -168,6 +168,51 @@
                     </div>
                     {% endfor %}
 
+                    <!-- POOL DRH -->
+                    {% if pool_drh %}
+                    <div class="px-1 pt-2 pb-1">
+                        <h3 class="text-[11px] font-black uppercase tracking-widest text-pink-600 dark:text-pink-400 mb-2 flex items-center gap-2">
+                            <span class="w-2 h-2 bg-pink-500 rounded-full animate-pulse"></span>
+                            Ressources Humaines
+                        </h3>
+                    </div>
+
+                    {% for ticket in pool_drh %}
+                    <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-pink-300 dark:hover:border-pink-500 transition group cursor-default">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] font-bold text-pink-600 bg-pink-50 dark:bg-pink-900/30 px-2 py-0.5 rounded uppercase tracking-wider">
+                                DRH
+                            </span>
+                            <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">
+                                #{{ ticket.uid_public }}
+                            </span>
+                        </div>
+
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">
+                            {{ ticket.title|truncate(40) }}
+                        </h4>
+
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                            {{ ticket.service_demandeur }} • {{ ticket.author.fullname }}
+                        </p>
+
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}"
+                            class="flex-1 flex items-center justify-center py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 dark:hover:bg-slate-500 transition">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> Voir
+                            </a>
+
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}"
+                            class="flex-[2] flex items-center justify-center py-2 bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-300 text-xs font-bold uppercase rounded-lg hover:bg-pink-600 hover:text-white transition gap-2">
+                                <i data-lucide="calendar" class="w-3 h-3"></i>
+                                Traiter (RDV)
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+
                     <!-- POOL STANDARD & DRH -->
                     {% for ticket in pool_standard %}
                     <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-orange-200 dark:hover:border-orange-500 transition group cursor-default">
@@ -192,6 +237,7 @@
                     </div>
                     {% endfor %}
                     
+             
                     <!-- POOL NEW USERS -->
                     {% for ticket in pool_users %}
                     <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-blue-200 dark:hover:border-blue-500 transition group">
