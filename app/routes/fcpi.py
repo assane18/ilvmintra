@@ -10,8 +10,7 @@ fcpi_bp = Blueprint('fcpi', __name__)
 
 def create_sub_ticket(recruitment, target_service, title, description, custom_suffix=None):
     """
-    Crée un ticket sans commiter la transaction immédiatement.
-    Utilise db.session.flush() pour générer l'ID.
+    Crée un ticket pour un service spécifique.
     """
     # Si aucun suffixe n'est fourni, on prend les 3 premières lettres du service
     suffix = custom_suffix if custom_suffix else target_service.value[:3]
@@ -21,12 +20,12 @@ def create_sub_ticket(recruitment, target_service, title, description, custom_su
         title=f"[FCPI] {title} - {recruitment.nom_agent} {recruitment.prenom_agent}",
         description=description,
         author_id=recruitment.author_id,
-        target_service=target_service,
+        target_service=target_service, # <-- C'est ici que le service destinataire est défini
         status=TicketStatus.PENDING,
         category_ticket="Nouvel Utilisateur"
     )
     db.session.add(t)
-    db.session.flush() # <-- On flush pour avoir l'ID, mais on ne commit pas encore
+    db.session.flush() 
     return t.id
 
 @fcpi_bp.route('/fcpi/check_access')
@@ -171,7 +170,7 @@ def validate_fcpi(id, action):
 
         elif rec.status == RecruitmentStatus.WAITING_RH_DIR:
             if 'DIRECTEUR' in role or 'ADMIN' in role:
-                # VALIDATION FINALE -> DISPATCH
+                # VALIDATION FINALE -> DISPATCH AUX SERVICES
                 rec.status = RecruitmentStatus.DISPATCHED
                 child_ids = []
                 
@@ -179,7 +178,7 @@ def validate_fcpi(id, action):
                     if not filename: return "Aucun"
                     return f"/static/uploads/fcpi/{rec.uid_public}/{filename}"
 
-                # 1. DRH
+                # 1. DRH -> ServiceType.DRH
                 desc_drh = (
                     f"--- NOUVEAU RECRUTEMENT ---\n"
                     f"Agent: {rec.nom_agent} {rec.prenom_agent}\n"
@@ -191,9 +190,9 @@ def validate_fcpi(id, action):
                     f"CV: {request.host_url}{file_link(rec.file_cv)}\n"
                     f"Fiche Poste: {request.host_url}{file_link(rec.file_fiche_poste)}"
                 )
-                child_ids.append(create_sub_ticket(rec, ServiceType.DRH, "Dossier Administratif", desc_drh))
+                child_ids.append(create_sub_ticket(rec, ServiceType.DRH, "Dossier Administratif", desc_drh, custom_suffix="DRH"))
                 
-                # 2. SÉCURITÉ
+                # 2. SÉCURITÉ -> ServiceType.SECU
                 desc_secu = (
                     f"Agent: {rec.nom_agent} {rec.prenom_agent}\n"
                     f"Service: {rec.service_agent}\n"
@@ -202,9 +201,9 @@ def validate_fcpi(id, action):
                     f"Besoins Badge/Clés: {rec.commentaire_securite}\n\n"
                     f"PHOTO AGENT (Copier le lien): {request.host_url}{file_link(rec.file_photo)}"
                 )
-                child_ids.append(create_sub_ticket(rec, ServiceType.SECU, "Badge & Accès", desc_secu))
+                child_ids.append(create_sub_ticket(rec, ServiceType.SECU, "Badge & Accès", desc_secu, custom_suffix="SEC"))
                 
-                # 3. INFORMATIQUE
+                # 3. INFORMATIQUE -> ServiceType.INFO
                 desc_info = (
                     f"Agent: {rec.nom_agent} {rec.prenom_agent}\n"
                     f"Service: {rec.service_agent}\n"
@@ -212,23 +211,22 @@ def validate_fcpi(id, action):
                     f"Matériel demandé: {rec.materiels_demandes}\n"
                     f"Accès logiciels/réseaux: {rec.acces_informatique}\n"
                 )
-                child_ids.append(create_sub_ticket(rec, ServiceType.INFO, "Matériel & Accès", desc_info))
+                child_ids.append(create_sub_ticket(rec, ServiceType.INFO, "Matériel & Accès", desc_info, custom_suffix="INF"))
                 
-                # 4. IMAGO (Sécurisé avec ServiceType.INFO + Suffixe IMA)
+                # 4. IMAGO -> ServiceType.IMAGO (Directement au service Imago)
                 if rec.imago_active:
                     desc_imago = (
                         f"Création compte Imago pour {rec.nom_agent} {rec.prenom_agent}.\n"
                         f"Mobilité (Sites): {rec.imago_mobilite}"
                     )
-                    # ON UTILISE INFO PAR SÉCURITÉ POUR ÉVITER L'ERREUR DE TYPE ENUM
-                    child_ids.append(create_sub_ticket(rec, ServiceType.INFO, "Compte Imago", desc_imago, custom_suffix="IMA"))
+                    child_ids.append(create_sub_ticket(rec, ServiceType.IMAGO, "Compte Imago", desc_imago, custom_suffix="IMA"))
                 
                 rec.child_tickets_ids = json.dumps(child_ids)
                 
                 n = Notification(user=rec.author, message=f"FCPI {rec.uid_public} validée ! Les services sont informés.", category='success', link=url_for('fcpi.view_fcpi', id=rec.id))
                 db.session.add(n)
                 
-                flash("FCPI Validée ! Les tickets ont été envoyés aux services.", "success")
+                flash("FCPI Validée ! Les tickets ont été envoyés aux services dédiés.", "success")
                 
             else:
                 flash("Droit Directeur RH requis.", "danger")

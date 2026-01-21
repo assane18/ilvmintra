@@ -147,7 +147,7 @@
 
                 <div class="overflow-y-auto flex-1 p-3 space-y-3 bg-slate-50/30 dark:bg-slate-900/20 scrollbar-hide">
                     
-                    <!-- POOL IMAGO (C'est ici qu'ils doivent s'afficher) -->
+                    <!-- POOL IMAGO -->
                     {% for ticket in pool_imago %}
                     <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-indigo-200 dark:hover:border-indigo-500 transition group cursor-default">
                         <div class="flex justify-between mb-2">
@@ -157,25 +157,38 @@
                         <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">{{ ticket.title|truncate(40) }}</h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ ticket.service_demandeur }} • {{ ticket.author.fullname }}</p>
                         
-                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-indigo-500 hover:text-white transition gap-2 group-hover:shadow-md">
-                            <i data-lucide="download" class="w-3 h-3"></i> Prendre en charge
-                        </a>
+                        <div class="flex gap-2">
+                             <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="flex-1 flex items-center justify-center py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 dark:hover:bg-slate-500 transition">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> Voir
+                            </a>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex-[2] flex items-center justify-center py-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 text-xs font-bold uppercase rounded-lg hover:bg-indigo-500 hover:text-white transition gap-2">
+                                <i data-lucide="download" class="w-3 h-3"></i> Prendre
+                            </a>
+                        </div>
                     </div>
                     {% endfor %}
 
-                    <!-- POOL STANDARD -->
+                    <!-- POOL STANDARD & DRH -->
                     {% for ticket in pool_standard %}
                     <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-orange-200 dark:hover:border-orange-500 transition group cursor-default">
                         <div class="flex justify-between mb-2">
-                            <span class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded uppercase tracking-wider">Standard</span>
+                            <span class="text-[10px] font-bold text-orange-500 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded uppercase tracking-wider">
+                                {{ ticket.category_ticket or 'Standard' }}
+                            </span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
                         </div>
                         <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">{{ ticket.title|truncate(40) }}</h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ ticket.service_demandeur }} • {{ ticket.author.fullname }}</p>
                         
-                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-orange-500 hover:text-white transition gap-2 group-hover:shadow-md">
-                            <i data-lucide="download" class="w-3 h-3"></i> Prendre en charge
-                        </a>
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="flex-1 flex items-center justify-center py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 dark:hover:bg-slate-500 transition">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> Voir
+                            </a>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex-[2] flex items-center justify-center py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-orange-500 hover:text-white transition gap-2">
+                                <i data-lucide="download" class="w-3 h-3"></i> 
+                                {% if ticket.target_service.value == 'DRH' %}Traiter (RDV){% else %}Prendre en charge{% endif %}
+                            </a>
+                        </div>
                     </div>
                     {% endfor %}
                     
@@ -188,9 +201,15 @@
                         </div>
                         <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">Nouvel Utilisateur</h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ ticket.new_user_fullname }} ({{ ticket.new_user_service }})</p>
-                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-blue-600 hover:text-white transition gap-2">
-                            <i data-lucide="download" class="w-3 h-3"></i> Prendre
-                        </a>
+                        
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="flex-1 flex items-center justify-center py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 dark:hover:bg-slate-500 transition">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> Voir
+                            </a>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex-[2] flex items-center justify-center py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-blue-600 hover:text-white transition gap-2">
+                                <i data-lucide="download" class="w-3 h-3"></i> Prendre
+                            </a>
+                        </div>
                     </div>
                     {% endfor %}
 
@@ -203,9 +222,36 @@
                         </div>
                         <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">Bon de Commande</h4>
                         <p class="text-xs text-purple-600 dark:text-purple-400 mb-2 truncate">{{ ticket.daf_fournisseur_nom }}</p>
-                        <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex items-center justify-center w-full py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-purple-600 hover:text-white transition gap-2">
-                            <i data-lucide="download" class="w-3 h-3"></i> Traiter
-                        </a>
+                        
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="flex-1 flex items-center justify-center py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 dark:hover:bg-slate-500 transition">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> Voir
+                            </a>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex-[2] flex items-center justify-center py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-purple-600 hover:text-white transition gap-2">
+                                <i data-lucide="download" class="w-3 h-3"></i> Traiter
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <!-- POOL MATERIEL -->
+                    {% for ticket in pool_materiel %}
+                    <div class="bg-white dark:bg-slate-700 p-4 rounded-xl border border-slate-200 dark:border-slate-600 shadow-sm hover:shadow-md hover:border-teal-200 dark:hover:border-teal-500 transition group">
+                        <div class="flex justify-between mb-2">
+                            <span class="text-[10px] font-bold text-teal-500 bg-teal-50 dark:bg-teal-900/30 px-2 py-0.5 rounded uppercase tracking-wider">Matériel</span>
+                            <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
+                        </div>
+                        <h4 class="font-bold text-sm text-slate-800 dark:text-slate-200 leading-tight mb-1">{{ ticket.title|truncate(40) }}</h4>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">{{ ticket.author.fullname }}</p>
+                        
+                        <div class="flex gap-2">
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="flex-1 flex items-center justify-center py-2 bg-white dark:bg-slate-600 border border-slate-200 dark:border-slate-500 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-slate-50 dark:hover:bg-slate-500 transition">
+                                <i data-lucide="eye" class="w-3 h-3 mr-1"></i> Voir
+                            </a>
+                            <a href="{{ url_for('tickets.take_ticket', ticket_id=ticket.id) }}" class="flex-[2] flex items-center justify-center py-2 bg-slate-50 dark:bg-slate-600 text-slate-600 dark:text-slate-300 text-xs font-bold uppercase rounded-lg hover:bg-teal-600 hover:text-white transition gap-2">
+                                <i data-lucide="download" class="w-3 h-3"></i> Prendre
+                            </a>
+                        </div>
                     </div>
                     {% endfor %}
 

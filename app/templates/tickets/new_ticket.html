@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% block content %}
@@ -12,16 +13,20 @@
         <div class="text-center mb-8">
             <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 
                 {% if service_name == 'INFO' %}bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400
+                {% elif service_name == 'MATERIEL' %}bg-teal-50 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400
                 {% elif service_name == 'DAF' %}bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400
                 {% elif service_name == 'TECH' %}bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400
+                {% elif service_name == 'DRH' %}bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400
                 {% else %}bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400{% endif %}">
                 
                 {% if service_name == 'INFO' %}<i data-lucide="monitor" class="w-8 h-8"></i>
+                {% elif service_name == 'MATERIEL' %}<i data-lucide="cpu" class="w-8 h-8"></i>
                 {% elif service_name == 'DAF' %}<i data-lucide="banknote" class="w-8 h-8"></i>
                 {% elif service_name == 'TECH' %}<i data-lucide="wrench" class="w-8 h-8"></i>
+                {% elif service_name == 'DRH' %}<i data-lucide="heart-handshake" class="w-8 h-8"></i>
                 {% else %}<i data-lucide="file-plus" class="w-8 h-8"></i>{% endif %}
             </div>
-            <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Nouvelle Demande <span class="text-blue-600 dark:text-blue-400">{{ service.value }}</span></h1>
+            <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Nouvelle Demande <span class="text-blue-600 dark:text-blue-400">{{ service.value if service_name != 'MATERIEL' else 'MATÉRIEL' }}</span></h1>
             <p class="text-slate-500 dark:text-slate-400">Remplissez les informations ci-dessous.</p>
         </div>
 
@@ -45,7 +50,8 @@
                 {% endif %}
             {% endif %}
 
-            <!-- TYPE DE DEMANDE -->
+            <!-- TYPE DE DEMANDE (Masqué pour DRH et MATERIEL) -->
+            {% if service_name not in ['DRH', 'MATERIEL'] %}
             <div>
                 <label class="label-tiny">Type de demande</label>
                 <select name="category_ticket" id="category_ticket" onchange="toggleFormFields()" class="input-field cursor-pointer">
@@ -56,7 +62,6 @@
 
                     {% if service_name == 'INFO' %}
                     <option value="Incident Standard">Incident / Panne (Internet, PC...)</option>
-                    <!-- Options Nouvel Utilisateur et Matériel retirées -->
                     {% endif %}
                     {% if service_name == 'DAF' %}
                     <option value="Bon de Commande">Bon de Commande</option>
@@ -65,16 +70,43 @@
                     {% if service_name == 'IMAGO' %}
                     <option value="Dépannage Imago">Dépannage Imago</option>
                     {% endif %}
-
                 </select>
             </div>
+            {% endif %}
 
- <!-- CHAMPS COMMUNS (Masqués pour DAF Bon de Commande) -->
+            <!-- BLOC SPÉCIFIQUE DRH (AJOUTÉ) -->
+            {% if service_name == 'DRH' %}
+            <div class="bg-pink-50 dark:bg-pink-900/20 p-6 rounded-2xl border border-pink-100 dark:border-pink-800 space-y-4">
+                <h3 class="font-bold text-pink-800 dark:text-pink-300 mb-2 flex items-center gap-2">
+                    <i data-lucide="list" class="w-4 h-4"></i> Type de démarche RH
+                </h3>
+                <select name="titre_drh_select" id="titre_drh_select" onchange="toggleDrhAutre()" class="input-field cursor-pointer font-bold text-pink-700 dark:text-pink-200">
+                    <option value="Changement de RIB">Changement de RIB</option>
+                    <option value="Contrat">Contrat / Avenant</option>
+                    <option value="Modification d'information">Modification d'information personnelle</option>
+                    <option value="Autre">Autre...</option>
+                </select>
+                
+                <div id="drh_autre_field" class="hidden animate-fadeIn">
+                    <label class="label-tiny text-pink-600">Précisez le sujet</label>
+                    <input type="text" name="titre_drh_autre" class="input-field" placeholder="Objet de votre demande RH...">
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- CHAMPS COMMUNS (Masqués pour DAF Bon de Commande) -->
             <div id="common-fields" class="space-y-4">
+                
+                <!-- TITRE (Masqué pour DRH, Pré-rempli pour MATERIEL) -->
+                {% if service_name != 'DRH' %}
                 <div>
                     <label class="label-tiny">Titre de la demande</label>
-                    <input type="text" name="title" class="input-field" placeholder="Ex: Erreur lors de la connexion...">
+                    <input type="text" name="title" class="input-field" 
+                        {% if service_name == 'MATERIEL' %}value="Demande de Matériel" readonly{% endif %}
+                        placeholder="Ex: Erreur lors de la connexion...">
                 </div>
+                {% endif %}
+
                 <div>
                     <label class="label-tiny">Description détaillée</label>
                     <textarea name="description" rows="4" class="input-field" placeholder="Décrivez votre besoin..."></textarea>
@@ -118,7 +150,7 @@
             </div>
 
 
-            <!-- FORMULAIRE BON DE COMMANDE (DAF ONLY) -->
+            <!-- FORMULAIRE BON DE COMMANDE (DAF ONLY - VOTRE PARTIE INTACTE) -->
             {% if service_name == 'DAF' %}
             <div id="daf-fields" class="hidden space-y-6">
                 
@@ -281,9 +313,12 @@
 
 <script>
     function toggleFormFields() {
-        const category = document.getElementById('category_ticket').value;
+        // Sécurisation si l'élément n'existe pas (cas DRH/Materiel)
+        const categoryEl = document.getElementById('category_ticket');
+        if (!categoryEl) return;
+
+        const category = categoryEl.value;
         const common = document.getElementById('common-fields');
-        // Anciens champs Nouvel Utilisateur et Matériel supprimés
         const daf = document.getElementById('daf-fields');
 
         // Reset
@@ -295,9 +330,16 @@
             if(daf) daf.classList.remove('hidden');
             if(common) common.classList.add('hidden'); // On cache titre/desc pour bon de commande pur
         } 
-        // INFO Special
-        else {
-           // Plus de logique spécifique ici pour l'instant
+    }
+    
+    // Fonction DRH Autre
+    function toggleDrhAutre() {
+        const val = document.getElementById('titre_drh_select').value;
+        const field = document.getElementById('drh_autre_field');
+        if (val === 'Autre') {
+            field.classList.remove('hidden');
+        } else {
+            field.classList.add('hidden');
         }
     }
 

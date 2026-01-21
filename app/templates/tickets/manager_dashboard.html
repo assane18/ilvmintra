@@ -15,12 +15,11 @@
         </div>
     </div>
 
-    <!-- TABS (Avec Alpine.js fonctionnel) -->
+    <!-- TABS -->
     <div x-data="{ activeTab: 'n1' }" class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700 min-h-[600px]">
         
         <!-- Tab Headers -->
         <div class="flex border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-            <!-- Onglet N1 -->
             <button @click="activeTab = 'n1'" 
                 :class="{ 'border-b-2 border-blue-500 text-blue-600 bg-white dark:bg-slate-800 dark:text-blue-400': activeTab === 'n1', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n1' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
@@ -30,7 +29,6 @@
                 {% endif %}
             </button>
             
-            <!-- Onglet N2 -->
             <button @click="activeTab = 'n2'" 
                 :class="{ 'border-b-2 border-purple-500 text-purple-600 bg-white dark:bg-slate-800 dark:text-purple-400': activeTab === 'n2', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n2' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
@@ -40,7 +38,6 @@
                 {% endif %}
             </button>
 
-            <!-- Onglet FCPI (AJOUTÉ) -->
             <button @click="activeTab = 'fcpi'" 
                 :class="{ 'border-b-2 border-pink-500 text-pink-600 bg-white dark:bg-slate-800 dark:text-pink-400': activeTab === 'fcpi', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'fcpi' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
@@ -51,7 +48,7 @@
             </button>
         </div>
 
-        <!-- TAB CONTENT N1 (Mes demandes d'équipe) -->
+        <!-- TAB N1 -->
         <div x-show="activeTab === 'n1'" class="p-6 animate-fadeIn">
             {% if tickets_n1 %}
             <div class="overflow-x-auto">
@@ -62,47 +59,20 @@
                             <th class="pb-3">Demandeur</th>
                             <th class="pb-3">Sujet</th>
                             <th class="pb-3">Cible</th>
-                            <th class="pb-3">Date</th>
                             <th class="pb-3 text-right pr-2">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
                         {% for t in tickets_n1 %}
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition group">
+                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
                             <td class="py-4 pl-2 font-mono text-xs text-slate-500">{{ t.uid_public }}</td>
-                            <td class="py-4">
-                                <div class="flex items-center">
-                                    <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs mr-3">
-                                        {{ t.author.fullname[:2].upper() }}
-                                    </div>
-                                    <div>
-                                        <div class="font-bold text-slate-700 dark:text-slate-200 text-sm">{{ t.author.fullname }}</div>
-                                        <div class="text-xs text-slate-400">{{ t.service_demandeur }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td class="py-4">
-                                <span class="block font-medium text-slate-800 dark:text-slate-300">{{ t.title }}</span>
-                                <span class="text-xs text-slate-400 truncate max-w-[200px] block">{{ t.description[:50] }}...</span>
-                            </td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-bold text-slate-600 dark:text-slate-300">
-                                    {{ t.target_service.value }}
-                                </span>
-                            </td>
-                            <td class="py-4 text-xs text-slate-400">{{ t.created_at.strftime('%d/%m %H:%M') }}</td>
-                            <td class="py-4 text-right pr-2">
-                                <div class="flex justify-end gap-2">
-                                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="p-2 text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg shadow-sm hover:shadow transition">
-                                        <i data-lucide="eye" class="w-4 h-4"></i>
-                                    </a>
-                                    <a href="{{ url_for('tickets.manager_action', ticket_id=t.id, action='validate') }}" class="px-3 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold shadow-md shadow-emerald-500/20 transition flex items-center">
-                                        <i data-lucide="check" class="w-3 h-3 mr-1"></i> Valider
-                                    </a>
-                                    <a href="{{ url_for('tickets.manager_action', ticket_id=t.id, action='refuse') }}" onclick="return confirm('Refuser cette demande ?')" class="px-3 py-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold transition">
-                                        Refuser
-                                    </a>
-                                </div>
+                            <td class="py-4 font-bold text-sm">{{ t.author.fullname }}</td>
+                            <td class="py-4">{{ t.title }}</td>
+                            <td class="py-4"><span class="px-2 py-1 bg-slate-100 dark:bg-slate-700 rounded text-xs font-bold">{{ t.target_service.value }}</span></td>
+                            <td class="py-4 text-right pr-2 flex justify-end gap-2">
+                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="p-2 text-slate-400 hover:text-blue-500 border rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></a>
+                                <a href="{{ url_for('tickets.manager_action', ticket_id=t.id, action='validate') }}" class="px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center hover:bg-emerald-600"><i data-lucide="check" class="w-3 h-3 mr-1"></i> Valider</a>
+                                <button onclick="openRefusalModal('{{ t.id }}', '{{ t.uid_public }}')" class="px-3 py-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold">Refuser</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -110,14 +80,11 @@
                 </table>
             </div>
             {% else %}
-            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
-                <i data-lucide="check-circle" class="w-16 h-16 mb-4 opacity-20"></i>
-                <p>Aucune demande en attente de votre validation N1.</p>
-            </div>
+            <p class="text-center py-20 text-slate-400">Aucune demande.</p>
             {% endif %}
         </div>
 
-        <!-- TAB CONTENT N2 (Mes validations techniques) -->
+        <!-- TAB N2 -->
         <div x-show="activeTab === 'n2'" class="p-6 animate-fadeIn" style="display: none;">
             {% if tickets_n2 %}
             <div class="overflow-x-auto">
@@ -127,7 +94,7 @@
                             <th class="pb-3 pl-2">Réf</th>
                             <th class="pb-3">Type</th>
                             <th class="pb-3">Demandeur</th>
-                            <th class="pb-3">Statut Actuel</th>
+                            <th class="pb-3">Statut</th>
                             <th class="pb-3 text-right pr-2">Actions</th>
                         </tr>
                     </thead>
@@ -137,31 +104,20 @@
                             <td class="py-4 pl-2 font-mono text-xs text-slate-500">{{ t.uid_public }}</td>
                             <td class="py-4">
                                 <span class="font-bold text-sm block">{{ t.title }}</span>
-                                {% if t.target_service.value == 'DAF' and t.category_ticket == 'Bon de Commande' %}
+                                {% if t.category_ticket == 'Demande Matériel' %}
+                                <span class="text-xs text-teal-500 font-bold bg-teal-50 px-1 rounded">Matériel</span>
+                                {% elif t.category_ticket == 'Bon de Commande' %}
                                 <span class="text-xs text-purple-500 font-bold bg-purple-50 px-1 rounded">Bon de Commande</span>
                                 {% endif %}
                             </td>
-                            <td class="py-4 text-sm text-slate-600 dark:text-slate-300">
-                                {{ t.author.fullname }} <br>
-                                <span class="text-xs text-slate-400">{{ t.service_demandeur }}</span>
-                            </td>
+                            <td class="py-4 text-sm">{{ t.author.fullname }}</td>
                             <td class="py-4">
-                                {% if t.status.value == 'SIGNATURE_DIRECTEUR' %}
-                                <span class="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-bold border border-purple-200">
-                                    <i data-lucide="pen-tool" class="w-3 h-3 inline"></i> Signature Requise
-                                </span>
-                                {% else %}
-                                <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold border border-orange-200">
-                                    Validation Requise
-                                </span>
-                                {% endif %}
+                                <span class="px-2 py-1 bg-orange-100 text-orange-700 rounded text-xs font-bold border border-orange-200">Validation Requise</span>
                             </td>
-                            <td class="py-4 text-right pr-2">
-                                <div class="flex justify-end gap-2">
-                                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-md text-xs font-bold transition flex items-center">
-                                        <i data-lucide="search" class="w-3 h-3 mr-2"></i> Examiner
-                                    </a>
-                                </div>
+                            <td class="py-4 text-right pr-2 flex justify-end gap-2">
+                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="p-2 text-slate-400 hover:text-blue-500 border rounded-lg"><i data-lucide="eye" class="w-4 h-4"></i></a>
+                                <a href="{{ url_for('tickets.manager_action', ticket_id=t.id, action='validate') }}" class="px-3 py-2 bg-emerald-500 text-white rounded-lg text-xs font-bold flex items-center hover:bg-emerald-600"><i data-lucide="check" class="w-3 h-3 mr-1"></i> Valider</a>
+                                <button onclick="openRefusalModal('{{ t.id }}', '{{ t.uid_public }}')" class="px-3 py-2 bg-white border border-red-200 text-red-500 hover:bg-red-50 rounded-lg text-xs font-bold">Refuser</button>
                             </td>
                         </tr>
                         {% endfor %}
@@ -169,47 +125,29 @@
                 </table>
             </div>
             {% else %}
-            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
-                <i data-lucide="check-circle" class="w-16 h-16 mb-4 opacity-20"></i>
-                <p>Aucune validation technique en attente.</p>
-            </div>
+            <p class="text-center py-20 text-slate-400">Aucune validation technique.</p>
             {% endif %}
         </div>
-
-        <!-- TAB CONTENT FCPI (LE VOICI !) -->
+        
+        <!-- TAB FCPI (Inchangé) -->
         <div x-show="activeTab === 'fcpi'" class="p-6 animate-fadeIn" style="display: none;">
-            {% if fcpi_requests %}
+             {% if fcpi_requests %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="text-xs font-bold text-slate-500 uppercase border-b border-slate-200 dark:border-slate-700">
                             <th class="pb-3 pl-2">Réf</th>
-                            <th class="pb-3">Candidat / Agent</th>
-                            <th class="pb-3">Date Entrée</th>
-                            <th class="pb-3">Statut</th>
+                            <th class="pb-3">Candidat</th>
                             <th class="pb-3 text-right pr-2">Actions</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                    <tbody>
                         {% for r in fcpi_requests %}
-                        <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                        <tr>
                             <td class="py-4 pl-2 font-mono text-xs text-pink-500 font-bold">{{ r.uid_public }}</td>
-                            <td class="py-4">
-                                <span class="block font-bold text-slate-800 dark:text-white">{{ r.nom_agent }} {{ r.prenom_agent }}</span>
-                                <span class="text-xs text-slate-400">{{ r.service_agent }} - {{ r.fonction }}</span>
-                            </td>
-                            <td class="py-4 text-sm font-bold text-slate-700 dark:text-slate-300">
-                                {{ r.date_entree.strftime('%d/%m/%Y') }}
-                            </td>
-                            <td class="py-4">
-                                <span class="px-2 py-1 bg-pink-100 text-pink-700 rounded text-xs font-bold border border-pink-200">
-                                    {{ r.status.value }}
-                                </span>
-                            </td>
+                            <td class="py-4 font-bold">{{ r.nom_agent }}</td>
                             <td class="py-4 text-right pr-2">
-                                <a href="{{ url_for('fcpi.view_fcpi', id=r.id) }}" class="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg shadow-md text-xs font-bold transition inline-flex items-center">
-                                    <i data-lucide="search" class="w-3 h-3 mr-2"></i> Examiner
-                                </a>
+                                <a href="{{ url_for('fcpi.view_fcpi', id=r.id) }}" class="px-4 py-2 bg-pink-600 hover:bg-pink-700 text-white rounded-lg text-xs font-bold">Examiner</a>
                             </td>
                         </tr>
                         {% endfor %}
@@ -217,13 +155,38 @@
                 </table>
             </div>
             {% else %}
-            <div class="flex flex-col items-center justify-center py-20 text-slate-400">
-                <i data-lucide="user-plus" class="w-16 h-16 mb-4 opacity-20"></i>
-                <p>Aucune demande de recrutement en attente.</p>
-            </div>
+            <p class="text-center py-20 text-slate-400">Aucun recrutement.</p>
             {% endif %}
         </div>
 
     </div>
 </div>
+
+<!-- MODALE DE REFUS -->
+<div id="refusalModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+        <h3 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">Refuser le ticket <span id="refusalRef" class="text-red-500"></span></h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Merci d'indiquer le motif du refus. Il sera notifié au demandeur.</p>
+        
+        <form id="refusalForm" method="POST">
+            <textarea name="refusal_reason" class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 mb-4" rows="3" placeholder="Motif du refus..." required></textarea>
+            
+            <div class="flex gap-3">
+                <button type="button" onclick="document.getElementById('refusalModal').classList.add('hidden')" class="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-bold rounded-xl text-xs uppercase">Annuler</button>
+                <button type="submit" class="flex-1 py-3 bg-red-600 text-white font-bold rounded-xl text-xs uppercase hover:bg-red-700">Confirmer Refus</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openRefusalModal(id, uid) {
+        document.getElementById('refusalRef').innerText = uid;
+        const form = document.getElementById('refusalForm');
+        // Génère l'URL correcte : manager/action/ID/refuse
+        form.action = "{{ url_for('tickets.manager_dashboard') }}".replace('manager/dashboard', 'manager/action/' + id + '/refuse');
+        document.getElementById('refusalModal').classList.remove('hidden');
+    }
+    lucide.createIcons();
+</script>
 {% endblock %}

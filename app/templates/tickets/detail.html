@@ -49,33 +49,34 @@
                     </div>
                 </div>
 
+                <!-- INFO RDV (Visible si existe) -->
+                {% if ticket.rdv_date %}
+                <div class="mb-6 bg-pink-50 dark:bg-pink-900/20 p-4 rounded-xl border border-pink-100 dark:border-pink-800 flex items-center gap-4">
+                    <div class="p-3 bg-white dark:bg-slate-800 rounded-lg text-pink-500 shadow-sm"><i data-lucide="calendar" class="w-6 h-6"></i></div>
+                    <div>
+                        <p class="text-xs font-bold text-pink-400 uppercase tracking-wide">Rendez-vous proposé</p>
+                        <p class="text-lg font-black text-pink-700 dark:text-pink-300">{{ ticket.rdv_date.strftime('%d/%m/%Y à %H:%M') }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
                 <div class="prose dark:prose-invert max-w-none text-slate-600 dark:text-slate-300 text-sm leading-relaxed mb-8">
                     {{ ticket.description }}
                 </div>
 
-                <div class="grid grid-cols-2 gap-6 border-t border-slate-100 dark:border-slate-800 pt-6">
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Demandeur</p>
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                {{ ticket.author.fullname[:1] }}
-                            </div>
-                            <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.author.fullname }}</p>
+                <!-- FORMULAIRE RDV (Solver RH Only) -->
+                {% if ticket.target_service.value == 'DRH' and 'SOLVER' in current_user.role|string and ticket.status.value != 'TERMINE' %}
+                <div class="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
+                    <form action="{{ url_for('tickets.set_rdv', ticket_id=ticket.id) }}" method="POST" class="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 block">Proposer un Rendez-vous</label>
+                        <div class="flex gap-2">
+                            <input type="datetime-local" name="rdv_date" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-700 dark:text-white focus:outline-none focus:border-blue-500 w-full">
+                            <button type="submit" class="bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-lg font-bold text-xs uppercase shadow-lg transition">Valider</button>
                         </div>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Service Origine</p>
-                        <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.service_demandeur }}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Poste / Bureau</p>
-                        <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.hostname or 'Non renseigné' }}</p>
-                    </div>
-                    <div>
-                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Téléphone</p>
-                        <p class="font-bold text-slate-800 dark:text-white text-sm">{{ ticket.tel_demandeur or 'Non renseigné' }}</p>
-                    </div>
+                    </form>
                 </div>
+                {% endif %}
+
             </div>
 
             <!-- --- AJOUT : ZONE PHOTOS / PIÈCES JOINTES --- -->
@@ -87,34 +88,15 @@
                 
                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
                     {% for file in attached_files %}
-                        {% set file_ext = file.split('.')[-1].lower() %}
-                        {% set is_image = file_ext in ['png', 'jpg', 'jpeg', 'gif', 'webp'] %}
-                        
                         <a href="{{ url_for('static', filename='uploads/tickets/' + ticket.uid_public + '/' + file) }}" target="_blank" 
-                           class="group relative block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition bg-slate-50 dark:bg-slate-950">
-                            
-                            {% if is_image %}
-                                <div class="aspect-video w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
-                                    <img src="{{ url_for('static', filename='uploads/tickets/' + ticket.uid_public + '/' + file) }}" 
-                                         class="w-full h-full object-cover group-hover:scale-105 transition duration-500" alt="Fichier">
-                                </div>
-                                <div class="p-2 bg-white dark:bg-slate-900/90 absolute bottom-0 left-0 right-0 backdrop-blur-sm border-t border-slate-100 dark:border-slate-700">
-                                    <p class="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{{ file }}</p>
-                                </div>
-                            {% else %}
-                                <div class="aspect-video w-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50">
-                                    <i data-lucide="file-text" class="w-10 h-10 text-slate-400 group-hover:text-blue-500 transition"></i>
-                                </div>
-                                <div class="p-2 border-t border-slate-200 dark:border-slate-700">
-                                    <p class="text-[10px] font-bold text-slate-700 dark:text-slate-300 truncate">{{ file }}</p>
-                                </div>
-                            {% endif %}
+                           class="group relative block overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-500 transition bg-slate-50 dark:bg-slate-950 p-4 flex items-center justify-center">
+                           <i data-lucide="file" class="w-8 h-8 text-slate-400 group-hover:text-blue-500"></i>
+                           <p class="absolute bottom-1 text-[8px] text-slate-500 truncate w-full text-center px-1">{{ file }}</p>
                         </a>
                     {% endfor %}
                 </div>
             </div>
             {% endif %}
-            <!-- --- FIN ZONE PHOTOS --- -->
 
         </div>
 

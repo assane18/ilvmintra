@@ -123,6 +123,10 @@ class Ticket(db.Model):
     service_demandeur = db.Column(db.String(100), nullable=True)
     tel_demandeur = db.Column(db.String(20), nullable=True)
     lieu_installation = db.Column(db.String(100), nullable=True)
+    
+    # NOUVEAU CHAMP DRH
+    rdv_date = db.Column(db.DateTime, nullable=True)
+    
     new_user_fullname = db.Column(db.String(150), nullable=True)
     new_user_service = db.Column(db.String(100), nullable=True)
     new_user_acces = db.Column(db.String(255), nullable=True)
@@ -219,16 +223,13 @@ class Recruitment(db.Model):
         try: return json.loads(self.child_tickets_ids)
         except: return []
 
-    # --- AJOUTS POUR LE SUIVI ---
     def get_child_tickets_objects(self):
-        """Retourne la liste des objets Ticket réels pour affichage statut"""
         ids = self.get_child_tickets()
         if not ids: return []
         return Ticket.query.filter(Ticket.id.in_(ids)).all()
 
     @property
     def is_fully_completed(self):
-        """Vérifie si tous les sous-tickets sont terminés"""
         tickets = self.get_child_tickets_objects()
         if not tickets: return False
         return all(t.status == TicketStatus.DONE for t in tickets)

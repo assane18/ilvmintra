@@ -55,8 +55,20 @@ def check_permission(required_roles):
 @login_required
 @nocache
 def new_ticket(service_name):
+    
+    # 1. Gestion des alias pour les cartes spéciales
+    target_enum_name = service_name
+    
+    # Alias MATERIEL -> C'est du service INFORMATIQUE
+    if service_name == 'MATERIEL':
+        # VERIFICATION DROITS : MANAGER ou DIRECTEUR ou ADMIN seulement
+        role = safe_role_str(current_user)
+        if not ('MANAGER' in role or 'DIRECTEUR' in role or 'ADMIN' in role):
+             return render_template('errors/catdance.html'), 403
+        target_enum_name = 'INFO'
+
     try:
-        service_enum = ServiceType[service_name.upper()]
+        service_enum = ServiceType[target_enum_name.upper()]
     except KeyError:
         return redirect(url_for('main.user_portal'))
 
@@ -64,17 +76,34 @@ def new_ticket(service_name):
 
     if request.method == 'POST':
         category = request.form.get('category_ticket', 'Standard')
+        
+        # Surcharge Catégorie & Titre pour DRH
+        if service_name == 'DRH':
+            cat_drh = request.form.get('titre_drh_select')
+            if cat_drh == 'Autre':
+                title = f"[DRH] {request.form.get('titre_drh_autre')}"
+                category = "Demande RH"
+            else:
+                title = f"[DRH] {cat_drh}"
+                category = cat_drh
+        
+        # Surcharge pour MATERIEL
+        elif service_name == 'MATERIEL':
+            title = request.form.get('title')
+            category = "Demande Matériel"
+        else:
+            title = request.form.get('title')
+
         selected_origin = request.form.get('selected_origin')
         if not selected_origin:
             selected_origin = user_origins[0] if user_origins else "INCONNU"
             
         hostname_saisi = request.form.get('hostname')
         final_hostname = hostname_saisi if hostname_saisi else get_hostname_from_ip(request.remote_addr)
-
-        title = request.form.get('title')
+        
         description = request.form.get('description')
         
-        # Cas particuliers de titre/catégorie
+        # Cas particuliers DAF / IMAGO existants
         if service_name == 'DAF' and category == 'Bon de Commande':
              fournisseur = request.form.get('daf_fournisseur_nom', 'Inconnu')
              title = f"Bon de Commande - {fournisseur}"
@@ -86,12 +115,21 @@ def new_ticket(service_name):
         role = current_user.role
         
         # --- LOGIQUE DE WORKFLOW ---
-        
+        status = TicketStatus.VALIDATION_N1 # Default
+
         # 1. Workflow Simplifié INFORMATIQUE et IMAGO
         if (service_enum == ServiceType.INFO and category in ["Standard", "Incident Standard"]) or (service_enum == ServiceType.IMAGO):
             status = TicketStatus.PENDING
-            
-        # 2. Workflow Standard
+        
+        # 2. Workflow DRH (Direct Solver)
+        elif service_name == 'DRH':
+            status = TicketStatus.PENDING
+
+        # 3. Workflow MATERIEL (Validation N2 Directe - Manager Info ou Directeur Info)
+        elif service_name == 'MATERIEL':
+            status = TicketStatus.VALIDATION_N2 
+
+        # 4. Workflow Standard
         else:
             if role == UserRole.USER: status = TicketStatus.VALIDATION_N1
             elif role == UserRole.MANAGER: status = TicketStatus.VALIDATION_N1
@@ -117,27 +155,25 @@ def new_ticket(service_name):
                     'total': request.form.get(f'daf_total_{i}')
                 })
         
-        # --- GESTION DES FICHIERS (COMMUN + DAF) ---
-        daf_files = [] # Cette liste contiendra toutes les pièces jointes (Screenshots + Devis)
+        daf_files = []
         daf_rib_filename = None
         
         if request.files:
             upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
             
-            # 1. Capture d'écran / Photo (Pour TOUS les tickets)
+            # Screenshot
             screenshot_file = request.files.get('screenshot')
             if screenshot_file and screenshot_file.filename != '':
                 try:
                     os.makedirs(upload_path, exist_ok=True)
                     s_filename = secure_filename(f"CAPTURE_{screenshot_file.filename}")
                     screenshot_file.save(os.path.join(upload_path, s_filename))
-                    daf_files.append(s_filename) # On ajoute à la liste commune
+                    daf_files.append(s_filename)
                 except Exception as e:
                     print(f"Erreur upload screenshot: {e}")
 
-            # 2. Devis DAF (Uniquement si service DAF)
             if service_name == 'DAF':
-                os.makedirs(upload_path, exist_ok=True) # Ensure path exists
+                os.makedirs(upload_path, exist_ok=True)
                 for i in range(1, 5):
                     file = request.files.get(f'devis_{i}')
                     if file and file.filename != '':
@@ -180,13 +216,9 @@ def new_ticket(service_name):
             daf_fournisseur_tel_comment=request.form.get('daf_fournisseur_tel'),
             daf_rib_file=daf_rib_filename,
             daf_lignes_json=json.dumps(daf_lignes),
-            daf_files_json=json.dumps(daf_files) # Sauvegarde de la liste des fichiers
+            daf_files_json=json.dumps(daf_files)
         )
         
-        if request.form.get('new_user_date'):
-            try: t.new_user_date = datetime.strptime(request.form.get('new_user_date'), '%Y-%m-%d')
-            except: pass
-
         try:
             db.session.add(t)
             db.session.commit()
@@ -195,18 +227,43 @@ def new_ticket(service_name):
             flash(f"Erreur DB: {e}", "danger")
             return redirect(url_for('main.user_portal'))
 
-        # NOTIFICATIONS AUTOMATIQUES
+        # NOTIFICATIONS CIBLÉES
         if status == TicketStatus.VALIDATION_N1:
             managers = User.query.filter(User.role.in_([UserRole.MANAGER, UserRole.DIRECTEUR])).all()
             for mgr in managers:
                 if selected_origin in mgr.get_origin_services():
                     create_notification(mgr, f"Validation requise : {uid}", 'warning', url_for('tickets.manager_dashboard'))
                     
+        elif status == TicketStatus.VALIDATION_N2 and service_name == 'MATERIEL':
+             targets = User.query.filter(User.role.in_([UserRole.MANAGER, UserRole.DIRECTEUR])).all()
+             for u in targets:
+                 if 'INFORMATIQUE' in u.get_allowed_services() or 'INFO' in u.get_allowed_services():
+                     create_notification(u, f"Demande Matériel à valider : {uid}", 'warning', url_for('tickets.manager_dashboard'))
+
         elif status == TicketStatus.PENDING:
             solvers = User.query.filter(User.role.in_([UserRole.SOLVER, UserRole.ADMIN])).all()
             for s in solvers:
-                 if s.role == UserRole.ADMIN or 'SOLVER' in str(s.role):
-                    create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
+                 # FILTRAGE INTELLIGENT DES NOTIFICATIONS
+                 # 1. Admin reçoit tout
+                 if s.role == UserRole.ADMIN:
+                     create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
+                     continue
+                 
+                 # 2. Solver reçoit seulement si le service cible est dans ses allowed_services
+                 allowed = s.get_allowed_services()
+                 
+                 # Cas spécial Imago
+                 if service_enum == ServiceType.IMAGO:
+                     if 'IMAGO' in allowed or 'GS-IMAGO' in allowed:
+                         create_notification(s, f"Urgence Imago : {uid}", 'warning', url_for('tickets.solver_dashboard'))
+                 
+                 # Cas Standard
+                 else:
+                     # On vérifie si le service cible du ticket correspond à un droit du solver
+                     # On compare les strings pour éviter les soucis d'Enum/String
+                     target_str = str(service_enum.value) if hasattr(service_enum, 'value') else str(service_enum)
+                     if target_str in allowed or service_enum.name in allowed:
+                         create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
 
         flash(f'Demande {uid} enregistrée.', 'success')
         return redirect(url_for('main.user_portal'))
@@ -240,14 +297,10 @@ def view_ticket(ticket_uid):
             db.session.commit()
             return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
         
-        # --- C'EST ICI LA CLÉ DU PROBLÈME ---
-        # On récupère la liste des fichiers JSON pour l'envoyer au template
         attached_files = []
         if ticket.daf_files_json:
-            try:
-                attached_files = json.loads(ticket.daf_files_json)
-            except:
-                pass
+            try: attached_files = json.loads(ticket.daf_files_json)
+            except: pass
             
         return render_template('tickets/detail.html', ticket=ticket, attached_files=attached_files)
 
@@ -256,19 +309,55 @@ def view_ticket(ticket_uid):
         flash(f"Erreur d'affichage : {str(e)}", "danger")
         return redirect(url_for('main.user_portal'))
 
+@tickets_bp.route('/solver/set_rdv/<int:ticket_id>', methods=['POST'])
+@login_required
+def set_rdv(ticket_id):
+    t = Ticket.query.get_or_404(ticket_id)
+    
+    # Vérif Droits: Doit être Solver RH ou Admin
+    role = safe_role_str(current_user)
+    is_rh = 'DRH' in current_user.get_allowed_services()
+    if not (('SOLVER' in role and is_rh) or 'ADMIN' in role):
+         flash("Action réservée aux Solvers RH.", "danger")
+         return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+         
+    date_str = request.form.get('rdv_date')
+    if date_str:
+        try:
+            t.rdv_date = datetime.strptime(date_str, '%Y-%m-%dT%H:%M')
+            msg = TicketMessage(content=f"RDV proposé le : {t.rdv_date.strftime('%d/%m/%Y à %H:%M')}", ticket=t, author=current_user)
+            db.session.add(msg)
+            db.session.commit()
+            flash("RDV fixé avec succès.", "success")
+        except Exception as e:
+            flash(f"Erreur format date: {e}", "danger")
+            
+    return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+
 @tickets_bp.route('/manager/dashboard')
 @login_required
 @nocache
 def manager_dashboard():
     try:
-        # Vérif Droits
         role_str = safe_role_str(current_user)
         if not ('MANAGER' in role_str or 'DIRECTEUR' in role_str or 'ADMIN' in role_str):
             if 'SOLVER' in role_str: return redirect(url_for('tickets.solver_dashboard'))
             return render_template('errors/catdance.html'), 403
         
         my_origins = current_user.get_origin_services() 
-        my_targets = current_user.get_allowed_services()
+        raw_targets = current_user.get_allowed_services()
+        
+        # --- FIX: Nettoyage des services pour éviter l'erreur Enum ---
+        valid_service_names = [s.name for s in ServiceType] 
+        valid_service_values = [s.value for s in ServiceType]
+        
+        my_targets = []
+        if raw_targets:
+            for t in raw_targets:
+                if t == 'GS-DRH': my_targets.append('DRH') 
+                elif t in valid_service_names: my_targets.append(t)
+                elif t in valid_service_values: my_targets.append(t)
         
         tickets_n1 = []
         if my_origins: 
@@ -282,29 +371,32 @@ def manager_dashboard():
         if my_targets:
             try:
                 base_query = Ticket.query.filter(Ticket.target_service.in_(my_targets))
-                if 'DAF' in my_targets:
-                    if 'DIRECTEUR' in role_str:
-                        candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE])).all()
-                    else:
-                        candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
-                else:
-                    candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
+                candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
                 tickets_n2 = candidates
-            except Exception:
+                
+                if 'DAF' in my_targets and 'DIRECTEUR' in role_str:
+                    daf_signs = base_query.filter(Ticket.status == TicketStatus.DAF_SIGNATURE).all()
+                    tickets_n2.extend(daf_signs)
+            except Exception as e:
+                db.session.rollback()
+                print(f"Erreur recup Tickets N2: {e}")
                 tickets_n2 = []
 
         fcpi_requests = []
-        role = str(current_user.role.value).upper()
         user_services = current_user.get_allowed_services()
-        is_rh_team = 'DRH' in user_services or 'RH' in user_services or 'ADMIN' in role
+        is_rh_team = 'DRH' in user_services or 'GS-DRH' in user_services or 'RH' in user_services or 'ADMIN' in role_str
 
         if is_rh_team:
-            if 'MANAGER' in role or 'ADMIN' in role:
-                mgr_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_MGR).all()
-                fcpi_requests.extend(mgr_fcpi)
-            if 'DIRECTEUR' in role or 'ADMIN' in role:
-                dir_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_DIR).all()
-                fcpi_requests.extend(dir_fcpi)
+            try:
+                if 'MANAGER' in role_str or 'ADMIN' in role_str:
+                    mgr_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_MGR).all()
+                    fcpi_requests.extend(mgr_fcpi)
+                if 'DIRECTEUR' in role_str or 'ADMIN' in role_str:
+                    dir_fcpi = Recruitment.query.filter_by(status=RecruitmentStatus.WAITING_RH_DIR).all()
+                    fcpi_requests.extend(dir_fcpi)
+            except Exception as e:
+                db.session.rollback()
+                print(f"Erreur FCPI: {e}")
         
         fcpi_requests = list({r.id: r for r in fcpi_requests}.values())
         fcpi_requests.sort(key=lambda x: x.created_at, reverse=True)
@@ -315,8 +407,47 @@ def manager_dashboard():
                             fcpi_requests=fcpi_requests)
 
     except Exception as e:
+        db.session.rollback()
         flash(f"Erreur Dashboard: {e}", "danger")
         return redirect(url_for('main.user_portal'))
+
+@tickets_bp.route('/manager/action/<int:ticket_id>/<action>', methods=['GET', 'POST'])
+@login_required
+def manager_action(ticket_id, action):
+    try:
+        t = Ticket.query.get_or_404(ticket_id)
+        
+        # VALIDATION
+        if action == 'validate':
+            if t.status == TicketStatus.VALIDATION_N1:
+                if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
+                else: t.status = TicketStatus.VALIDATION_N2
+            elif t.status == TicketStatus.VALIDATION_N2:
+                if t.target_service == ServiceType.DAF: t.status = TicketStatus.DAF_SIGNATURE
+                else: t.status = TicketStatus.PENDING
+            elif t.category_ticket == 'Demande Matériel' and t.status == TicketStatus.VALIDATION_N2:
+                t.status = TicketStatus.PENDING
+
+        # REFUS AVEC COMMENTAIRE
+        elif action == 'refuse':
+            reason = "Refusé."
+            if request.method == 'POST':
+                reason = request.form.get('refusal_reason', 'Refusé sans motif.')
+            
+            msg = TicketMessage(content=f"Ticket REFUSÉ par {current_user.fullname}.\nMotif : {reason}", ticket=t, author=current_user)
+            db.session.add(msg)
+            create_notification(t.author, f"Votre ticket {t.uid_public} a été refusé.", 'danger', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+            if t.target_service == ServiceType.DAF and t.status in [TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE]:
+                t.status = TicketStatus.IN_PROGRESS
+            else:
+                t.status = TicketStatus.REFUSED
+
+        db.session.commit()
+        return redirect(url_for('tickets.manager_dashboard'))
+    except Exception as e:
+        flash(f"Erreur action: {e}", "danger")
+        return redirect(url_for('tickets.manager_dashboard'))
 
 @tickets_bp.route('/solver/take/<int:ticket_id>')
 @login_required
@@ -391,29 +522,6 @@ def close_ticket(ticket_id):
     except Exception as e:
         flash(f"Erreur fermeture: {e}", "danger")
         return redirect(url_for('main.user_portal'))
-
-@tickets_bp.route('/manager/action/<int:ticket_id>/<action>')
-@login_required
-def manager_action(ticket_id, action):
-    try:
-        t = Ticket.query.get_or_404(ticket_id)
-        if action == 'validate':
-            if t.status == TicketStatus.VALIDATION_N1:
-                if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
-                else: t.status = TicketStatus.VALIDATION_N2
-            elif t.status == TicketStatus.VALIDATION_N2:
-                if t.target_service == ServiceType.DAF: t.status = TicketStatus.DAF_SIGNATURE
-                else: t.status = TicketStatus.PENDING
-        elif action == 'refuse':
-            if t.target_service == ServiceType.DAF and t.status in [TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE]:
-                t.status = TicketStatus.IN_PROGRESS
-            else:
-                t.status = TicketStatus.REFUSED
-        db.session.commit()
-        return redirect(url_for('tickets.manager_dashboard'))
-    except Exception as e:
-        flash(f"Erreur action: {e}", "danger")
-        return redirect(url_for('tickets.manager_dashboard'))
         
 @tickets_bp.route('/solver/dashboard')
 @login_required
@@ -426,10 +534,8 @@ def solver_dashboard():
         my_targets = current_user.get_allowed_services() 
         user_role = safe_role_str(current_user)
         
-        # --- FIX 1 : Forcer l'ajout de IMAGO dans la liste des cibles si rôle présent ---
         if 'IMAGO' in user_role or 'GS-IMAGO' in user_role:
              if my_targets is None: my_targets = []
-             # On vérifie si IMAGO est déjà dedans en tant qu'Enum
              if ServiceType.IMAGO not in my_targets:
                  my_targets.append(ServiceType.IMAGO)
         
@@ -439,17 +545,19 @@ def solver_dashboard():
 
         query = Ticket.query.filter(Ticket.status != TicketStatus.DONE)
         
-        # --- FIX 2 : Comparaison Robuste (Enum vs String) lors du filtrage global ---
         if 'ADMIN' not in user_role and my_targets:
             tickets_all = query.all()
             tickets_pool = []
             for t in tickets_all:
-                # On vérifie si le service cible du ticket est dans mes cibles autorisées
-                # On compare t.target_service (Enum ou String) avec les éléments de my_targets (Enum)
                 is_allowed = False
                 for target in my_targets:
-                    # Comparaison directe ou conversion en string pour être sûr
-                    if t.target_service == target or str(t.target_service) == str(target):
+                    # FIX: Comparaison robuste
+                    target_str = str(t.target_service)
+                    # Check si c'est un enum ou string
+                    if hasattr(t.target_service, 'value'):
+                        target_str = t.target_service.value
+                    
+                    if target in my_targets or target_str in my_targets:
                         is_allowed = True
                         break
                 if is_allowed:
@@ -459,24 +567,18 @@ def solver_dashboard():
 
         pending_tickets = [t for t in tickets_pool if t.solver_id is None and (t.status == TicketStatus.PENDING or str(t.status.value) in ['En attente traitement', 'En attente de prise en charge'])]
         
-        # CREATION DES POOLS DE TICKETS
+        # Pools
+        pool_imago = [t for t in pending_tickets if str(t.target_service) == 'IMAGO' or t.target_service == ServiceType.IMAGO]
         
-        # FIX 3 : Filtrer le pool IMAGO de manière très permissive (string ou enum)
-        pool_imago = [
-            t for t in pending_tickets 
-            if str(t.target_service) == 'IMAGO' or t.target_service == ServiceType.IMAGO
-        ]
-
-        # On exclut Imago du standard
+        # Le reste
         pool_standard = [
             t for t in pending_tickets 
-            if (not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard']) 
+            if (not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard', 'Demande RH']) 
             and str(t.target_service) != 'IMAGO' and t.target_service != ServiceType.IMAGO
         ]
         
-        
         pool_users = [t for t in pending_tickets if t.category_ticket == 'Nouvel Utilisateur']
-        pool_materiel = [t for t in pending_tickets if t.category_ticket == 'Matériel']
+        pool_materiel = [t for t in pending_tickets if t.category_ticket == 'Matériel' or t.category_ticket == 'Demande Matériel']
         pool_bons = [t for t in pending_tickets if t.category_ticket == 'Bon de Commande']
         
         mine = Ticket.query.filter_by(solver_id=current_user.id, status=TicketStatus.IN_PROGRESS).all()
@@ -510,7 +612,7 @@ def solver_dashboard():
                                services=ServiceType)
     except Exception as e:
         return render_template('base.html', content=f"<h1>Erreur 500 Dashboard</h1><p>{e}</p>")
-        
+
 @tickets_bp.route('/historique', methods=['GET', 'POST'])
 @login_required
 @nocache
