@@ -10,7 +10,6 @@ import pandas as pd
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from functools import wraps
-from app.emails import send_email 
 
 tickets_bp = Blueprint('tickets', __name__)
 
@@ -29,7 +28,7 @@ def create_notification(user, message, category='info', link=None):
         try:
             n = Notification(user=user, message=message, category=category, link=link)
             db.session.add(n)
-            db.session.commit()
+            # Pas de commit ici pour laisser la transaction principale gérer
         except: pass
 
 def get_hostname_from_ip(ip_address):
@@ -57,11 +56,19 @@ def check_permission(required_roles):
 @nocache
 def new_ticket(service_name):
     
-    # --- CORRECTION DEMANDE MATERIEL ---
-    # Si le service demandé est "MATERIEL", on le mappe sur INFORMATIQUE
-    # mais on garde l'info que c'est du matériel pour le traitement.
+    # --- 1. SÉCURITÉ SPÉCIFIQUE MATÉRIEL ---
+    # Si c'est une demande Matériel, on vérifie le grade
     if service_name.upper() == 'MATERIEL':
-        service_enum = ServiceType.INFO # Ou INFORMATIQUE selon votre enum
+        role = str(current_user.role.value).upper()
+        # Si pas Manager, ni Directeur, ni Admin => CATDANCE
+        if 'MANAGER' not in role and 'DIRECTEUR' not in role and 'ADMIN' not in role:
+            return render_template('errors/catdance.html'), 403
+    # ---------------------------------------
+
+    # --- 2. DÉTERMINATION DU SERVICE (Mapping) ---
+    if service_name.upper() == 'MATERIEL':
+        # Matériel est géré par l'Informatique
+        service_enum = ServiceType.INFO 
     else:
         try:
             service_enum = ServiceType[service_name.upper()]
@@ -71,9 +78,14 @@ def new_ticket(service_name):
 
     user_origins = current_user.get_origin_services()
 
+    # ... La suite du code (if request.method == 'POST': ...) reste inchangée ...
+
     if request.method == 'POST':
         category = request.form.get('category_ticket', 'Standard')
-        
+        title = request.form.get('title')
+        description = request.form.get('description')
+
+        # Logique spécifique par service
         if service_name == 'DRH':
             cat_drh = request.form.get('titre_drh_select')
             if cat_drh == 'Autre':
@@ -86,17 +98,6 @@ def new_ticket(service_name):
         elif service_name.upper() == 'MATERIEL':
             title = request.form.get('title')
             category = "Demande Matériel"
-        else:
-            title = request.form.get('title')
-
-        selected_origin = request.form.get('selected_origin')
-        if not selected_origin:
-            selected_origin = user_origins[0] if user_origins else "INCONNU"
-            
-        hostname_saisi = request.form.get('hostname')
-        final_hostname = hostname_saisi if hostname_saisi else get_hostname_from_ip(request.remote_addr)
-        
-        description = request.form.get('description')
         
         if service_name == 'DAF' and category == 'Bon de Commande':
              fournisseur = request.form.get('daf_fournisseur_nom', 'Inconnu')
@@ -106,9 +107,16 @@ def new_ticket(service_name):
         if service_name == 'IMAGO':
             category = 'Dépannage Imago'
 
+        selected_origin = request.form.get('selected_origin')
+        if not selected_origin:
+            selected_origin = user_origins[0] if user_origins else "INCONNU"
+            
+        hostname_saisi = request.form.get('hostname')
+        final_hostname = hostname_saisi if hostname_saisi else get_hostname_from_ip(request.remote_addr)
+
         role = current_user.role
         
-        # --- LOGIQUE DE WORKFLOW ---
+        # --- WORKFLOW ---
         status = TicketStatus.VALIDATION_N1 
 
         if (service_enum == ServiceType.INFO and category in ["Standard", "Incident Standard"]) or (service_enum == ServiceType.IMAGO):
@@ -127,11 +135,13 @@ def new_ticket(service_name):
             elif role == UserRole.ADMIN: status = TicketStatus.PENDING
             else: status = TicketStatus.VALIDATION_N1
 
+        # UID
         today_str = datetime.now().strftime('%Y%m%d')
         base_query = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%"))
         count = base_query.count() + 1
         uid = f"{today_str}-{str(count).zfill(3)}"
             
+        # DAF Lignes
         daf_lignes = []
         if service_name == 'DAF':
             for i in range(1, 51):
@@ -144,12 +154,14 @@ def new_ticket(service_name):
                     'total': request.form.get(f'daf_total_{i}')
                 })
         
+        # Fichiers
         daf_files = []
         daf_rib_filename = None
         
         if request.files:
             upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
             
+            # Screenshot
             screenshot_file = request.files.get('screenshot')
             if screenshot_file and screenshot_file.filename != '':
                 try:
@@ -215,6 +227,7 @@ def new_ticket(service_name):
             flash(f"Erreur DB: {e}", "danger")
             return redirect(url_for('main.user_portal'))
 
+        # NOTIFICATIONS
         if status == TicketStatus.VALIDATION_N1:
             managers = User.query.filter(User.role.in_([UserRole.MANAGER, UserRole.DIRECTEUR])).all()
             for mgr in managers:
@@ -269,9 +282,34 @@ def view_ticket(ticket_uid):
             flash("Accès non autorisé à ce ticket.", "warning")
             return redirect(url_for('main.user_portal'))
 
+# --- GESTION DU MESSAGE ET NOTIFICATION ---
         if request.method == 'POST' and request.form.get('message'):
-            msg = TicketMessage(content=request.form.get('message'), ticket=ticket, author=current_user)
+            # 1. Enregistrement du message
+            msg_content = request.form.get('message')
+            msg = TicketMessage(content=msg_content, ticket=ticket, author=current_user)
             db.session.add(msg)
+            
+            # 2. NOTIFICATION POUR LE TECHNICIEN (SOLVER)
+            # "Je veux que ça prévienne celui qui s'est assigné le ticket"
+            # Condition : Il y a un technicien assigné ET ce n'est pas lui qui écrit le message
+            if ticket.solver and current_user.id != ticket.solver_id:
+                create_notification(
+                    user=ticket.solver,
+                    message=f"Nouveau message de {current_user.fullname} sur le ticket {ticket.uid_public}",
+                    category='warning', # Jaune pour attirer l'attention du tech
+                    link=url_for('tickets.view_ticket', ticket_uid=ticket.uid_public)
+                )
+
+            # 3. NOTIFICATION POUR L'UTILISATEUR (AUTHOR)
+            # Condition : Ce n'est pas l'auteur du ticket qui écrit le message
+            if ticket.author and current_user.id != ticket.author_id:
+                create_notification(
+                    user=ticket.author,
+                    message=f"Nouvelle réponse sur votre ticket {ticket.uid_public}",
+                    category='success', # Vert pour l'utilisateur
+                    link=url_for('tickets.view_ticket', ticket_uid=ticket.uid_public)
+                )
+
             db.session.commit()
             return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
         
@@ -392,13 +430,11 @@ def manager_action(ticket_id, action):
         
         if action == 'validate':
             if t.status == TicketStatus.VALIDATION_N1:
-                # N1 VALIDÉ -> SI DAF, ça part au SOLVER pour upload bon (En attente traitement)
                 if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
                 else: t.status = TicketStatus.VALIDATION_N2
                 
             elif t.status == TicketStatus.VALIDATION_N2:
-                # N2 (Directeur service demandeur) VALIDÉ -> SI DAF, PENDING (Pour solver)
-                if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
+                if t.target_service == ServiceType.DAF: t.status = TicketStatus.DAF_SIGNATURE
                 else: t.status = TicketStatus.PENDING
                 
             elif t.category_ticket == 'Demande Matériel' and t.status == TicketStatus.VALIDATION_N2:
@@ -410,7 +446,6 @@ def manager_action(ticket_id, action):
             db.session.add(msg)
             create_notification(t.author, f"Votre ticket {t.uid_public} a été refusé.", 'danger', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
 
-            # Si c'est un retour de Manager DAF vers Solver
             if t.target_service == ServiceType.DAF and t.status in [TicketStatus.VALIDATION_DAF_MANAGER]:
                 t.status = TicketStatus.IN_PROGRESS 
             else:
@@ -425,7 +460,6 @@ def manager_action(ticket_id, action):
 @tickets_bp.route('/manager/daf_validate/<int:ticket_id>', methods=['POST'])
 @login_required
 def manager_daf_validate(ticket_id):
-    """Validation spécifique par le Manager DAF avant signature Directeur"""
     try:
         t = Ticket.query.get_or_404(ticket_id)
         role = safe_role_str(current_user)
@@ -474,10 +508,7 @@ def daf_solver_submit(ticket_id):
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, filename))
                 t.daf_solver_file = filename
-                
-                # CHANGEMENT WORKFLOW : Passe au Manager DAF pour validation
                 t.status = TicketStatus.VALIDATION_DAF_MANAGER 
-                
                 db.session.commit()
                 flash("Bon transmis au Manager DAF pour validation.", "success")
         return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
@@ -499,7 +530,6 @@ def daf_director_sign(ticket_id):
                 file.save(os.path.join(upload_path, filename))
                 t.daf_signed_file = filename
                 
-                # FIN DU PROCESSUS DAF
                 t.status = TicketStatus.DONE
                 t.closed_at = datetime.now()
                 
@@ -510,17 +540,20 @@ def daf_director_sign(ticket_id):
         flash(f"Erreur: {e}", "danger")
         return redirect(url_for('main.user_portal'))
 
+# --- ROUTE CLÔTURE CORRIGÉE (ACCEPTE POST) ---
 @tickets_bp.route('/solver/close/<int:ticket_id>', methods=['POST']) 
 @login_required
 def close_ticket(ticket_id):
     try:
         t = Ticket.query.get_or_404(ticket_id)
+        # On peut ajouter une vérif de droits ici si besoin
         t.status = TicketStatus.DONE
         t.closed_at = datetime.now()
         db.session.commit()
         flash("Ticket clôturé avec succès.", "success")
         return redirect(url_for('tickets.solver_dashboard'))
     except Exception as e:
+        db.session.rollback()
         flash(f"Erreur fermeture: {e}", "danger")
         return redirect(url_for('main.user_portal'))
         
@@ -535,7 +568,6 @@ def solver_dashboard():
         my_targets = current_user.get_allowed_services() 
         user_role = safe_role_str(current_user)
         
-        # Ajout IMAGO auto si role IMAGO
         if 'IMAGO' in user_role or 'GS-IMAGO' in user_role:
              if my_targets is None: my_targets = []
              if ServiceType.IMAGO not in my_targets:
@@ -545,10 +577,8 @@ def solver_dashboard():
              flash("Aucun service technique assigné.", "warning")
              return redirect(url_for('tickets.manager_dashboard'))
 
-        # REQUETE PRINCIPALE : Tout sauf terminé
         query = Ticket.query.filter(Ticket.status != TicketStatus.DONE)
         
-        # --- CORRECTION FILTRAGE VISIBILITÉ STRICTE ---
         tickets_pool = []
         if 'ADMIN' in user_role:
             tickets_pool = query.all()
@@ -567,8 +597,7 @@ def solver_dashboard():
         else:
             tickets_pool = []
 
-        # Filtrage
-        pending_states = ['En attente traitement', 'En attente de prise en charge', 'VALIDATION_DAF_MANAGER']
+        pending_states = ['EN_ATTENTE_TRAITEMENT', 'PENDING', 'VALIDATION_DAF_MANAGER']
         pending_tickets = []
         for t in tickets_pool:
             if t.solver_id is None:
@@ -579,8 +608,7 @@ def solver_dashboard():
                     if status_val in pending_states: is_pending = True
                 if is_pending: pending_tickets.append(t)
         
-        # Dispatch dans les pools
-        drh_enum = getattr(ServiceType, 'DRH', 'DRH') # Safety check
+        drh_enum = getattr(ServiceType, 'DRH', 'DRH') 
 
         pool_imago = [t for t in pending_tickets if str(t.target_service) == 'IMAGO' or t.target_service == ServiceType.IMAGO]
         
@@ -588,20 +616,17 @@ def solver_dashboard():
             t for t in pending_tickets 
             if (not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard', 'Demande RH']) 
             and str(t.target_service) != 'IMAGO' and t.target_service != ServiceType.IMAGO
-            and t.target_service != drh_enum # On exclut DRH pour sa propre colonne
+            and t.target_service != drh_enum 
         ]
         
         pool_users = [t for t in pending_tickets if t.category_ticket == 'Nouvel Utilisateur']
         pool_materiel = [t for t in pending_tickets if t.category_ticket == 'Matériel' or t.category_ticket == 'Demande Matériel']
         pool_bons = [t for t in pending_tickets if t.category_ticket == 'Bon de Commande']
         
-        # NOUVEAU : Pool DRH (Sécurisé)
         pool_drh = [t for t in pending_tickets if t.target_service == drh_enum or str(t.target_service) == 'DRH' or str(t.target_service) == 'GS-DRH']
         
-        # Mes tickets
         mine = Ticket.query.filter_by(solver_id=current_user.id, status=TicketStatus.IN_PROGRESS).all()
         
-        # Historique
         hist_query = Ticket.query.filter_by(status=TicketStatus.DONE)
         history_all = hist_query.order_by(Ticket.closed_at.desc()).limit(20).all()
         
@@ -647,12 +672,129 @@ def solver_dashboard():
 @login_required
 @nocache
 def historique_tickets():
-    return render_template('tickets/historique_tickets.html', tickets=[]) 
+    # 1. GESTION DE L'AJOUT MANUEL (POST)
+    if request.method == 'POST':
+        try:
+            # Génération d'un UID unique
+            today_str = datetime.now().strftime('%Y%m%d')
+            count = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%")).count() + 1
+            uid = f"{today_str}-{str(count).zfill(3)}"
+
+            # Gestion de la date de création (si vide, on prend maintenant)
+            date_creation_str = request.form.get('date_creation')
+            created_at = datetime.now()
+            if date_creation_str:
+                try:
+                    created_at = datetime.strptime(date_creation_str, '%Y-%m-%dT%H:%M')
+                except:
+                    pass
+            
+            # Détermination du service (on prend le service du technicien qui saisit)
+            my_services = current_user.get_allowed_services()
+            # On essaie de trouver l'Enum correspondant, sinon AUTRE
+            target_service = ServiceType.AUTRE
+            if my_services:
+                # On prend le premier service trouvé
+                for s in ServiceType:
+                    if s.value == my_services[0] or s.name == my_services[0]:
+                        target_service = s
+                        break
+
+            # Création du Ticket "Archive"
+            t = Ticket(
+                uid_public=uid,
+                title=request.form.get('title'),
+                # On ajoute [Manuel] dans la description pour que le HTML le détecte
+                description=f"[Manuel] {request.form.get('description')}", 
+                author=current_user, # C'est le technicien qui crée l'entrée
+                solver=current_user, # Le technicien est aussi le résolveur
+                target_service=target_service,
+                status=TicketStatus.DONE, # Directement terminé
+                category_ticket="Archive Manuelle",
+                created_at=created_at,
+                closed_at=datetime.now(),
+                # On stocke le nom libre du demandeur dans ce champ (comme prévu dans votre HTML)
+                new_user_fullname=request.form.get('user_name') 
+            )
+
+            db.session.add(t)
+            db.session.commit()
+            flash(f"Ticket manuel {uid} ajouté à l'historique.", "success")
+            
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Erreur lors de l'ajout manuel : {e}", "danger")
+        
+        return redirect(url_for('tickets.historique_tickets'))
+
+    # 2. AFFICHAGE DE LA LISTE (GET)
+    # On récupère tous les tickets avec le statut DONE (Terminé)
+    # Triés par date de création décroissante (du plus récent au plus vieux)
+    
+    # Sécurité : Si Admin, voit tout. Sinon, voit seulement ce qui concerne ses services.
+    user_role = str(current_user.role.value).upper()
+    query = Ticket.query.filter(Ticket.status == TicketStatus.DONE)
+    
+    tickets_archives = []
+    
+    if 'ADMIN' in user_role:
+        tickets_archives = query.order_by(Ticket.created_at.desc()).all()
+    else:
+        # Filtrage pour les managers/solvers : seulement leurs services
+        my_services = current_user.get_allowed_services()
+        if my_services:
+            all_done = query.order_by(Ticket.created_at.desc()).all()
+            for t in all_done:
+                # On vérifie si le service du ticket est dans les services du user
+                t_svc = t.target_service.value if hasattr(t.target_service, 'value') else str(t.target_service)
+                # On vérifie aussi si le user est l'auteur ou le solveur
+                if (t_svc in my_services) or (t.author_id == current_user.id) or (t.solver_id == current_user.id):
+                    tickets_archives.append(t)
+        else:
+             # Si aucun service assigné, on montre au moins ses propres tickets
+             tickets_archives = query.filter(Ticket.author_id == current_user.id).order_by(Ticket.created_at.desc()).all()
+
+    return render_template('tickets/historique_tickets.html', tickets=tickets_archives)
 
 @tickets_bp.route('/export/history')
 @login_required
 def export_history():
-    return redirect(url_for('tickets.solver_dashboard')) 
+    try:
+        tickets = Ticket.query.filter(Ticket.status == TicketStatus.DONE).all()
+        
+        data = []
+        for t in tickets:
+            demandeur = t.new_user_fullname if (t.new_user_fullname and '[Manuel]' in t.description) else t.author.fullname
+            
+            data.append({
+                'Reference': t.uid_public,
+                'Date_Creation': t.created_at.strftime('%Y-%m-%d %H:%M'),
+                'Date_Cloture': t.closed_at.strftime('%Y-%m-%d %H:%M') if t.closed_at else '',
+                'Service_Cible': t.target_service.value if hasattr(t.target_service, 'value') else str(t.target_service),
+                'Categorie': t.category_ticket,
+                'Titre': t.title,
+                'Demandeur': demandeur,
+                'Resoluteur': t.solver.fullname if t.solver else '',
+                'Description': t.description
+            })
+
+        df = pd.DataFrame(data)
+        
+        # Création du dossier si inexistant
+        export_dir = os.path.join(current_app.root_path, 'static', 'uploads')
+        os.makedirs(export_dir, exist_ok=True)
+        
+        filename = f'Historique_Tickets_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+        path = os.path.join(export_dir, filename)
+        
+        df.to_excel(path, index=False)
+        
+        return send_file(path, as_attachment=True)
+        
+    except Exception as e:
+        flash(f"Erreur lors de l'export : {e}", "danger")
+        return redirect(url_for('tickets.historique_tickets'))
+
 
 @tickets_bp.route('/solver/assign/<int:ticket_id>', methods=['POST'])
 @login_required

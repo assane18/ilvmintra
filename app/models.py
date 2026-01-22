@@ -280,7 +280,7 @@ class Materiel(db.Model):
     hostname = db.Column(db.String(100))
     imei = db.Column(db.String(100))
     statut = db.Column(db.String(50), default='Disponible')
-    historique_prets = db.relationship('Pret', backref='materiel_rel', lazy='dynamic')
+    historique_prets = db.relationship('Pret', backref='materiel', lazy='dynamic')
 
 class Pret(db.Model):
     __tablename__ = 'prets'
@@ -303,6 +303,7 @@ class Pret(db.Model):
     etat_ecran_retour = db.Column(db.String(50))
     etat_clavier_retour = db.Column(db.String(50))
     etat_coque_retour = db.Column(db.String(50))
+
 
 class Notification(db.Model):
     __tablename__ = 'notifications'

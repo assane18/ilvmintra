@@ -3,7 +3,6 @@
 {% block content %}
 <div class="max-w-6xl mx-auto py-8 px-4">
     
-    <!-- HEADER -->
     <div class="flex justify-between items-center mb-8">
         <div>
             <div class="flex items-center gap-3">
@@ -24,14 +23,13 @@
             </p>
         </div>
 
-        <!-- BOUTON RETOUR INTELLIGENT -->
         {% if current_user.role.value == 'USER' %}
             <a href="{{ url_for('main.user_portal') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Portail
             </a>
         {% elif 'MANAGER' in current_user.role.value or 'DIRECTEUR' in current_user.role.value %}
-             <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
-                <i data-lucide="arrow-left" class="w-4 h-4"></i> Espace Tech
+             <a href="{{ url_for('tickets.manager_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Validation
             </a>
         {% else %}
              <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2">
@@ -42,10 +40,8 @@
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        <!-- MAIN COLUMN -->
         <div class="lg:col-span-2 space-y-6">
             
-            <!-- DESCRIPTION TICKET -->
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Sujet & Description</h3>
                 <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-4">{{ ticket.title }}</h2>
@@ -54,7 +50,6 @@
                 </div>
             </div>
 
-            <!-- BLOC SPECIFIQUE : NOUVEL ARRIVANT (FCPI) -->
             {% if ticket.category_ticket == 'Nouvel Utilisateur' %}
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <h3 class="text-xs font-black text-purple-400 uppercase tracking-widest mb-4">Détails Arrivée Collaborateur</h3>
@@ -80,7 +75,6 @@
             </div>
             {% endif %}
 
-            <!-- BLOC SPECIFIQUE : DAF (Achats) -->
             {% if ticket.target_service.value == 'DAF' %}
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <h3 class="text-xs font-black text-orange-400 uppercase tracking-widest mb-4">Détails Commande DAF</h3>
@@ -119,7 +113,6 @@
             </div>
             {% endif %}
 
-            <!-- BLOC SPECIFIQUE : MATERIEL (DEMANDE CLASSIQUE) -->
             {% if ticket.category_ticket == 'Demande Matériel' and ticket.category_ticket != 'Nouvel Utilisateur' %}
                 {% if ticket.materiel_list %}
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
@@ -142,7 +135,6 @@
                 {% endif %}
             {% endif %}
 
-            <!-- PIECES JOINTES -->
             {% if attached_files or ticket.daf_solver_file or ticket.daf_signed_file or ticket.daf_rib_file %}
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Fichiers</h3>
@@ -174,7 +166,6 @@
             </div>
             {% endif %}
 
-            <!-- FIL DE DISCUSSION -->
             <div class="bg-slate-50 dark:bg-slate-900 p-6 rounded-3xl border border-slate-200 dark:border-slate-800">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Activités & Messages</h3>
                 <div class="space-y-6">
@@ -195,7 +186,6 @@
                     {% endfor %}
                 </div>
 
-                <!-- FORM MESSAGE -->
                 <form method="POST" class="mt-8 relative">
                     <textarea name="message" rows="3" class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Écrire un message..."></textarea>
                     <button type="submit" class="absolute bottom-3 right-3 bg-blue-600 hover:bg-blue-500 text-white p-2 rounded-lg shadow-lg transition">
@@ -205,10 +195,8 @@
             </div>
         </div>
 
-        <!-- SIDEBAR INFO -->
         <div class="space-y-6">
             
-            <!-- INFO DEMANDEUR (Affichage complet) -->
             <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Demandeur</h3>
                 <div class="flex items-center gap-3 mb-4">
@@ -238,7 +226,6 @@
                 </div>
             </div>
 
-            <!-- ACTIONS SOLVER -->
             {% if 'SOLVER' in current_user.role.value or 'ADMIN' in current_user.role.value %}
             <div class="bg-slate-900 dark:bg-blue-900 p-6 rounded-3xl shadow-xl text-white">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Espace Technicien</h3>
@@ -257,7 +244,6 @@
                     </div>
                 {% endif %}
 
-                <!-- ACTIONS SPECIFIQUES DAF SOLVER (Upload bon commande) -->
                 {% if ticket.target_service.value == 'DAF' and ticket.status.value != 'TERMINE' and ticket.solver_id == current_user.id %}
                     <form action="{{ url_for('tickets.daf_solver_submit', ticket_id=ticket.id) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
                         <label class="block text-xs font-bold text-slate-400 uppercase">1. Upload Bon de Commande</label>
@@ -267,21 +253,9 @@
                         </button>
                     </form>
                 {% endif %}
-
-                <!-- ACTIONS CLOTURE -->
-                {% if ticket.status.value != 'TERMINE' %}
-                <div class="mt-4 pt-4 border-t border-slate-700">
-                    <form action="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" method="POST">
-                        <button type="submit" onclick="return confirm('Clôturer ce ticket ?')" class="w-full bg-emerald-600 hover:bg-emerald-500 py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition">
-                            <i data-lucide="check-circle" class="w-4 h-4"></i> Clôturer le Ticket
-                        </button>
-                    </form>
-                </div>
-                {% endif %}
             </div>
             {% endif %}
 
-            <!-- ACTIONS MANAGER DAF (VALIDATION) -->
             {% if ticket.target_service.value == 'DAF' and ticket.status.value == 'VALIDATION_DAF_MANAGER' %}
                 {% if 'MANAGER' in current_user.role.value and 'DAF' in current_user.get_allowed_services() %}
                 <div class="bg-purple-900 p-6 rounded-3xl shadow-xl text-white">
@@ -299,7 +273,6 @@
                 {% endif %}
             {% endif %}
 
-            <!-- ACTIONS DIRECTEUR (SIGNATURE DAF) -->
             {% if ticket.status.value == 'SIGNATURE_DIRECTEUR' and ticket.target_service.value == 'DAF' %}
                 {% if 'DIRECTEUR' in current_user.role.value %}
                 <div class="bg-pink-900 p-6 rounded-3xl shadow-xl text-white">
@@ -313,6 +286,18 @@
                     </form>
                 </div>
                 {% endif %}
+            {% endif %}
+
+            {% set role = current_user.role.value %}
+            {% if ticket.status.value != 'TERMINE' and ('SOLVER' in role or 'ADMIN' in role or 'MANAGER' in role or 'DIRECTEUR' in role) %}
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 mt-6">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Finalisation</h3>
+                <form action="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" method="POST">
+                    <button type="submit" onclick="return confirm('Êtes-vous sûr de vouloir clôturer ce ticket ?')" class="w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest shadow-lg flex items-center justify-center gap-2 transition">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Clôturer le Ticket
+                    </button>
+                </form>
+            </div>
             {% endif %}
 
         </div>

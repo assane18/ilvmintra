@@ -81,10 +81,12 @@
     <nav class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-40 shadow-sm dark:bg-slate-900 dark:border-slate-800 transition-colors duration-300">
         <div class="flex items-center gap-4">
             <a href="{{ url_for('main.user_portal') }}" class="flex items-center gap-2 group">
-                <div class="bg-blue-600 text-white p-1.5 rounded-lg group-hover:bg-blue-700 transition">
+             <!--   <div class="bg-blue-600 text-white p-1.5 rounded-lg group-hover:bg-blue-700 transition">
                     <i data-lucide="layout-grid" class="w-5 h-5"></i>
-                </div>
-                <span class="font-bold text-lg text-slate-800 tracking-tight group-hover:text-blue-600 dark:text-slate-100 dark:group-hover:text-blue-400 transition">Intranet</span>
+                </div> -->
+                <span class="font-black text-xl tracking-tighter text-blue-500 italic flex items-center gap-2">
+                    <i data-lucide="layout-dashboard"></i> ILVM<span class="text-white">DASHBOARD</span>
+                </span>
             </a>
             
             <!-- Liens contextuels VISIBLES POUR TOUS (Sécurité gérée par redirection backend) -->

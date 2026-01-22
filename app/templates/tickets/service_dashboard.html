@@ -114,13 +114,11 @@
                                 </div>
                                 
                                 <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-600 transition">
-                                        Voir
-                                    </a>
-                                    <a href="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-green-700 transition shadow-sm">
-                                        Clôturer
+                                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="w-full text-center bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold uppercase hover:bg-slate-50 dark:hover:bg-slate-600 transition">
+                                        <i data-lucide="eye" class="w-4 h-4 inline mr-1"></i> Voir le ticket
                                     </a>
                                 </div>
+
                             </div>
                         </div>
                         {% endfor %}
