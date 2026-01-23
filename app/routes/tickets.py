@@ -3,6 +3,7 @@ from flask_login import login_required, current_user
 from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus
 from app import db
 from datetime import datetime
+import pytz
 import json
 import os
 import socket
@@ -13,6 +14,10 @@ from functools import wraps
 
 tickets_bp = Blueprint('tickets', __name__)
 
+def get_paris_time():
+    paris_tz = pytz.timezone('Europe/Paris')
+    # On prend l'heure de Paris, et on retire l'info TZ pour le stockage naïf en DB
+    return datetime.now(paris_tz).replace(tzinfo=None)
 # --- HELPERS ---
 
 def nocache(view):
@@ -28,7 +33,6 @@ def create_notification(user, message, category='info', link=None):
         try:
             n = Notification(user=user, message=message, category=category, link=link)
             db.session.add(n)
-            # Pas de commit ici pour laisser la transaction principale gérer
         except: pass
 
 def get_hostname_from_ip(ip_address):
@@ -57,17 +61,13 @@ def check_permission(required_roles):
 def new_ticket(service_name):
     
     # --- 1. SÉCURITÉ SPÉCIFIQUE MATÉRIEL ---
-    # Si c'est une demande Matériel, on vérifie le grade
     if service_name.upper() == 'MATERIEL':
         role = str(current_user.role.value).upper()
-        # Si pas Manager, ni Directeur, ni Admin => CATDANCE
         if 'MANAGER' not in role and 'DIRECTEUR' not in role and 'ADMIN' not in role:
             return render_template('errors/catdance.html'), 403
-    # ---------------------------------------
 
-    # --- 2. DÉTERMINATION DU SERVICE (Mapping) ---
+    # --- 2. DÉTERMINATION DU SERVICE ---
     if service_name.upper() == 'MATERIEL':
-        # Matériel est géré par l'Informatique
         service_enum = ServiceType.INFO 
     else:
         try:
@@ -78,14 +78,11 @@ def new_ticket(service_name):
 
     user_origins = current_user.get_origin_services()
 
-    # ... La suite du code (if request.method == 'POST': ...) reste inchangée ...
-
     if request.method == 'POST':
         category = request.form.get('category_ticket', 'Standard')
         title = request.form.get('title')
         description = request.form.get('description')
 
-        # Logique spécifique par service
         if service_name == 'DRH':
             cat_drh = request.form.get('titre_drh_select')
             if cat_drh == 'Autre':
@@ -201,6 +198,7 @@ def new_ticket(service_name):
             status=status,
             uid_public=uid,
             category_ticket=category,
+            created_at=get_paris_time(),
             service_demandeur=selected_origin,
             tel_demandeur=request.form.get('tel_demandeur'),
             hostname=final_hostname,
@@ -270,6 +268,7 @@ def view_ticket(ticket_uid):
         user_role = safe_role_str(current_user)
         target_svc = ticket.get_safe_target_service()
         
+        # --- 1. DROITS DE LECTURE (Qui peut VOIR ?) ---
         can_view = False
         if 'ADMIN' in user_role: can_view = True
         elif ticket.author_id == current_user.id: can_view = True
@@ -279,49 +278,102 @@ def view_ticket(ticket_uid):
             if target_svc in current_user.get_allowed_services(): can_view = True
         
         if not can_view:
-            flash("Accès non autorisé à ce ticket.", "warning")
+            flash("Accès non autorisé.", "warning")
             return redirect(url_for('main.user_portal'))
 
-# --- GESTION DU MESSAGE ET NOTIFICATION ---
+        # --- 2. DROITS DE GESTION (Qui peut ASSIGNER/TRAITER ?) ---
+        can_manage_ticket = False
+        
+        # A. Je ne suis PAS l'auteur (sauf si je suis Admin)
+        # Ceci est la règle d'or : Manager ou pas, si c'est ma demande, je ne touche pas à l'assignation.
+        is_author = (ticket.author_id == current_user.id)
+        
+        if is_author and 'ADMIN' not in user_role:
+            can_manage_ticket = False
+        else:
+            # B. Je suis Admin -> OUI
+            if 'ADMIN' in user_role:
+                can_manage_ticket = True
+            
+            # C. Je suis Tech/Manager/Directeur DU BON SERVICE -> OUI
+            elif any(r in user_role for r in ['SOLVER', 'MANAGER', 'DIRECTEUR']):
+                
+                # --- LOGIQUE ROBUSTE DE COMPARAISON DE SERVICE ---
+                # On compare toutes les variantes possibles (Nom, Valeur)
+                
+                # 1. On prépare les tags du ticket (ex: ['INFO', 'INFORMATIQUE'])
+                ticket_tags = set()
+                if hasattr(target_svc, 'value'): ticket_tags.add(str(target_svc.value))
+                if hasattr(target_svc, 'name'): ticket_tags.add(str(target_svc.name))
+                ticket_tags.add(str(target_svc))
+                
+                # 2. On prépare les tags de l'utilisateur (ses compétences)
+                user_competencies = set()
+                my_services = current_user.get_allowed_services()
+                if my_services:
+                    for s in my_services:
+                        if hasattr(s, 'value'): user_competencies.add(str(s.value))
+                        if hasattr(s, 'name'): user_competencies.add(str(s.name))
+                        user_competencies.add(str(s))
+                
+                # 3. Intersection : Si un tag commun existe, c'est gagné
+                if not ticket_tags.isdisjoint(user_competencies):
+                    can_manage_ticket = True
+
+        # --- 3. MESSAGERIE ---
         if request.method == 'POST' and request.form.get('message'):
-            # 1. Enregistrement du message
             msg_content = request.form.get('message')
             msg = TicketMessage(content=msg_content, ticket=ticket, author=current_user)
             db.session.add(msg)
-            
-            # 2. NOTIFICATION POUR LE TECHNICIEN (SOLVER)
-            # "Je veux que ça prévienne celui qui s'est assigné le ticket"
-            # Condition : Il y a un technicien assigné ET ce n'est pas lui qui écrit le message
             if ticket.solver and current_user.id != ticket.solver_id:
-                create_notification(
-                    user=ticket.solver,
-                    message=f"Nouveau message de {current_user.fullname} sur le ticket {ticket.uid_public}",
-                    category='warning', # Jaune pour attirer l'attention du tech
-                    link=url_for('tickets.view_ticket', ticket_uid=ticket.uid_public)
-                )
-
-            # 3. NOTIFICATION POUR L'UTILISATEUR (AUTHOR)
-            # Condition : Ce n'est pas l'auteur du ticket qui écrit le message
+                create_notification(ticket.solver, f"Message sur {ticket.uid_public}", 'warning', url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
             if ticket.author and current_user.id != ticket.author_id:
-                create_notification(
-                    user=ticket.author,
-                    message=f"Nouvelle réponse sur votre ticket {ticket.uid_public}",
-                    category='success', # Vert pour l'utilisateur
-                    link=url_for('tickets.view_ticket', ticket_uid=ticket.uid_public)
-                )
-
+                create_notification(ticket.author, f"Réponse sur {ticket.uid_public}", 'success', url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
             db.session.commit()
             return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
         
+        # --- 4. DATA SUPPLEMENTAIRE ---
         attached_files = []
         if ticket.daf_files_json:
             try: attached_files = json.loads(ticket.daf_files_json)
             except: pass
             
-        return render_template('tickets/detail.html', ticket=ticket, attached_files=attached_files)
+        solvers_available = []
+        
+        # Si j'ai le droit de gérer, je veux voir la liste des collègues compétents
+        if can_manage_ticket and ('MANAGER' in user_role or 'DIRECTEUR' in user_role or 'ADMIN' in user_role):
+            all_staff = User.query.filter(User.role.in_([UserRole.SOLVER, UserRole.MANAGER, UserRole.ADMIN])).all()
+            
+            # Pour remplir la liste, on utilise la même logique de comparaison large
+            ticket_tags = set()
+            if hasattr(target_svc, 'value'): ticket_tags.add(str(target_svc.value))
+            if hasattr(target_svc, 'name'): ticket_tags.add(str(target_svc.name))
+            ticket_tags.add(str(target_svc))
+            
+            for s in all_staff:
+                if 'ADMIN' in str(s.role.value):
+                    solvers_available.append(s)
+                    continue
+                
+                staff_competencies = set()
+                s_services = s.get_allowed_services()
+                if s_services:
+                    for serv in s_services:
+                        if hasattr(serv, 'value'): staff_competencies.add(str(serv.value))
+                        if hasattr(serv, 'name'): staff_competencies.add(str(serv.name))
+                        staff_competencies.add(str(serv))
+                
+                if not ticket_tags.isdisjoint(staff_competencies):
+                    solvers_available.append(s)
+
+        return render_template('tickets/detail.html', 
+                               ticket=ticket, 
+                               attached_files=attached_files, 
+                               solvers_available=solvers_available,
+                               can_manage_ticket=can_manage_ticket)
 
     except Exception as e:
-        flash(f"Erreur d'affichage : {str(e)}", "danger")
+        flash(f"Erreur : {str(e)}", "danger")
         return redirect(url_for('main.user_portal'))
 
 @tickets_bp.route('/solver/set_rdv/<int:ticket_id>', methods=['POST'])
@@ -486,6 +538,13 @@ def take_ticket(ticket_id):
             return redirect(url_for('main.user_portal'))
             
         t = Ticket.query.get_or_404(ticket_id)
+        
+        # --- SÉCURITÉ ANTI-AUTO-ATTRIBUTION ---
+        if t.author_id == current_user.id:
+            flash("Vous ne pouvez pas prendre en charge votre propre demande.", "warning")
+            return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+        # --------------------------------------
+
         t.solver = current_user
         t.status = TicketStatus.IN_PROGRESS
         create_notification(t.author, f"Pris en charge par {current_user.fullname}", 'success', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
@@ -507,7 +566,17 @@ def daf_solver_submit(ticket_id):
                 upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', t.uid_public)
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, filename))
+                
                 t.daf_solver_file = filename
+                
+                # --- NOTIFICATION AU DEMANDEUR ---
+                create_notification(
+                    user=t.author, 
+                    message=f"Un bon de commande a été ajouté à votre ticket {t.uid_public}.",
+                    category='success',
+                    link=url_for('tickets.view_ticket', ticket_uid=t.uid_public)
+                )
+                
                 t.status = TicketStatus.VALIDATION_DAF_MANAGER 
                 db.session.commit()
                 flash("Bon transmis au Manager DAF pour validation.", "success")
@@ -531,7 +600,7 @@ def daf_director_sign(ticket_id):
                 t.daf_signed_file = filename
                 
                 t.status = TicketStatus.DONE
-                t.closed_at = datetime.now()
+                t.closed_at = get_paris_time()
                 
                 db.session.commit()
                 flash("Bon signé. Ticket clôturé.", "success")
@@ -540,15 +609,22 @@ def daf_director_sign(ticket_id):
         flash(f"Erreur: {e}", "danger")
         return redirect(url_for('main.user_portal'))
 
-# --- ROUTE CLÔTURE CORRIGÉE (ACCEPTE POST) ---
-@tickets_bp.route('/solver/close/<int:ticket_id>', methods=['POST']) 
+@tickets_bp.route('/solver/close/<int:ticket_id>', methods=['POST'])
 @login_required
 def close_ticket(ticket_id):
     try:
         t = Ticket.query.get_or_404(ticket_id)
-        # On peut ajouter une vérif de droits ici si besoin
         t.status = TicketStatus.DONE
-        t.closed_at = datetime.now()
+        t.closed_at = get_paris_time()
+        
+        # --- NOTIFICATION CLOTURE ---
+        create_notification(
+            user=t.author,
+            message=f"Votre ticket {t.uid_public} a été traité et clôturé.",
+            category='success',
+            link=url_for('tickets.view_ticket', ticket_uid=t.uid_public)
+        )
+
         db.session.commit()
         flash("Ticket clôturé avec succès.", "success")
         return redirect(url_for('tickets.solver_dashboard'))
@@ -675,45 +751,37 @@ def historique_tickets():
     # 1. GESTION DE L'AJOUT MANUEL (POST)
     if request.method == 'POST':
         try:
-            # Génération d'un UID unique
             today_str = datetime.now().strftime('%Y%m%d')
             count = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%")).count() + 1
             uid = f"{today_str}-{str(count).zfill(3)}"
 
-            # Gestion de la date de création (si vide, on prend maintenant)
             date_creation_str = request.form.get('date_creation')
-            created_at = datetime.now()
+            created_at = get_paris_time()
             if date_creation_str:
                 try:
                     created_at = datetime.strptime(date_creation_str, '%Y-%m-%dT%H:%M')
                 except:
                     pass
             
-            # Détermination du service (on prend le service du technicien qui saisit)
             my_services = current_user.get_allowed_services()
-            # On essaie de trouver l'Enum correspondant, sinon AUTRE
             target_service = ServiceType.AUTRE
             if my_services:
-                # On prend le premier service trouvé
                 for s in ServiceType:
                     if s.value == my_services[0] or s.name == my_services[0]:
                         target_service = s
                         break
 
-            # Création du Ticket "Archive"
             t = Ticket(
                 uid_public=uid,
                 title=request.form.get('title'),
-                # On ajoute [Manuel] dans la description pour que le HTML le détecte
                 description=f"[Manuel] {request.form.get('description')}", 
-                author=current_user, # C'est le technicien qui crée l'entrée
-                solver=current_user, # Le technicien est aussi le résolveur
+                author=current_user,
+                solver=current_user,
                 target_service=target_service,
-                status=TicketStatus.DONE, # Directement terminé
+                status=TicketStatus.DONE,
                 category_ticket="Archive Manuelle",
                 created_at=created_at,
-                closed_at=datetime.now(),
-                # On stocke le nom libre du demandeur dans ce champ (comme prévu dans votre HTML)
+                closed_at = get_paris_time(),
                 new_user_fullname=request.form.get('user_name') 
             )
 
@@ -728,10 +796,6 @@ def historique_tickets():
         return redirect(url_for('tickets.historique_tickets'))
 
     # 2. AFFICHAGE DE LA LISTE (GET)
-    # On récupère tous les tickets avec le statut DONE (Terminé)
-    # Triés par date de création décroissante (du plus récent au plus vieux)
-    
-    # Sécurité : Si Admin, voit tout. Sinon, voit seulement ce qui concerne ses services.
     user_role = str(current_user.role.value).upper()
     query = Ticket.query.filter(Ticket.status == TicketStatus.DONE)
     
@@ -740,18 +804,14 @@ def historique_tickets():
     if 'ADMIN' in user_role:
         tickets_archives = query.order_by(Ticket.created_at.desc()).all()
     else:
-        # Filtrage pour les managers/solvers : seulement leurs services
         my_services = current_user.get_allowed_services()
         if my_services:
             all_done = query.order_by(Ticket.created_at.desc()).all()
             for t in all_done:
-                # On vérifie si le service du ticket est dans les services du user
                 t_svc = t.target_service.value if hasattr(t.target_service, 'value') else str(t.target_service)
-                # On vérifie aussi si le user est l'auteur ou le solveur
                 if (t_svc in my_services) or (t.author_id == current_user.id) or (t.solver_id == current_user.id):
                     tickets_archives.append(t)
         else:
-             # Si aucun service assigné, on montre au moins ses propres tickets
              tickets_archives = query.filter(Ticket.author_id == current_user.id).order_by(Ticket.created_at.desc()).all()
 
     return render_template('tickets/historique_tickets.html', tickets=tickets_archives)
@@ -780,7 +840,6 @@ def export_history():
 
         df = pd.DataFrame(data)
         
-        # Création du dossier si inexistant
         export_dir = os.path.join(current_app.root_path, 'static', 'uploads')
         os.makedirs(export_dir, exist_ok=True)
         
@@ -795,19 +854,49 @@ def export_history():
         flash(f"Erreur lors de l'export : {e}", "danger")
         return redirect(url_for('tickets.historique_tickets'))
 
-
 @tickets_bp.route('/solver/assign/<int:ticket_id>', methods=['POST'])
 @login_required
 def assign_ticket(ticket_id):
-    t = Ticket.query.get_or_404(ticket_id)
-    sid = request.form.get('solver_id')
-    if sid:
-        u = User.query.get(sid)
-        if u:
-            t.solver = u
+    try:
+        t = Ticket.query.get_or_404(ticket_id)
+        solver_id = request.form.get('solver_id')
+        
+        # CAS 1 : "Prendre en charge moi-même" (value="me")
+        if solver_id == 'me':
+            if not check_permission(['SOLVER', 'ADMIN', 'MANAGER', 'DIRECTEUR']):
+                 flash("Droit insuffisant.", "danger")
+                 return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+                 
+            # Sécurité Anti-Conflit
+            if t.author_id == current_user.id:
+               flash("Vous ne pouvez pas traiter votre propre demande.", "warning")
+               return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+            t.solver = current_user
             t.status = TicketStatus.IN_PROGRESS
-            db.session.commit()
-    return redirect(url_for('tickets.solver_dashboard'))
+            flash("Ticket pris en charge.", "success")
+
+        # CAS 2 : Assigner à un autre (nécessite Manager/Directeur/Admin)
+        elif solver_id:
+            if not check_permission(['MANAGER', 'DIRECTEUR', 'ADMIN']):
+                 flash("Action réservée aux managers.", "danger")
+                 return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+            u = User.query.get(solver_id)
+            if u:
+                t.solver = u
+                t.status = TicketStatus.IN_PROGRESS
+                create_notification(u, f"Ticket {t.uid_public} assigné par {current_user.fullname}.", 'info', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+                flash(f"Assigné à {u.fullname}.", "success")
+        
+        create_notification(t.author, f"Votre ticket est pris en charge par {t.solver.fullname}.", 'success', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+        
+        db.session.commit()
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+        
+    except Exception as e:
+        flash(f"Erreur assignation: {e}", "danger")
+        return redirect(url_for('main.user_portal'))
 
 @tickets_bp.route('/solver/transfer/<int:ticket_id>', methods=['POST'])
 @login_required
