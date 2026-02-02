@@ -4,30 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connexion - Intranet</title>
-    <!-- Tailwind CSS (Local ou CDN pour le dev) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Inter', sans-serif; }</style>
+    <style>
+        body { font-family: 'Inter', sans-serif; margin: 0; overflow: hidden; background-color: #000; }
+        
+        /* Fond "Deep Space" basé sur l'image fournie */
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            /* Dégradé complexe pour imiter la lumière de l'image */
+            background: radial-gradient(circle at 30% 30%, #11264a 0%, #061229 40%, #000000 100%);
+            z-index: 0;
+        }
+    </style>
 </head>
-<body class="bg-slate-900 h-screen flex items-center justify-center">
+<body class="h-screen flex items-center justify-center relative">
 
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-md">
+    <!-- LE CANVAS POUR L'EFFET RÉSEAU PREMIUM -->
+    <div id="canvas-container">
+        <canvas id="networkCanvas"></canvas>
+    </div>
+
+    <!-- CARTE DE CONNEXION (Plus transparente pour laisser voir le fond) -->
+    <div class="relative z-10 bg-slate-950/40 backdrop-blur-md p-8 rounded-2xl shadow-2xl w-full max-w-md border border-cyan-500/20 ring-1 ring-cyan-400/10 transition-all duration-500 hover:shadow-[0_0_50px_rgba(8,145,178,0.15)]">
+        
         <div class="text-center mb-8">
-            <!-- REMPLACEMENT DU TITRE PAR UN LOGO -->
-            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Entreprise" class="h-32 mx-auto mb-4 object-contain">
-            <!-- Fallback text si l'image n'existe pas encore -->
-            <!-- <h1 class="text-3xl font-bold text-slate-800">Intranet <span class="text-blue-600">Corp</span></h1> -->
-            <p class="text-slate-500 mt-2">Portail unifié des services</p>
+            <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Logo Entreprise" class="h-32 mx-auto mb-4 object-contain drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]">
+            <p class="text-cyan-50/70 mt-2 font-medium tracking-[0.2em] text-xs uppercase">Portail Sécurisé</p>
         </div>
 
-        <!-- Messages Flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                    <div class="mb-4 p-3 rounded-lg text-sm font-medium 
-                        {% if category == 'success' %}bg-green-100 text-green-700
-                        {% elif category == 'danger' %}bg-red-100 text-red-700
-                        {% else %}bg-blue-100 text-blue-700{% endif %}">
+                    <div class="mb-4 p-3 rounded-lg text-sm font-medium border
+                        {% if category == 'success' %}bg-green-500/10 text-green-300 border-green-500/20
+                        {% elif category == 'danger' %}bg-red-500/10 text-red-300 border-red-500/20
+                        {% else %}bg-cyan-500/10 text-cyan-300 border-cyan-500/20{% endif %}">
                         {{ message }}
                     </div>
                 {% endfor %}
@@ -35,44 +51,199 @@
         {% endwith %}
 
         <form method="POST" action="{{ url_for('auth.login') }}" class="space-y-6">
-            <div>
-                <label for="username" class="block text-sm font-medium text-slate-700 mb-1">Identifiant Windows</label>
-                <input type="text" name="username" id="username" required 
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    placeholder="nprenom">
+            <div class="group">
+                <label for="username" class="block text-[10px] font-bold text-cyan-300/70 mb-1.5 uppercase tracking-widest ml-1">Identifiant</label>
+                <div class="relative">
+                    <input type="text" name="username" id="username" required 
+                        class="w-full px-4 py-3 bg-slate-900/40 border border-cyan-900/30 rounded-lg text-cyan-50 placeholder-slate-600 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400/50 outline-none transition duration-300 hover:bg-slate-900/60 shadow-inner"
+                        placeholder="nprenom">
+                </div>
             </div>
 
-            <div>
-                <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Mot de passe</label>
-                <input type="password" name="password" id="password" required 
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
-                    placeholder="••••••••">
+            <div class="group">
+                <label for="password" class="block text-[10px] font-bold text-cyan-300/70 mb-1.5 uppercase tracking-widest ml-1">Mot de passe</label>
+                <div class="relative">
+                    <input type="password" name="password" id="password" required 
+                        class="w-full px-4 py-3 bg-slate-900/40 border border-cyan-900/30 rounded-lg text-cyan-50 placeholder-slate-600 focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-400/50 outline-none transition duration-300 hover:bg-slate-900/60 shadow-inner"
+                        placeholder="••••••••">
+                </div>
             </div>
 
+            <!-- Aide à la connexion - Style Dark Tech -->
+            <div class="bg-slate-800/40 p-4 rounded-lg border border-white/5">
+                <h4 class="text-xs font-bold text-cyan-400 mb-2 uppercase tracking-wide flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Aide à la connexion
+                </h4>
+                <p class="text-[11px] text-slate-400 leading-relaxed">
+                    1. Identifiant : <span class="font-bold text-slate-200 font-mono bg-slate-700/50 px-1 rounded">nprenom</span><br>
+                    2. Mot de passe : Votre mot de passe Windows.<br>
+                    3. Problème ? Contactez le service informatique.
+                </p>
+            </div>
+
+            <!-- Bouton style "Cyber" -->
             <button type="submit" 
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition duration-200 transform hover:scale-[1.02]">
-                Se connecter
+                class="w-full bg-cyan-600/90 hover:bg-cyan-500 text-white font-bold py-3.5 rounded-lg transition duration-300 shadow-[0_0_20px_rgba(8,145,178,0.3)] hover:shadow-[0_0_30px_rgba(34,211,238,0.5)] border border-cyan-400/20 relative overflow-hidden group">
+                <span class="relative z-10 tracking-widest text-sm">CONNEXION</span>
+                <div class="absolute inset-0 h-full w-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1s_infinite]"></div>
             </button>
         </form>
-
-        <!-- Aide pour le développeur (Visible uniquement en DEBUG ou pour tester) 
-        <div class="mt-8 pt-6 border-t border-slate-100 text-center">
-            <p class="text-xs text-slate-400 uppercase font-bold mb-3">Comptes de Test</p>
-            <div class="flex flex-wrap justify-center gap-2">
-                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border cursor-pointer hover:bg-slate-200" onclick="fillLogin('user')">user</span>
-                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border cursor-pointer hover:bg-slate-200" onclick="fillLogin('manager')">manager</span>
-                <span class="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded border cursor-pointer hover:bg-slate-200" onclick="fillLogin('admin')">admin</span>
-                <span class="px-2 py-1 bg-blue-50 text-blue-600 text-xs rounded border border-blue-100 cursor-pointer hover:bg-blue-100" onclick="fillLogin('tech_info')">tech_info</span>
-                <span class="px-2 py-1 bg-purple-50 text-purple-600 text-xs rounded border border-purple-100 cursor-pointer hover:bg-purple-100" onclick="fillLogin('tech_daf')">tech_daf</span>
-            </div>
+        
+        <div class="mt-6 text-center">
+             <p class="text-[10px] text-slate-500">Accès réservé au personnel autorisé.</p>
         </div>
-    </div> --->
+    </div>
 
+    <!-- SCRIPT AVANCÉ POUR L'EFFET DE L'IMAGE -->
     <script>
-        function fillLogin(user) {
-            document.getElementById('username').value = user;
-            document.getElementById('password').value = 'password';
+        const canvas = document.getElementById('networkCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let networkParticles = [];
+        let bokehParticles = [];
+
+        // Configuration inspirée de ton image
+        const config = {
+            networkCount: 90,        // Nombre de points connectés (premier plan)
+            bokehCount: 40,          // Nombre de points flous (arrière plan)
+            connectionDist: 140,     // Distance de connexion
+            baseColor: '0, 255, 255', // Cyan pur
+        };
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
         }
+        
+        // --- PARTIE 1 : PARTICULES D'ARRIÈRE-PLAN (BOKEH) ---
+        // Simule les taches floues visibles sur l'image
+        class BokehParticle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.2; // Très lent
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.size = Math.random() * 5 + 2;
+                this.opacity = Math.random() * 0.3 + 0.05; // Très transparent
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                // Astuce pour créer un cercle flou sans filtre CSS lourd
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 4);
+                gradient.addColorStop(0, `rgba(${config.baseColor}, ${this.opacity})`);
+                gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gradient;
+                ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // --- PARTIE 2 : PARTICULES DE PREMIER PLAN (RÉSEAU) ---
+        // Les points brillants connectés
+        class NetworkParticle {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.8;
+                this.vy = (Math.random() - 0.5) * 0.8;
+                this.size = Math.random() * 1.5 + 1.5;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                
+                // Cœur blanc pour l'intensité
+                ctx.fillStyle = '#e0f7fa'; 
+                // Gros halo Cyan pour l'effet "Glow"
+                ctx.shadowBlur = 15; 
+                ctx.shadowColor = `rgba(${config.baseColor}, 1)`;
+                ctx.fill();
+                
+                // Reset shadow pour ne pas affecter les lignes (performance)
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function initParticles() {
+            networkParticles = [];
+            bokehParticles = [];
+            
+            for (let i = 0; i < config.networkCount; i++) {
+                networkParticles.push(new NetworkParticle());
+            }
+            for (let i = 0; i < config.bokehCount; i++) {
+                bokehParticles.push(new BokehParticle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 1. Dessiner le fond flou (Bokeh)
+            // On désactive le composite pour que ça se fonde bien
+            ctx.globalCompositeOperation = 'source-over';
+            bokehParticles.forEach(p => {
+                p.update();
+                p.draw();
+            });
+
+            // 2. Dessiner les connexions
+            // Lighter pour que les croisements de lignes soient plus brillants
+            ctx.globalCompositeOperation = 'lighter';
+            
+            for (let i = 0; i < networkParticles.length; i++) {
+                let p1 = networkParticles[i];
+                p1.update(); // Update position here loop optimization
+
+                for (let j = i + 1; j < networkParticles.length; j++) {
+                    let p2 = networkParticles[j];
+                    let dx = p1.x - p2.x;
+                    let dy = p1.y - p2.y;
+                    let distSq = dx * dx + dy * dy;
+
+                    if (distSq < config.connectionDist * config.connectionDist) {
+                        let alpha = 1 - Math.sqrt(distSq) / config.connectionDist;
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(${config.baseColor}, ${alpha * 0.4})`; // Lignes semi-transparentes
+                        ctx.lineWidth = 0.8;
+                        ctx.moveTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+                // Draw particles after lines to appear on top
+                p1.draw();
+            }
+
+            requestAnimationFrame(animate);
+        }
+
+        // Init
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize();
+        initParticles();
+        animate();
+
     </script>
 </body>
 </html>

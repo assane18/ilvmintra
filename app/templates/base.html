@@ -43,6 +43,27 @@
         .dark .alert-error { background-color: #450a0a; border-left-color: #ef4444; color: #fca5a5; }
         .dark .alert-success { background-color: #022c22; border-left-color: #10b981; color: #6ee7b7; }
         .dark .alert-warning { background-color: #431407; border-left-color: #f97316; color: #fdba74; }
+
+        /* --- CONFIGURATION DU FOND ANIMÉ --- */
+        #background-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1; /* Derrière tout le contenu */
+            transition: background 0.5s ease;
+        }
+
+        /* Mode Clair : Fond épuré gris/blanc */
+        body:not(.dark) #background-container {
+            background: radial-gradient(circle at 50% 50%, #f8fafc 0%, #cbd5e1 100%);
+        }
+
+        /* Mode Sombre : Fond "Deep Space" (Identique Login) */
+        html.dark #background-container {
+            background: radial-gradient(circle at 30% 30%, #11264a 0%, #061229 40%, #000000 100%);
+        }
     </style>
     
     <!-- Script d'initialisation du thème (avant chargement du body pour éviter le flash) -->
@@ -54,7 +75,13 @@
         }
     </script>
 </head>
-<body class="bg-slate-50 font-sans text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 dark:bg-slate-950 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
+<!-- Retrait des bg-colors du body car gérés par #background-container -->
+<body class="font-sans text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
+
+    <!-- FOND ANIMÉ CANVAS -->
+    <div id="background-container">
+        <canvas id="networkCanvas"></canvas>
+    </div>
 
     <!-- Flash Messages (Notifications) -->
     <div class="fixed top-4 right-4 z-50 w-96 space-y-2 pointer-events-none">
@@ -78,14 +105,12 @@
 
     <!-- Navigation Bar (Optionnelle, visible sauf sur Login) -->
     {% if current_user.is_authenticated and request.endpoint != 'auth.login' %}
-    <nav class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-40 shadow-sm dark:bg-slate-900 dark:border-slate-800 transition-colors duration-300">
+    <!-- Ajout de backdrop-blur et bg avec transparence pour voir l'effet dessous -->
+    <nav class="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 px-6 py-3 flex justify-between items-center sticky top-0 z-40 shadow-sm dark:border-slate-800 transition-colors duration-300">
         <div class="flex items-center gap-4">
             <a href="{{ url_for('main.user_portal') }}" class="flex items-center gap-2 group">
-             <!--   <div class="bg-blue-600 text-white p-1.5 rounded-lg group-hover:bg-blue-700 transition">
-                    <i data-lucide="layout-grid" class="w-5 h-5"></i>
-                </div> -->
                 <span class="font-black text-xl tracking-tighter text-blue-500 italic flex items-center gap-2">
-                    <i data-lucide="layout-dashboard"></i> ILVM<span class="text-white">DASHBOARD</span>
+                    <i data-lucide="layout-dashboard"></i> ILVM<span class="text-slate-900 dark:text-white">DASHBOARD</span>
                 </span>
             </a>
             
@@ -146,7 +171,8 @@
     {% endif %}
 
     <!-- Main Content -->
-    <main class="min-h-screen bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
+    <!-- Ajout de relative z-10 pour être au dessus du canvas -->
+    <main class="min-h-screen relative z-10">
         {% block content %}{% endblock %}
     </main>
 
@@ -156,9 +182,7 @@
 
         // --- GESTION DARK MODE ---
         const themeToggleBtn = document.getElementById('theme-toggle');
-        const themeIconSun = document.querySelector('.dark\\:block'); // Soleil
-        const themeIconMoon = document.querySelector('.dark\\:hidden'); // Lune
-
+        
         if (themeToggleBtn) {
             themeToggleBtn.addEventListener('click', function() {
                 // Bascule la classe dark sur html
@@ -169,6 +193,8 @@
                     document.documentElement.classList.add('dark');
                     localStorage.theme = 'dark';
                 }
+                // Mise à jour de l'effet Canvas après changement
+                if (window.updateCanvasTheme) window.updateCanvasTheme();
             });
         }
 
@@ -188,7 +214,6 @@
 
         async function checkNotificationCount() {
             try {
-                // CORRECTION : Utilisation de url_for pour la bonne route API
                 const res = await fetch("{{ url_for('api.get_notifications_count') }}");
                 const data = await res.json();
                 if (data.count > 0) {
@@ -207,7 +232,6 @@
 
         async function loadNotifications() {
             try {
-                // CORRECTION : Utilisation de url_for
                 const res = await fetch("{{ url_for('api.get_notifications') }}");
                 const data = await res.json();
                 notifList.innerHTML = '';
@@ -219,7 +243,6 @@
 
                 data.notifications.forEach(n => {
                     const item = document.createElement('div');
-                    // Adaptation Dark Mode pour les items de notif
                     item.className = `p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition border-l-2 dark:hover:bg-slate-700 ${n.is_read ? 'border-transparent opacity-50' : 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'}`;
                     
                     let colorClass = 'bg-blue-500';
@@ -247,17 +270,174 @@
         }
 
         async function markRead(id) {
-            // CORRECTION URL
             await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
             checkNotificationCount();
         }
 
         async function markAllRead() {
-            // CORRECTION URL (url_for serait mieux mais ici c'est plus complexe à injecter dans une string template JS pur, le hardcode relatif marche souvent si api_bp n'a pas de préfixe complexe)
             await fetch("{{ url_for('api.mark_all_read') }}", { method: 'POST' });
             checkNotificationCount();
             notifDropdown.classList.add('hidden');
         }
+    </script>
+
+    <!-- SCRIPT CANVAS RÉSEAU (ADAPTATIF) -->
+    <script>
+        (function() {
+            const canvas = document.getElementById('networkCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            let width, height;
+            let networkParticles = [];
+            let bokehParticles = [];
+            
+            // Configuration par défaut (sera mise à jour)
+            let config = {
+                networkCount: 80,
+                bokehCount: 30,
+                connectionDist: 140,
+                baseColor: '0, 255, 255', // Cyan
+                bokehOpacity: 0.3
+            };
+
+            // Fonction pour mettre à jour la config selon le thème
+            window.updateCanvasTheme = function() {
+                const isDark = document.documentElement.classList.contains('dark');
+                if (isDark) {
+                    // MODE SOMBRE (Style Deep Space - Login)
+                    config.baseColor = '0, 255, 255'; // Cyan
+                    config.bokehOpacity = 0.3;
+                    config.networkCount = 80;
+                } else {
+                    // MODE CLAIR (Style Clean Tech)
+                    config.baseColor = '59, 130, 246'; // Bleu corporate (Blue-500)
+                    config.bokehOpacity = 0.15; // Plus discret
+                    config.networkCount = 60; // Moins chargé
+                }
+            }
+            
+            // Appel initial
+            updateCanvasTheme();
+
+            function resize() {
+                width = canvas.width = window.innerWidth;
+                height = canvas.height = window.innerHeight;
+            }
+            
+            class BokehParticle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.vx = (Math.random() - 0.5) * 0.2;
+                    this.vy = (Math.random() - 0.5) * 0.2;
+                    this.size = Math.random() * 5 + 2;
+                    this.opacity = Math.random() * config.bokehOpacity + 0.05;
+                }
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.x < 0 || this.x > width) this.vx *= -1;
+                    if (this.y < 0 || this.y > height) this.vy *= -1;
+                }
+                draw() {
+                    ctx.beginPath();
+                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 4);
+                    gradient.addColorStop(0, `rgba(${config.baseColor}, ${this.opacity})`);
+                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = gradient;
+                    ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            class NetworkParticle {
+                constructor() {
+                    this.x = Math.random() * width;
+                    this.y = Math.random() * height;
+                    this.vx = (Math.random() - 0.5) * 0.8;
+                    this.vy = (Math.random() - 0.5) * 0.8;
+                    this.size = Math.random() * 1.5 + 1.5;
+                }
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    if (this.x < 0 || this.x > width) this.vx *= -1;
+                    if (this.y < 0 || this.y > height) this.vy *= -1;
+                }
+                draw() {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    
+                    const isDark = document.documentElement.classList.contains('dark');
+                    ctx.fillStyle = isDark ? '#e0f7fa' : '#1e293b'; // Coeur blanc en dark, sombre en light
+                    
+                    if(isDark) {
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = `rgba(${config.baseColor}, 1)`;
+                    } else {
+                        ctx.shadowBlur = 0; // Pas de glow en mode light pour rester propre
+                    }
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            function initParticles() {
+                networkParticles = [];
+                bokehParticles = [];
+                for (let i = 0; i < config.networkCount; i++) networkParticles.push(new NetworkParticle());
+                for (let i = 0; i < config.bokehCount; i++) bokehParticles.push(new BokehParticle());
+            }
+
+            function animate() {
+                ctx.clearRect(0, 0, width, height);
+
+                // Bokeh (Arrière-plan)
+                ctx.globalCompositeOperation = 'source-over';
+                bokehParticles.forEach(p => { p.update(); p.draw(); });
+
+                // Réseau (Premier plan)
+                // Mode Light: Multiply pour assombrir. Mode Dark: Lighter pour briller
+                const isDark = document.documentElement.classList.contains('dark');
+                ctx.globalCompositeOperation = isDark ? 'lighter' : 'source-over';
+
+                for (let i = 0; i < networkParticles.length; i++) {
+                    let p1 = networkParticles[i];
+                    p1.update();
+                    for (let j = i + 1; j < networkParticles.length; j++) {
+                        let p2 = networkParticles[j];
+                        let dx = p1.x - p2.x;
+                        let dy = p1.y - p2.y;
+                        let distSq = dx * dx + dy * dy;
+
+                        if (distSq < config.connectionDist * config.connectionDist) {
+                            let alpha = 1 - Math.sqrt(distSq) / config.connectionDist;
+                            ctx.beginPath();
+                            ctx.strokeStyle = `rgba(${config.baseColor}, ${alpha * (isDark ? 0.4 : 0.2)})`;
+                            ctx.lineWidth = 0.8;
+                            ctx.moveTo(p1.x, p1.y);
+                            ctx.lineTo(p2.x, p2.y);
+                            ctx.stroke();
+                        }
+                    }
+                    p1.draw();
+                }
+                requestAnimationFrame(animate);
+            }
+
+            window.addEventListener('resize', () => { resize(); initParticles(); });
+            resize();
+            initParticles();
+            animate();
+            
+            // Re-init particules si changement de thème pour ajuster le nombre
+            const originalUpdate = window.updateCanvasTheme;
+            window.updateCanvasTheme = function() {
+                originalUpdate();
+                // On peut réinitialiser les particules si on veut changer leur nombre instantanément
+                // initParticles(); 
+            };
+        })();
     </script>
 </body>
 </html>
