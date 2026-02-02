@@ -54,16 +54,27 @@ def check_permission(required_roles):
     return False
 
 # --- ROUTES ---
-
 @tickets_bp.route('/new/<service_name>', methods=['GET', 'POST'])
 @login_required
 @nocache
 def new_ticket(service_name):
     
-    # --- 1. SÉCURITÉ SPÉCIFIQUE MATÉRIEL ---
+    # --- RECUPERATION DU TYPE DE DEMANDE (DAF Délégation) ---
+    ticket_type = request.args.get('type', '')
+    is_delegation = (service_name == 'DAF' and ticket_type == 'delegation')
+
+    # --- 1. SÉCURITÉ ---
+    role = str(current_user.role.value).upper()
+    
+    # Sécurité Matériel
     if service_name.upper() == 'MATERIEL':
-        role = str(current_user.role.value).upper()
         if 'MANAGER' not in role and 'DIRECTEUR' not in role and 'ADMIN' not in role:
+            return render_template('errors/catdance.html'), 403
+
+    # SÉCURITÉ DÉLÉGATION DAF (Ta demande spécifique)
+    if is_delegation:
+        if 'MANAGER' not in role and 'DIRECTEUR' not in role and 'ADMIN' not in role:
+            # Si pas manager/directeur -> CATDANCE
             return render_template('errors/catdance.html'), 403
 
     # --- 2. DÉTERMINATION DU SERVICE ---
@@ -83,6 +94,7 @@ def new_ticket(service_name):
         title = request.form.get('title')
         description = request.form.get('description')
 
+        # ... (Logique DRH/Matériel existante inchangée) ...
         if service_name == 'DRH':
             cat_drh = request.form.get('titre_drh_select')
             if cat_drh == 'Autre':
@@ -96,14 +108,22 @@ def new_ticket(service_name):
             title = request.form.get('title')
             category = "Demande Matériel"
         
-        if service_name == 'DAF' and category == 'Bon de Commande':
-             fournisseur = request.form.get('daf_fournisseur_nom', 'Inconnu')
-             title = f"Bon de Commande - {fournisseur}"
-             description = request.form.get('description_daf', '')
+        # LOGIQUE DAF
+        if service_name == 'DAF':
+            if is_delegation:
+                category = 'Bon de Commande (Délégation)'
+            elif category == 'Bon de Commande':
+                # Cas standard
+                pass
+            
+            fournisseur = request.form.get('daf_fournisseur_nom', 'Inconnu')
+            title = f"Bon de Commande - {fournisseur}"
+            description = request.form.get('description_daf', '')
         
         if service_name == 'IMAGO':
             category = 'Dépannage Imago'
 
+        # ... (Reste de la logique hostname/origin inchangée) ...
         selected_origin = request.form.get('selected_origin')
         if not selected_origin:
             selected_origin = user_origins[0] if user_origins else "INCONNU"
@@ -111,12 +131,47 @@ def new_ticket(service_name):
         hostname_saisi = request.form.get('hostname')
         final_hostname = hostname_saisi if hostname_saisi else get_hostname_from_ip(request.remote_addr)
 
-        role = current_user.role
+        # --- DAF Lignes & CALCUL TOTAL ---
+        daf_lignes = []
+        total_ttc = 0.0
         
+        if service_name == 'DAF':
+            for i in range(1, 51):
+                des = request.form.get(f'daf_designation_{i}')
+                if des: 
+                    try:
+                        ligne_total = float(request.form.get(f'daf_total_{i}', 0))
+                        total_ttc += ligne_total
+                    except: pass
+                    
+                    daf_lignes.append({
+                        'designation': des, 
+                        'ref': request.form.get(f'daf_ref_{i}'), 
+                        'qte': request.form.get(f'daf_qte_{i}'), 
+                        'pu': request.form.get(f'daf_pu_{i}'), 
+                        'total': request.form.get(f'daf_total_{i}')
+                    })
+
+
+            # --- CONSTRAINT CHECK (HT 380€ / TTC 400€) ---
+            if is_delegation:
+                tax_type = request.form.get('daf_tax_type', 'TTC') # TTC par defaut
+                limit = 380 if tax_type == 'HT' else 400
+                
+                if total_calc > limit:
+                    flash(f"Erreur : Le montant total ({total_calc}€) dépasse la limite autorisée de {limit}€ {tax_type} pour une délégation.", "danger")
+                    return redirect(url_for('tickets.new_ticket', service_name='DAF', type='delegation'))
+
+
         # --- WORKFLOW ---
         status = TicketStatus.VALIDATION_N1 
 
-        if (service_enum == ServiceType.INFO and category in ["Standard", "Incident Standard"]) or (service_enum == ServiceType.IMAGO):
+        if is_delegation:
+            # WORKFLOW SPÉCIFIQUE : On saute la validation N1/N2
+            # On envoie direct en PENDING (Pour que le service DAF le voit et le traite)
+            status = TicketStatus.PENDING
+        
+        elif (service_enum == ServiceType.INFO and category in ["Standard", "Incident Standard"]) or (service_enum == ServiceType.IMAGO):
             status = TicketStatus.PENDING
         
         elif service_name == 'DRH':
@@ -126,6 +181,7 @@ def new_ticket(service_name):
             status = TicketStatus.VALIDATION_N2 
 
         else:
+            # Workflow Standard
             if role == UserRole.USER: status = TicketStatus.VALIDATION_N1
             elif role == UserRole.MANAGER: status = TicketStatus.VALIDATION_N1
             elif role == UserRole.DIRECTEUR: status = TicketStatus.VALIDATION_N2
@@ -137,19 +193,6 @@ def new_ticket(service_name):
         base_query = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%"))
         count = base_query.count() + 1
         uid = f"{today_str}-{str(count).zfill(3)}"
-            
-        # DAF Lignes
-        daf_lignes = []
-        if service_name == 'DAF':
-            for i in range(1, 51):
-                des = request.form.get(f'daf_designation_{i}')
-                if des: daf_lignes.append({
-                    'designation': des, 
-                    'ref': request.form.get(f'daf_ref_{i}'), 
-                    'qte': request.form.get(f'daf_qte_{i}'), 
-                    'pu': request.form.get(f'daf_pu_{i}'), 
-                    'total': request.form.get(f'daf_total_{i}')
-                })
         
         # Fichiers
         daf_files = []
@@ -257,7 +300,8 @@ def new_ticket(service_name):
         flash(f'Demande {uid} enregistrée.', 'success')
         return redirect(url_for('main.user_portal'))
 
-    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins)
+    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation)
+
 
 @tickets_bp.route('/view/<string:ticket_uid>', methods=['GET', 'POST'])
 @login_required
@@ -697,7 +741,8 @@ def solver_dashboard():
         
         pool_users = [t for t in pending_tickets if t.category_ticket == 'Nouvel Utilisateur']
         pool_materiel = [t for t in pending_tickets if t.category_ticket == 'Matériel' or t.category_ticket == 'Demande Matériel']
-        pool_bons = [t for t in pending_tickets if t.category_ticket == 'Bon de Commande']
+
+        pool_bons = [t for t in pending_tickets if t.category_ticket in ['Bon de Commande', 'Bon de Commande (Délégation)']]
         
         pool_drh = [t for t in pending_tickets if t.target_service == drh_enum or str(t.target_service) == 'DRH' or str(t.target_service) == 'GS-DRH']
         

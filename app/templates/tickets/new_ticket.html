@@ -392,6 +392,61 @@
     document.addEventListener('DOMContentLoaded', toggleFormFields);
 </script>
 
+{% if is_delegation %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        // Création du message d'erreur
+        const errorDiv = document.createElement('div');
+        errorDiv.className = "hidden mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded font-bold text-sm text-center";
+        
+        // On insère le message avant le bouton submit
+        submitBtn.parentNode.insertBefore(errorDiv, submitBtn);
+
+        // Make function global so it can be called from addDafLine
+        window.checkTotal = function() {
+            let total = 0;
+            const inputs = document.querySelectorAll('input[name^="daf_total_"]');
+            inputs.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                total += val;
+            });
+
+            // Get selected tax type
+            const taxType = document.querySelector('input[name="daf_tax_type"]:checked').value;
+            const limit = (taxType === 'HT') ? 380 : 400;
+
+            if (total > limit) {
+                submitBtn.disabled = true;
+                submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+                errorDiv.innerHTML = `⚠️ Le montant total dépasse ${limit}€ ${taxType}.<br>Impossible d'utiliser la délégation de signature.`;
+                errorDiv.classList.remove('hidden');
+            } else {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+                errorDiv.classList.add('hidden');
+            }
+        }
+
+        // Attach listeners to initial inputs
+        const initialInputs = document.querySelectorAll('input[name^="daf_total_"]');
+        initialInputs.forEach(input => {
+            input.addEventListener('input', checkTotal);
+            input.addEventListener('change', checkTotal);
+        });
+        
+        // Also listen to Qte/PU changes for the first row
+        document.getElementById('qte_1').addEventListener('input', () => setTimeout(checkTotal, 100));
+        document.getElementById('pu_1').addEventListener('input', () => setTimeout(checkTotal, 100));
+        
+        // Initial check
+        checkTotal();
+    });
+</script>
+{% endif %}
+
 <style>
     .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; margin-bottom: 6px; display: block; letter-spacing: 0.1em; }
     /* Dark mode override pour label */
