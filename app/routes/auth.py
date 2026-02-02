@@ -163,7 +163,7 @@ def login():
                     return render_template('auth/login.html')
 
                 login_user(user)
-                return redirect_by_role(user)
+                return redirect(url_for('main.user_portal')) 
                 
             except Exception as e:
                 flash(f"Erreur technique : {e}", "danger")

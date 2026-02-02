@@ -153,13 +153,15 @@ def new_ticket(service_name):
                     })
 
 
-            # --- CONSTRAINT CHECK (HT 380€ / TTC 400€) ---
+# --- CONSTRAINT CHECK (HT 380€ / TTC 400€) ---
             if is_delegation:
-                tax_type = request.form.get('daf_tax_type', 'TTC') # TTC par defaut
+                # On utilise 'daf_type_prix' pour être raccord avec le reste du formulaire
+                tax_type = request.form.get('daf_type_prix', 'TTC') 
                 limit = 380 if tax_type == 'HT' else 400
                 
-                if total_calc > limit:
-                    flash(f"Erreur : Le montant total ({total_calc}€) dépasse la limite autorisée de {limit}€ {tax_type} pour une délégation.", "danger")
+                # On utilise >= pour bloquer pile à la limite si tu veux être strict
+                if total_ttc > limit:
+                    flash(f"Erreur : Le montant total ({total_ttc}€) dépasse la limite de {limit}€ {tax_type} pour une délégation.", "danger")
                     return redirect(url_for('tickets.new_ticket', service_name='DAF', type='delegation'))
 
 
@@ -533,6 +535,9 @@ def manager_action(ticket_id, action):
                 if t.target_service == ServiceType.DAF: t.status = TicketStatus.DAF_SIGNATURE
                 else: t.status = TicketStatus.PENDING
                 
+            elif t.status == TicketStatus.VALIDATION_DAF_MANAGER:
+                t.status = TicketStatus.DAF_SIGNATURE
+
             elif t.category_ticket == 'Demande Matériel' and t.status == TicketStatus.VALIDATION_N2:
                 t.status = TicketStatus.PENDING
 
@@ -643,8 +648,7 @@ def daf_director_sign(ticket_id):
                 file.save(os.path.join(upload_path, filename))
                 t.daf_signed_file = filename
                 
-                t.status = TicketStatus.DONE
-                t.closed_at = get_paris_time()
+                t.status = TicketStatus.IN_PROGRESS
                 
                 db.session.commit()
                 flash("Bon signé. Ticket clôturé.", "success")
