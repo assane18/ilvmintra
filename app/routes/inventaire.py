@@ -9,25 +9,37 @@ from sqlalchemy.exc import IntegrityError
 
 inventaire_bp = Blueprint('inventaire', __name__)
 
+
 @inventaire_bp.route('/inventaire', methods=['GET', 'POST'])
 @login_required
 def liste():
-    # SÉCURITÉ : Admin ou (Tech/Manager/Directeur) du service INFO
+    # --- Ta sécurité existante ---
     user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
     user_services = current_user.get_allowed_services()
-    
     is_admin = 'ADMIN' in user_role
-    
-    # CORRECTION : On autorise SOLVER, MANAGER et DIRECTEUR s'ils sont du service INFO
     is_allowed_role = 'SOLVER' in user_role or 'MANAGER' in user_role or 'DIRECTEUR' in user_role
     is_tech_info = is_allowed_role and ('INFORMATIQUE' in user_services or 'INFO' in user_services)
     
     if not (is_admin or is_tech_info):
         flash("Accès réservé au service Informatique.", "danger")
         return redirect(url_for('main.user_portal'))
+    # -----------------------------
 
-    materiels = Materiel.query.all()
-    return render_template('inventaire.html', materiels=materiels)
+    search_query = request.args.get('q', '')
+    query = Materiel.query
+    
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Materiel.modele.ilike(f'%{search_query}%'),
+                Materiel.sn.ilike(f'%{search_query}%'),
+                Materiel.hostname.ilike(f'%{search_query}%'),
+                Materiel.categorie.ilike(f'%{search_query}%')
+            )
+        )
+
+    materiels = query.all()
+    return render_template('inventaire.html', materiels=materiels, search_query=search_query)
 
 @inventaire_bp.route('/inventaire/add', methods=['POST'])
 @login_required

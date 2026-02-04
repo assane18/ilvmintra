@@ -2,6 +2,9 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_required, current_user
 from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus
 from app import db
+# --- IMPORT DES FONCTIONS EMAIL (AJOUTÉ) ---
+from app.emails import send_service_alert, send_assignment_notification, send_message_notification, send_closure_notification
+# -------------------------------------------
 from datetime import datetime
 import pytz
 import json
@@ -18,6 +21,7 @@ def get_paris_time():
     paris_tz = pytz.timezone('Europe/Paris')
     # On prend l'heure de Paris, et on retire l'info TZ pour le stockage naïf en DB
     return datetime.now(paris_tz).replace(tzinfo=None)
+
 # --- HELPERS ---
 
 def nocache(view):
@@ -52,6 +56,28 @@ def check_permission(required_roles):
             if req in current_role: return True
     except: return False
     return False
+
+# --- HELPER EMAILS (AJOUTÉ) ---
+def get_service_emails(service_enum):
+    """ Récupère les emails de tous les membres du service cible """
+    # On récupère les tech, managers, directeurs et admins
+    staff = User.query.filter(User.role.in_([UserRole.SOLVER, UserRole.MANAGER, UserRole.DIRECTEUR, UserRole.ADMIN])).all()
+    emails = []
+    
+    # On gère le cas où service_enum est une string ou une Enum
+    target_val = service_enum.value if hasattr(service_enum, 'value') else str(service_enum)
+    target_name = service_enum.name if hasattr(service_enum, 'name') else str(service_enum)
+    
+    for u in staff:
+        if u.email and u.is_active:
+            # On regarde si l'utilisateur a ce service dans ses droits
+            user_services = u.get_allowed_services() # Renvoie une liste ['INFORMATIQUE', 'DAF']
+            # Si le service est dans la liste ou si c'est un ADMIN global
+            if target_val in user_services or target_name in user_services or "ADMIN" in str(u.role.value):
+                emails.append(u.email)
+    
+    return list(set(emails)) # set() pour éviter les doublons
+# ------------------------------
 
 # --- ROUTES ---
 @tickets_bp.route('/new/<service_name>', methods=['GET', 'POST'])
@@ -152,8 +178,7 @@ def new_ticket(service_name):
                         'total': request.form.get(f'daf_total_{i}')
                     })
 
-
-# --- CONSTRAINT CHECK (HT 380€ / TTC 400€) ---
+            # --- CONSTRAINT CHECK (HT 380€ / TTC 400€) ---
             if is_delegation:
                 # On utilise 'daf_type_prix' pour être raccord avec le reste du formulaire
                 tax_type = request.form.get('daf_type_prix', 'TTC') 
@@ -265,6 +290,13 @@ def new_ticket(service_name):
         try:
             db.session.add(t)
             db.session.commit()
+            
+            # --- EMAIL ALERT (AJOUTÉ) ---
+            recipients = get_service_emails(service_enum)
+            if recipients:
+                send_service_alert(t, recipients)
+            # ----------------------------
+
         except Exception as e:
             db.session.rollback()
             flash(f"Erreur DB: {e}", "danger")
@@ -371,10 +403,19 @@ def view_ticket(ticket_uid):
             msg_content = request.form.get('message')
             msg = TicketMessage(content=msg_content, ticket=ticket, author=current_user)
             db.session.add(msg)
-            if ticket.solver and current_user.id != ticket.solver_id:
+            
+            # --- EMAIL NOTIFICATION MESSAGE (AJOUTÉ) ---
+            # Cas 1: L'auteur écrit -> On notifie le technicien (s'il y en a un)
+            if ticket.solver and current_user.id == ticket.author_id:
                 create_notification(ticket.solver, f"Message sur {ticket.uid_public}", 'warning', url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
-            if ticket.author and current_user.id != ticket.author_id:
+                send_message_notification(ticket, msg_content, ticket.solver)
+            
+            # Cas 2: Le technicien (ou autre) écrit -> On notifie l'auteur
+            elif current_user.id != ticket.author_id:
                 create_notification(ticket.author, f"Réponse sur {ticket.uid_public}", 'success', url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
+                send_message_notification(ticket, msg_content, ticket.author)
+            # -------------------------------------------
+
             db.session.commit()
             return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
         
@@ -597,6 +638,12 @@ def take_ticket(ticket_id):
         t.solver = current_user
         t.status = TicketStatus.IN_PROGRESS
         create_notification(t.author, f"Pris en charge par {current_user.fullname}", 'success', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+        
+        # --- EMAIL NOTIFICATION (AJOUTÉ) ---
+        send_assignment_notification(t, current_user)
+        send_message_notification(t, f"Votre ticket a été pris en charge par {current_user.fullname}", t.author)
+        # -----------------------------------
+
         db.session.commit()
         return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
     except Exception as e:
@@ -672,6 +719,9 @@ def close_ticket(ticket_id):
             category='success',
             link=url_for('tickets.view_ticket', ticket_uid=t.uid_public)
         )
+        # --- EMAIL (AJOUTÉ) ---
+        send_closure_notification(t)
+        # ----------------------
 
         db.session.commit()
         flash("Ticket clôturé avec succès.", "success")
@@ -811,7 +861,7 @@ def historique_tickets():
                     created_at = datetime.strptime(date_creation_str, '%Y-%m-%dT%H:%M')
                 except:
                     pass
-            
+
             my_services = current_user.get_allowed_services()
             target_service = ServiceType.AUTRE
             if my_services:
@@ -823,7 +873,7 @@ def historique_tickets():
             t = Ticket(
                 uid_public=uid,
                 title=request.form.get('title'),
-                description=f"[Manuel] {request.form.get('description')}", 
+                description=f"[Manuel] {request.form.get('description')}",
                 author=current_user,
                 solver=current_user,
                 target_service=target_service,
@@ -831,39 +881,58 @@ def historique_tickets():
                 category_ticket="Archive Manuelle",
                 created_at=created_at,
                 closed_at = get_paris_time(),
-                new_user_fullname=request.form.get('user_name') 
+                new_user_fullname=request.form.get('user_name')
             )
 
             db.session.add(t)
             db.session.commit()
             flash(f"Ticket manuel {uid} ajouté à l'historique.", "success")
-            
+
         except Exception as e:
             db.session.rollback()
             flash(f"Erreur lors de l'ajout manuel : {e}", "danger")
-        
+
         return redirect(url_for('tickets.historique_tickets'))
 
-    # 2. AFFICHAGE DE LA LISTE (GET)
+    # 2. AFFICHAGE DE LA LISTE & RECHERCHE (GET)
+    search_query = request.args.get('q', '') # Récupère le texte tapé
     user_role = str(current_user.role.value).upper()
+    
+    # Base de la requête : Tickets terminés
     query = Ticket.query.filter(Ticket.status == TicketStatus.DONE)
-    
+
+    # Si une recherche est lancée, on ajoute les filtres ILIKE (insensible à la casse)
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Ticket.title.ilike(f'%{search_query}%'),
+                Ticket.description.ilike(f'%{search_query}%'),
+                Ticket.uid_public.ilike(f'%{search_query}%'),
+                Ticket.new_user_fullname.ilike(f'%{search_query}%')
+            )
+        )
+
     tickets_archives = []
-    
+
     if 'ADMIN' in user_role:
         tickets_archives = query.order_by(Ticket.created_at.desc()).all()
     else:
         my_services = current_user.get_allowed_services()
         if my_services:
+            # On utilise le filtre de recherche déjà appliqué à query
             all_done = query.order_by(Ticket.created_at.desc()).all()
             for t in all_done:
                 t_svc = t.target_service.value if hasattr(t.target_service, 'value') else str(t.target_service)
+                # Sécurité : On n'affiche que ses services, ses tickets créés ou ses tickets résolus
                 if (t_svc in my_services) or (t.author_id == current_user.id) or (t.solver_id == current_user.id):
                     tickets_archives.append(t)
         else:
-             tickets_archives = query.filter(Ticket.author_id == current_user.id).order_by(Ticket.created_at.desc()).all()
+            # Si simple utilisateur, recherche uniquement dans ses propres tickets
+            tickets_archives = query.filter(Ticket.author_id == current_user.id).order_by(Ticket.created_at.desc()).all()
 
-    return render_template('tickets/historique_tickets.html', tickets=tickets_archives)
+    return render_template('tickets/historique_tickets.html', 
+                           tickets=tickets_archives, 
+                           search_query=search_query)
 
 @tickets_bp.route('/export/history')
 @login_required
@@ -923,6 +992,12 @@ def assign_ticket(ticket_id):
 
             t.solver = current_user
             t.status = TicketStatus.IN_PROGRESS
+            
+            # --- EMAIL ASSIGNATION (AJOUTÉ) ---
+            send_assignment_notification(t, current_user)
+            send_message_notification(t, f"Votre ticket a été pris en charge par {current_user.fullname}", t.author)
+            # ----------------------------------
+
             flash("Ticket pris en charge.", "success")
 
         # CAS 2 : Assigner à un autre (nécessite Manager/Directeur/Admin)
@@ -936,6 +1011,12 @@ def assign_ticket(ticket_id):
                 t.solver = u
                 t.status = TicketStatus.IN_PROGRESS
                 create_notification(u, f"Ticket {t.uid_public} assigné par {current_user.fullname}.", 'info', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+                
+                # --- EMAIL ASSIGNATION (AJOUTÉ) ---
+                send_assignment_notification(t, u)
+                send_message_notification(t, f"Votre ticket a été assigné à {u.fullname}", t.author)
+                # ----------------------------------
+                
                 flash(f"Assigné à {u.fullname}.", "success")
         
         create_notification(t.author, f"Votre ticket est pris en charge par {t.solver.fullname}.", 'success', url_for('tickets.view_ticket', ticket_uid=t.uid_public))

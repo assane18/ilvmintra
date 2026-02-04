@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-8 p-6 bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<!-- ARRIÈRE PLAN DYNAMIQUE CYBER (3D Effect) -->
+<div class="aurora-bg">
+    <div class="aurora-beam"></div>
+    <div class="tech-grid"></div>
+</div>
+
+<div class="flex flex-col gap-8 p-6 relative z-10 min-h-screen transition-colors duration-300">
 
     <!-- En-tête -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -10,25 +16,50 @@
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Archives des demandes traitées</p>
         </div>
         <div class="flex gap-3 flex-wrap">
-            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard
             </a>
-            <!-- BOUTON EXPORT -->
-            <a href="{{ url_for('tickets.export_history') }}" class="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition">
+            <a href="{{ url_for('tickets.export_history') }}" class="bg-emerald-600/90 hover:bg-emerald-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition">
                 <i data-lucide="download" class="w-4 h-4"></i> Exporter Excel
             </a>
-            <!-- BOUTON AJOUT MANUEL -->
-            <button onclick="document.getElementById('manualTicketModal').classList.remove('hidden')" class="bg-slate-900 dark:bg-blue-600 hover:bg-slate-700 dark:hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
+            <button onclick="document.getElementById('manualTicketModal').classList.remove('hidden')" class="bg-slate-900/90 dark:bg-blue-600/90 hover:scale-105 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition">
                 <i data-lucide="edit" class="w-4 h-4"></i> Ajout Manuel
             </button>
         </div>
     </div>
 
-    <!-- Tableau des Archives -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <!-- Barre de Recherche -->
+    <div class="mb-2 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <form action="{{ url_for('tickets.historique_tickets') }}" method="GET" class="relative w-full max-w-md">
+            <input type="text" 
+                name="q" 
+                value="{{ search_query or '' }}" 
+                placeholder="Rechercher un sujet, une ref, un nom..." 
+                class="w-full pl-10 pr-10 py-2.5 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition">
+            
+            <div class="absolute left-3 top-3 text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
+
+            {% if search_query %}
+                <a href="{{ url_for('tickets.historique_tickets') }}" class="absolute right-3 top-3 text-slate-400 hover:text-red-500 transition">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                </a>
+            {% endif %}
+        </form>
+
+        {% if search_query %}
+            <p class="text-sm text-slate-500 dark:text-slate-400 italic bg-white/50 dark:bg-slate-800/50 px-3 py-1 rounded-full backdrop-blur-sm border border-white/20">
+                <strong>{{ tickets|length }}</strong> résultat(s) pour "{{ search_query }}"
+            </p>
+        {% endif %}
+    </div>
+
+    <!-- Tableau des Archives (Glassmorphism) -->
+    <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
+                <thead class="bg-slate-50/50 dark:bg-slate-900/50 border-b border-slate-200 dark:border-slate-700">
                     <tr class="text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider">
                         <th class="px-6 py-4">Réf</th>
                         <th class="px-6 py-4">Date</th>
@@ -39,33 +70,29 @@
                         <th class="px-6 py-4 text-right">Action</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium text-slate-700 dark:text-slate-300">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
                     {% for ticket in tickets %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                    <tr class="hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition">
                         <td class="px-6 py-4 font-mono text-xs text-slate-400 dark:text-slate-500">{{ ticket.uid_public }}</td>
                         <td class="px-6 py-4 text-xs">{{ ticket.created_at.strftime('%d/%m/%Y') }}</td>
-                        <td class="px-6 py-4">
+                        <td class="px-6 py-4 font-bold text-slate-800 dark:text-white">
                             {% if ticket.new_user_fullname and 'Manuel' in ticket.description %}
-                                <span class="text-blue-600 dark:text-blue-400 font-bold" title="Ajout Manuel">{{ ticket.new_user_fullname }}</span>
+                                <span class="text-blue-600 dark:text-blue-400">{{ ticket.new_user_fullname }}</span>
                             {% else %}
                                 {{ ticket.author.fullname }}
                             {% endif %}
                         </td>
                         <td class="px-6 py-4">
-                            <span class="bg-slate-100 dark:bg-slate-900 text-slate-500 dark:text-slate-400 text-[10px] font-black px-2 py-1 rounded uppercase">
+                            <span class="bg-slate-100/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-[10px] font-black px-2 py-1 rounded uppercase border border-slate-200/50">
                                 {{ ticket.target_service.value }}
                             </span>
                         </td>
                         <td class="px-6 py-4 text-slate-800 dark:text-white">{{ ticket.title|truncate(40) }}</td>
                         <td class="px-6 py-4 text-xs text-slate-500 dark:text-slate-400">
-                            {% if ticket.solver %}
-                                {{ ticket.solver.fullname }}
-                            {% else %}
-                                -
-                            {% endif %}
+                            {{ ticket.solver.fullname if ticket.solver else '-' }}
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-xs font-bold uppercase">Voir</a>
+                            <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 dark:text-blue-400 hover:scale-110 transition-transform inline-block font-bold uppercase text-xs">Voir</a>
                         </td>
                     </tr>
                     {% else %}
@@ -77,12 +104,11 @@
             </table>
         </div>
     </div>
-
 </div>
 
 <!-- MODAL AJOUT MANUEL -->
 <div id="manualTicketModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-lg m-4 shadow-2xl relative border border-slate-100 dark:border-slate-700">
+    <div class="bg-white/95 dark:bg-slate-800/95 p-8 rounded-3xl w-full max-w-lg m-4 shadow-2xl relative border border-slate-100 dark:border-slate-700">
         <button onclick="document.getElementById('manualTicketModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
             <i data-lucide="x" class="w-6 h-6"></i>
         </button>
@@ -125,14 +151,8 @@
 </script>
 <style>
     .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
-    /* Dark mode override */
-    .dark .label-tiny { color: #94a3b8; }
-
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; } 
-    .input-field:focus { border-color: #3b82f6; background-color: white; }
-
-    /* Dark Mode Inputs */
-    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
-    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; }
+    .input-field { width: 100%; background-color: rgba(248, 250, 252, 0.8); border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.75rem; outline: none; transition: all 0.2s; color: #1e293b; } 
+    .dark .input-field { background-color: rgba(30, 41, 59, 0.8); border-color: #334155; color: #f1f5f9; }
+    .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
 </style>
 {% endblock %}

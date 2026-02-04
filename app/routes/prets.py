@@ -12,40 +12,32 @@ prets_bp = Blueprint('prets', __name__)
 @login_required
 def liste_prets():
     if request.method == 'POST':
-        if 'action_pret' in request.form:
-            materiel_id = request.form.get('materiel_id')
-            mat = Materiel.query.get(materiel_id)
-            
-            if mat and mat.statut == 'Disponible':
-                try:
-                    d_out = datetime.strptime(request.form.get('custom_date_sortie'), '%Y-%m-%dT%H:%M') if request.form.get('custom_date_sortie') else datetime.now()
-                except:
-                    d_out = datetime.now()
-                
-                pret = Pret(
-                    materiel_id=mat.id,
-                    technicien_id=current_user.id,
-                    nom_emprunteur=request.form.get('nom'),
-                    prenom_emprunteur=request.form.get('prenom'),
-                    service_emprunteur=request.form.get('service'),
-                    type_pret=request.form.get('type_pret'),
-                    accessoires=", ".join(request.form.getlist('accessoires')),
-                    date_sortie=d_out,
-                    etat_ecran_sortie=request.form.get('etat_ecran'),
-                    etat_clavier_sortie=request.form.get('etat_clavier'),
-                    etat_coque_sortie=request.form.get('etat_coque'),
-                    statut_dossier='En cours'
-                )
-                mat.statut = 'En pret'
-                db.session.add(pret)
-                db.session.commit()
-                flash('Prêt enregistré avec succès.', 'success')
-            else:
-                flash('Erreur: Matériel non disponible.', 'danger')
+        # ... (Garde TOUTE ta logique de création de prêt ici sans rien changer) ...
+        pass # (Logique existante)
 
+    # Logique GET (Affichage + Recherche)
+    search_query = request.args.get('q', '')
+    # On fait une jointure avec Materiel pour pouvoir chercher par SN ou Modèle dans les prêts
+    query = Pret.query.join(Materiel)
+    
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Pret.nom_emprunteur.ilike(f'%{search_query}%'),
+                Pret.prenom_emprunteur.ilike(f'%{search_query}%'),
+                Pret.service_emprunteur.ilike(f'%{search_query}%'),
+                Materiel.modele.ilike(f'%{search_query}%'),
+                Materiel.sn.ilike(f'%{search_query}%')
+            )
+        )
+
+    liste_prets = query.order_by(Pret.date_sortie.desc()).all()
     materiels_dispo = Materiel.query.filter_by(statut='Disponible').all()
-    liste_prets = Pret.query.order_by(Pret.date_sortie.desc()).all()
-    return render_template('prets.html', materiels=materiels_dispo, prets=liste_prets)
+    
+    return render_template('prets.html', 
+                           materiels=materiels_dispo, 
+                           prets=liste_prets, 
+                           search_query=search_query)
 
 @prets_bp.route('/pret/<int:id>/retour', methods=['POST'])
 @login_required

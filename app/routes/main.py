@@ -1,6 +1,7 @@
-from flask import Blueprint, render_template, redirect, url_for, flash
+from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.models import UserRole, Ticket
+from app import db 
 
 main_bp = Blueprint('main', __name__)
 
@@ -23,9 +24,26 @@ def user_portal():
 @main_bp.route('/my_history')
 @login_required
 def my_history():
-    # Historique complet
-    tickets = Ticket.query.filter_by(author_id=current_user.id).order_by(Ticket.created_at.desc()).all()
-    return render_template('my_history.html', tickets=tickets)
+    # Récupération du terme de recherche depuis l'URL (?q=...)
+    search_query = request.args.get('q', '')
+    
+    # Base de la requête : les tickets dont l'utilisateur est l'auteur
+    query = Ticket.query.filter_by(author_id=current_user.id)
+    
+    # Si une recherche est saisie, on applique le filtre
+    if search_query:
+        query = query.filter(
+            db.or_(
+                Ticket.title.ilike(f'%{search_query}%'),
+                Ticket.uid_public.ilike(f'%{search_query}%'),
+                Ticket.description.ilike(f'%{search_query}%')
+            )
+        )
+    
+    # Exécution de la requête avec tri par date décroissante
+    tickets = query.order_by(Ticket.created_at.desc()).all()
+    
+    return render_template('my_history.html', tickets=tickets, search_query=search_query)
 
 @main_bp.route('/admin/dashboard')
 @login_required
@@ -50,3 +68,7 @@ def dashboard():
     
     return redirect(url_for('main.user_portal'))
 
+@main_bp.route('/help')
+@login_required
+def help_center():
+    return render_template('help.html')

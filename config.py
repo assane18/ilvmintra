@@ -10,19 +10,20 @@ load_dotenv(os.path.join(basedir, '.env'))
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-tres-secrete-a-changer'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
+    BASE_URL = 'http://ilvmintra1/intranet/'
     # Configuration Uploads
     UPLOAD_FOLDER = os.path.join(basedir, 'app/static/uploads')
     MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20MB max
 
-    MAIL_SERVER = os.environ.get('MAIL_SERVER') or '192.168.1.4'
-    MAIL_PORT = int(os.environ.get('MAIL_PORT') or 25)
-    MAIL_USE_TLS = False
-    MAIL_USERNAME = None
-    MAIL_PASSWORD = None
-    MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or 'no-reply-intranet@ilvm.lan'
+# Configuration Email Exchange Local
+    MAIL_SERVER = 'ILVMExchangeSrv.Ilvm.lan'  # Ton serveur
+    MAIL_PORT = 25                            # Port 25 (interne)
+    MAIL_USE_TLS = False                      # Pas de TLS en interne sur port 25
+    MAIL_USERNAME = None                      # Pas d'auth
+    MAIL_PASSWORD = None                      # Pas d'auth
+    # L'adresse qui s'affichera en expéditeur
+    MAIL_DEFAULT_SENDER = 'no-reply-intranet@ilvm.lan' 
     MAIL_DEBUG = False
-
 
 class DevelopmentConfig(Config):
     DEBUG = True

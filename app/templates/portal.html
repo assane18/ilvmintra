@@ -167,6 +167,12 @@
                     <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2">
                         <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
                     </a>
+
+                    <!-- NOUVEAU BOUTON : Centre d'Aide -->
+                    <a href="{{ url_for('main.help_center') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-teal-400 dark:hover:bg-slate-800">
+                         <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
+                    </a>
+
                 </div>
             </div>
 
@@ -177,6 +183,27 @@
                     <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
                     <i data-lucide="moon" class="w-5 h-5 block dark:hidden"></i>
                 </button>
+
+                <!-- Notifications (Ajouté) -->
+                <div class="relative" id="notif-container">
+                    <button onclick="toggleNotifs()" class="relative p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-800 rounded-lg transition">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full hidden"></span>
+                    </button>
+                    
+                    <!-- Dropdown Notifs -->
+                    <div id="notif-dropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 hidden transform origin-top-right transition-all z-50 dark:bg-slate-800 dark:border-slate-700">
+                        <div class="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50 rounded-t-xl dark:bg-slate-700 dark:border-slate-600">
+                            <span class="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Notifications</span>
+                            <button onclick="markAllRead()" class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">Tout marquer lu</button>
+                        </div>
+                        <div id="notif-list" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1 text-slate-800 dark:text-slate-200">
+                            <!-- JS injectera ici -->
+                            <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
+                        </div>
+                    </div>
+                </div>
+
 
                 <div class="text-right hidden sm:block">
                     <p class="text-xs font-bold text-white">{{ current_user.fullname }}</p>
@@ -422,6 +449,89 @@
                     localStorage.theme = 'dark';
                 }
             });
+        }
+
+
+        // --- GESTION NOTIFICATIONS (CORRIGÉ) ---
+        const notifBadge = document.getElementById('notif-badge');
+        const notifDropdown = document.getElementById('notif-dropdown');
+        const notifList = document.getElementById('notif-list');
+
+        function toggleNotifs() {
+            if (notifDropdown.classList.contains('hidden')) {
+                notifDropdown.classList.remove('hidden');
+                loadNotifications();
+            } else {
+                notifDropdown.classList.add('hidden');
+            }
+        }
+
+        async function checkNotificationCount() {
+            try {
+                const res = await fetch("{{ url_for('api.get_notifications_count') }}");
+                const data = await res.json();
+                if (data.count > 0) {
+                    notifBadge.classList.remove('hidden');
+                } else {
+                    notifBadge.classList.add('hidden');
+                }
+            } catch (e) { console.error("Notif error", e); }
+        }
+
+        // Vérif toutes les 30s
+        if(document.getElementById('notif-container')) {
+            setInterval(checkNotificationCount, 30000);
+            checkNotificationCount();
+        }
+
+        async function loadNotifications() {
+            try {
+                const res = await fetch("{{ url_for('api.get_notifications') }}");
+                const data = await res.json();
+                notifList.innerHTML = '';
+                
+                if (data.notifications.length === 0) {
+                    notifList.innerHTML = '<div class="p-4 text-center text-slate-400 text-xs dark:text-slate-500">Aucune notification.</div>';
+                    return;
+                }
+
+                data.notifications.forEach(n => {
+                    const item = document.createElement('div');
+                    item.className = `p-3 rounded-lg hover:bg-slate-50 cursor-pointer transition border-l-2 dark:hover:bg-slate-700 ${n.is_read ? 'border-transparent opacity-50' : 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20'}`;
+                    
+                    let colorClass = 'bg-blue-500';
+                    if (n.category === 'success') colorClass = 'bg-green-500';
+                    if (n.category === 'warning' || n.category === 'danger') colorClass = 'bg-red-500';
+
+                    item.innerHTML = `
+                        <div class="flex gap-3 items-start">
+                            <div class="w-2 h-2 mt-1.5 rounded-full ${colorClass}"></div>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold text-slate-700 leading-tight dark:text-slate-200">${n.message}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                            </div>
+                        </div>
+                    `;
+                    item.onclick = () => {
+                        markRead(n.id);
+                        if (n.link) window.location.href = n.link;
+                    };
+                    notifList.appendChild(item);
+                });
+            } catch (e) {
+                notifList.innerHTML = '<div class="p-4 text-center text-red-400 text-xs">Erreur de chargement.</div>';
+            }
+        }
+
+        async function markRead(id) {
+            await fetch(`/api/notifications/read/${id}`, { method: 'POST' });
+            checkNotificationCount();
+        }
+
+        async function markAllRead() {
+            await fetch("{{ url_for('api.mark_all_read') }}", { method: 'POST' });
+            checkNotificationCount();
+            notifDropdown.classList.add('hidden');
         }
     </script>
 </body>

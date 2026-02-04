@@ -13,6 +13,26 @@
         </a>
     </div>
 
+    <div class="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+        <form action="" method="GET" class="relative w-full max-w-md">
+            <input type="text" 
+                name="q" 
+                value="{{ search_query or '' }}" 
+                placeholder="Rechercher..." 
+                class="w-full pl-10 pr-10 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition">
+            
+            <div class="absolute left-3 top-2.5 text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
+
+            {% if search_query %}
+                <a href="{{ request.path }}" class="absolute right-3 top-2.5 text-slate-400 hover:text-red-500 transition">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
     <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table class="w-full text-left text-sm">
             <thead class="bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">

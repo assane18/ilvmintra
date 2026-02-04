@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="flex flex-col gap-8 p-6 bg-slate-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<!-- ARRIÈRE PLAN DYNAMIQUE CYBER -->
+<div class="aurora-bg">
+    <div class="aurora-beam"></div>
+    <div class="tech-grid"></div>
+</div>
+
+<div class="flex flex-col gap-8 p-6 relative z-10 min-h-screen transition-colors duration-300">
 
     <!-- En-tête -->
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -10,27 +16,25 @@
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Suivi des sorties de matériel</p>
         </div>
         <div class="flex gap-3 flex-wrap">
-            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition hover:bg-white">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Dashboard
             </a>
-            
-            <!-- BOUTONS IMPORT / EXPORT -->
-            <a href="{{ url_for('prets.export_prets') }}" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2 transition">
+            <a href="{{ url_for('prets.export_prets') }}" class="bg-emerald-600/90 hover:bg-emerald-600 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2 transition">
                 <i data-lucide="download" class="w-4 h-4"></i> Exporter
             </a>
-            <button onclick="document.getElementById('importPretModal').classList.remove('hidden')" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2 transition">
+            <button onclick="document.getElementById('importPretModal').classList.remove('hidden')" class="bg-indigo-600/90 hover:bg-indigo-600 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2 transition">
                 <i data-lucide="upload" class="w-4 h-4"></i> Importer
             </button>
 
-            <button onclick="document.getElementById('newPretModal').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition hover:-translate-y-1">
+            <button onclick="document.getElementById('newPretModal').classList.remove('hidden')" class="bg-blue-600/90 hover:scale-105 text-white px-6 py-3 rounded-xl font-black text-xs uppercase tracking-widest shadow-lg flex items-center gap-2 transition">
                 <i data-lucide="plus-circle" class="w-4 h-4"></i> Nouveau Prêt
             </button>
         </div>
     </div>
 
-    <!-- Stats Rapides -->
+    <!-- Stats Rapides (Glassmorphism) -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+        <div class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between transition">
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">En cours</p>
                 <p class="text-3xl font-black text-blue-600 dark:text-blue-400 mt-1">
@@ -39,30 +43,50 @@
                     {{ ns.count }}
                 </p>
             </div>
-            <div class="p-3 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl"><i data-lucide="clock" class="w-6 h-6"></i></div>
+            <div class="p-3 bg-blue-500/10 text-blue-600 rounded-xl"><i data-lucide="clock" class="w-6 h-6"></i></div>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+        <div class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between transition">
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Stock Disponible</p>
                 <p class="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-1">{{ materiels|length }}</p>
             </div>
-            <div class="p-3 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-xl"><i data-lucide="box" class="w-6 h-6"></i></div>
+            <div class="p-3 bg-emerald-500/10 text-emerald-600 rounded-xl"><i data-lucide="box" class="w-6 h-6"></i></div>
         </div>
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between">
+        <div class="bg-white/70 dark:bg-slate-800/70 backdrop-blur-md p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center justify-between transition">
             <div>
                 <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wide">Historique Total</p>
                 <p class="text-3xl font-black text-slate-700 dark:text-white mt-1">{{ prets|length }}</p>
             </div>
-            <div class="p-3 bg-slate-50 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl"><i data-lucide="archive" class="w-6 h-6"></i></div>
+            <div class="p-3 bg-slate-500/10 text-slate-600 dark:text-slate-300 rounded-xl"><i data-lucide="archive" class="w-6 h-6"></i></div>
         </div>
     </div>
 
-    <!-- Tableau -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <!-- Barre de Recherche -->
+    <div class="mb-2">
+        <form action="{{ url_for('prets.liste_prets') }}" method="GET" class="relative w-full max-w-md">
+            <input type="text" 
+                name="q" 
+                value="{{ search_query or '' }}" 
+                placeholder="Rechercher un emprunteur, un S/N, un modèle..." 
+                class="w-full pl-10 pr-10 py-2.5 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition">
+            
+            <div class="absolute left-3 top-3 text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+            </div>
+            {% if search_query %}
+                <a href="{{ url_for('prets.liste_prets') }}" class="absolute right-3 top-3 text-slate-400 hover:text-red-500 transition">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tableau (Glassmorphism) -->
+    <div class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600">
-                    <tr class="text-slate-500 dark:text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                <thead class="bg-slate-50/50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-600 font-black uppercase text-[10px] tracking-wider">
+                    <tr>
                         <th class="px-6 py-4">Matériel</th>
                         <th class="px-6 py-4">Emprunteur</th>
                         <th class="px-6 py-4">Sortie</th>
@@ -71,9 +95,9 @@
                         <th class="px-6 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
                     {% for p in prets %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+                    <tr class="hover:bg-blue-50/50 dark:hover:bg-blue-900/20 transition">
                         <td class="px-6 py-4">
                             <div class="font-bold text-slate-800 dark:text-white">{{ p.materiel.modele }}</div>
                             <div class="text-xs text-slate-500 dark:text-slate-400 font-mono">{{ p.materiel.sn }}</div>
@@ -82,32 +106,28 @@
                             <div class="font-medium text-slate-700 dark:text-slate-200">{{ p.nom_emprunteur }} {{ p.prenom_emprunteur }}</div>
                             <div class="text-xs text-slate-400 dark:text-slate-500">{{ p.service_emprunteur }}</div>
                         </td>
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs">{{ p.date_sortie.strftime('%d/%m/%Y') }}</td>
-                        <td class="px-6 py-4 text-slate-600 dark:text-slate-400 font-mono text-xs">
-                            {% if p.date_retour_prevue %}
-                                {{ p.date_retour_prevue.strftime('%d/%m/%Y') }}
-                            {% else %}
-                                <span class="text-slate-300 dark:text-slate-600">-</span>
-                            {% endif %}
+                        <td class="px-6 py-4 font-mono text-xs">{{ p.date_sortie.strftime('%d/%m/%Y') }}</td>
+                        <td class="px-6 py-4 font-mono text-xs">
+                            {{ p.date_retour_prevue.strftime('%d/%m/%Y') if p.date_retour_prevue else '-' }}
                         </td>
                         <td class="px-6 py-4 text-center">
                             {% if p.statut_dossier == 'En cours' %}
-                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-wide border border-blue-100 dark:border-blue-800">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50/80 text-blue-700 text-[10px] font-black uppercase tracking-wide border border-blue-100">
                                 <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span> Sorti
                             </span>
                             {% else %}
-                            <span class="inline-block px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-[10px] font-black uppercase tracking-wide border border-slate-200 dark:border-slate-600">
+                            <span class="inline-block px-2.5 py-1 rounded-full bg-slate-100/80 text-slate-500 text-[10px] font-black uppercase tracking-wide border border-slate-200">
                                 Terminé
                             </span>
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 text-right flex justify-end gap-2">
                             {% if p.statut_dossier == 'En cours' %}
-                            <button onclick="openRetourModal('{{ p.id }}', '{{ p.materiel.modele }}', '{{ p.nom_emprunteur }}')" class="bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 p-2 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800 transition" title="Valider Retour">
+                            <button onclick="openRetourModal('{{ p.id }}', '{{ p.materiel.modele }}', '{{ p.nom_emprunteur }}')" class="bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 p-2 rounded-lg hover:bg-emerald-200 transition" title="Valider Retour">
                                 <i data-lucide="check" class="w-4 h-4"></i>
                             </button>
                             {% endif %}
-                            <a href="{{ url_for('prets.delete_pret', id=p.id) }}" class="bg-red-50 dark:bg-red-900/30 text-red-500 dark:text-red-400 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-800 transition" onclick="return confirm('Supprimer ce dossier ?')" title="Supprimer">
+                            <a href="{{ url_for('prets.delete_pret', id=p.id) }}" class="bg-red-50/80 dark:bg-red-900/30 text-red-500 dark:text-red-400 p-2 rounded-lg hover:bg-red-100 transition" onclick="return confirm('Supprimer ce dossier ?')" title="Supprimer">
                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                             </a>
                         </td>
@@ -115,7 +135,7 @@
                     {% else %}
                     <tr>
                         <td colspan="6" class="p-12 text-center text-slate-400 dark:text-slate-500 italic font-medium">
-                            Aucun prêt enregistré pour le moment.
+                            Aucun prêt enregistré.
                         </td>
                     </tr>
                     {% endfor %}
@@ -125,23 +145,22 @@
     </div>
 </div>
 
-<!-- MODAL IMPORT -->
+<!-- MODAL IMPORT (Backdrop-blur ajouté) -->
 <div id="importPretModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+    <div class="bg-white/95 dark:bg-slate-800/95 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold text-slate-800 dark:text-white">Importer des Prêts</h3>
             <button onclick="document.getElementById('importPretModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
         </div>
         <form action="{{ url_for('prets.import_prets') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-            <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
+            <div class="bg-blue-50/50 dark:bg-blue-900/30 p-4 rounded-xl border border-blue-100 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300">
                 <p class="font-bold mb-1">Format Excel (.xlsx) attendu :</p>
                 <ul class="list-disc pl-4 space-y-1">
                     <li>Colonne <b>SN</b> (Numéro Série, doit exister en stock)</li>
                     <li>Colonnes <b>Nom</b>, <b>Prenom</b>, <b>Service</b></li>
-                    <li>Colonne <b>Date_Sortie</b> (Optionnel)</li>
                 </ul>
             </div>
-            <input type="file" name="file" accept=".xlsx" class="input-field bg-white dark:bg-slate-700" required>
+            <input type="file" name="file" accept=".xlsx" class="input-field bg-white/50 dark:bg-slate-700/50" required>
             <button type="submit" class="w-full bg-indigo-600 text-white font-black py-3 rounded-xl hover:bg-indigo-500 transition shadow-lg text-xs uppercase tracking-widest">
                 Lancer l'import
             </button>
@@ -151,7 +170,7 @@
 
 <!-- MODAL NOUVEAU PRET -->
 <div id="newPretModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 transform transition-all scale-100 max-h-[90vh] overflow-y-auto custom-scroll border border-slate-100 dark:border-slate-700">
+    <div class="bg-white/95 dark:bg-slate-800/95 rounded-2xl shadow-2xl w-full max-w-lg p-6 transform transition-all border border-slate-100 dark:border-slate-700 max-h-[90vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-bold text-slate-800 dark:text-white">Nouveau Prêt</h3>
             <button onclick="document.getElementById('newPretModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i data-lucide="x" class="w-6 h-6"></i></button>
@@ -159,7 +178,6 @@
         
         <form method="POST" class="space-y-4">
             <input type="hidden" name="action_pret" value="create">
-            
             <div>
                 <label class="label-tiny">Matériel Disponible</label>
                 <select name="materiel_id" class="input-field" required>
@@ -169,14 +187,11 @@
                     {% endfor %}
                 </select>
             </div>
-
             <div class="grid grid-cols-2 gap-4">
                 <div><label class="label-tiny">Nom</label><input type="text" name="nom" class="input-field" required></div>
                 <div><label class="label-tiny">Prénom</label><input type="text" name="prenom" class="input-field" required></div>
             </div>
-            
             <div><label class="label-tiny">Service</label><input type="text" name="service" class="input-field" required></div>
-            
             <div>
                 <label class="label-tiny">Type de Prêt</label>
                 <select name="type_pret" class="input-field">
@@ -184,60 +199,8 @@
                     <option value="Permanent">Permanent (Dotation)</option>
                 </select>
             </div>
-
-            <div>
-                <label class="label-tiny">Date de Sortie (Optionnel)</label>
-                <input type="datetime-local" name="custom_date_sortie" class="input-field">
-            </div>
-
-            <div>
-                <label class="label-tiny">Accessoires fournis</label>
-                <div class="flex flex-wrap gap-3 mt-2">
-                    <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><input type="checkbox" name="accessoires" value="Chargeur" class="rounded text-blue-600 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600"> Chargeur</label>
-                    <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><input type="checkbox" name="accessoires" value="Souris" class="rounded text-blue-600 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600"> Souris</label>
-                    <label class="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400"><input type="checkbox" name="accessoires" value="Sacoche" class="rounded text-blue-600 bg-slate-100 dark:bg-slate-700 border-slate-300 dark:border-slate-600"> Sacoche</label>
-                </div>
-            </div>
-
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                <label class="label-tiny mb-2">État Sortie</label>
-                <div class="grid grid-cols-3 gap-2">
-                    <select name="etat_ecran" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-1 text-xs text-slate-700 dark:text-slate-200"><option value="Bon">Écran OK</option><option value="Rayé">Rayé</option></select>
-                    <select name="etat_clavier" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-1 text-xs text-slate-700 dark:text-slate-200"><option value="Bon">Clavier OK</option><option value="Usé">Usé</option></select>
-                    <select name="etat_coque" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-1 text-xs text-slate-700 dark:text-slate-200"><option value="Bon">Coque OK</option><option value="Abîmé">Abîmé</option></select>
-                </div>
-            </div>
-
             <button type="submit" class="w-full bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">
                 Valider la sortie
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- MODAL RETOUR -->
-<div id="retourModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all scale-100 border border-slate-100 dark:border-slate-700">
-        <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Retour Matériel</h3>
-        <p id="retourInfoText" class="text-sm text-slate-500 dark:text-slate-400 mb-6"></p>
-        
-        <form id="retourForm" method="POST" class="space-y-4">
-            <div>
-                <label class="label-tiny">Date de Retour Réelle</label>
-                <input type="datetime-local" name="custom_date_retour" class="input-field">
-            </div>
-            
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700">
-                <label class="label-tiny mb-2">État Retour</label>
-                <div class="grid grid-cols-3 gap-2">
-                    <select name="etat_ecran_retour" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-1 text-xs text-slate-700 dark:text-slate-200"><option value="Bon">Écran OK</option><option value="Rayé">Rayé</option><option value="Cassé">Cassé</option></select>
-                    <select name="etat_clavier_retour" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-1 text-xs text-slate-700 dark:text-slate-200"><option value="Bon">Clavier OK</option><option value="HS">HS</option></select>
-                    <select name="etat_coque_retour" class="bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded p-1 text-xs text-slate-700 dark:text-slate-200"><option value="Bon">Coque OK</option><option value="Abîmé">Abîmé</option></select>
-                </div>
-            </div>
-
-            <button type="submit" class="w-full bg-emerald-600 text-white font-black py-3 rounded-xl hover:bg-emerald-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">
-                Confirmer le retour
             </button>
         </form>
     </div>
@@ -250,25 +213,16 @@
         const modal = document.getElementById('retourModal');
         const form = document.getElementById('retourForm');
         const info = document.getElementById('retourInfoText');
-        
         info.innerText = `${materiel} - Emprunté par ${emprunteur}`;
-        form.action = `/prets/pret/${id}/retour`; 
-        form.action = `/pret/${id}/retour`; // Fallback route
-
+        form.action = `/pret/${id}/retour`; 
         modal.classList.remove('hidden');
     }
 </script>
 
 <style>
     .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
-    /* Dark mode override */
-    .dark .label-tiny { color: #94a3b8; }
-
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; } 
-    .input-field:focus { border-color: #3b82f6; background-color: white; }
-
-    /* Dark Mode Inputs */
-    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
-    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; }
+    .input-field { width: 100%; background-color: rgba(248, 250, 252, 0.8); border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; } 
+    .dark .input-field { background-color: rgba(30, 41, 59, 0.8); border-color: #334155; color: #f1f5f9; }
+    .input-field:focus { border-color: #3b82f6; }
 </style>
 {% endblock %}
