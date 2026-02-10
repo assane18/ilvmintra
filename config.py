@@ -10,7 +10,7 @@ load_dotenv(os.path.join(basedir, '.env'))
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-key-tres-secrete-a-changer'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    BASE_URL = 'http://ilvmintra1/intranet/'
+    BASE_URL = 'https://ilvmintra1/intranet/'
     # Configuration Uploads
     UPLOAD_FOLDER = os.path.join(basedir, 'app/static/uploads')
     MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20MB max
