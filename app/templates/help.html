@@ -123,7 +123,7 @@
                     <span class="font-black text-xl tracking-tighter italic flex items-center gap-2">
                         <i data-lucide="message-circle-question-mark" class="text-orange-700"></i>
                         <span class="text-blue-500">ILVM</span>
-                        <span class="!text-orange-500">HELP</span>
+                        <span class="!text-orange-500"> HELP</span>
                     </span>
 
                     <span class="ml-4 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">Centre d'Aide</span>
@@ -169,7 +169,7 @@
             <button onclick="filterCategory('all')" class="filter-btn active px-5 py-2.5 rounded-full bg-ilvm-600 text-white font-medium shadow-md hover:bg-ilvm-700 transition hover:-translate-y-0.5 transform">Tout voir</button>
             <button onclick="filterCategory('user')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user mr-2 text-ilvm-500"></i>Utilisateurs</button>
             <button onclick="filterCategory('daf')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-file-invoice-dollar mr-2 text-orange-500"></i>Achats / DAF</button>
-            <button onclick="filterCategory('manager')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user-tie mr-2 text-red-500"></i>Managers</button>
+            <button onclick="filterCategory('responsable')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user-tie mr-2 text-red-500"></i>Responsables</button>
             <button onclick="filterCategory('tech')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-toolbox mr-2 text-gray-500"></i>Espace Tech</button>
         </div>
 
@@ -236,22 +236,22 @@
                 </div>
             </div>
 
-            <!-- 6. MANAGER VALIDATION -->
-            <div onclick="openModal('modal-validation')" class="tuto-card manager group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <!-- 6. RESPONSABLE VALIDATION -->
+            <div onclick="openModal('modal-validation')" class="tuto-card responsable group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-red-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-check-double"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Manager : Validation</h3>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Responsable : Validation</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Valider ou refuser les demandes des équipes (N1).</p>
                 </div>
             </div>
 
-            <!-- 7. MANAGER FCPI -->
-            <div onclick="openModal('modal-fcpi')" class="tuto-card manager group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <!-- 7. RESPONSABLE FCPI -->
+            <div onclick="openModal('modal-fcpi')" class="tuto-card responsable group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-indigo-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-plus"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Manager : Recrutement</h3>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Responsable : Recrutement</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Formulaire FCPI pour gérer une arrivée de A à Z.</p>
                 </div>
             </div>
@@ -291,7 +291,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Votre mot de passe est <strong>synchronisé avec Windows</strong>. Si vous l'avez changé pour ouvrir votre session ce matin, c'est le nouveau qu'il faut utiliser. En cas de blocage, contactez le RSI (Xavier Richard).
+                        Votre mot de passe est <strong>synchronisé avec Windows</strong>. Si vous l'avez changé pour ouvrir votre session ce matin, c'est le nouveau qu'il faut utiliser. En cas de blocage, contactez le Service Informatique.
                     </div>
                 </details>
 
@@ -301,7 +301,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Cette erreur signifie que votre compte Active Directory n'a pas les droits nécessaires pour accéder à cette page (ex: un utilisateur qui tente d'accéder au menu Validation Manager).
+                        Cette erreur signifie que votre compte Active Directory n'a pas les droits nécessaires pour accéder à cette page (ex: un utilisateur qui tente d'accéder au menu Validation Responsable).
                     </div>
                 </details>
 
@@ -311,7 +311,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Le formulaire de ticket tente de le détecter automatiquement. Sinon, regardez l'étiquette bleue collée sur votre unité centrale ou pc portable (ex: <code>PORTABLE-042</code>).
+                        Le formulaire de ticket tente de le détecter automatiquement. (ex: <code>PORTABLE-042</code>).
                     </div>
                 </details>
 
@@ -321,7 +321,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Vérifiez votre dossier "Indésirables" (Spam) dans Outlook. Si le problème persiste, vérifiez que votre adresse email est correctement renseignée dans l'annuaire de l'entreprise.
+                        Vérifiez votre dossier "Indésirables" (Spam) dans Outlook. Si le problème persiste, contactez le Service Informatique.
                     </div>
                 </details>
 
@@ -342,7 +342,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Vous ne pouvez pas supprimer un ticket vous-même. Demandez l'annulation au technicien via le chat, ou demandez à votre Manager de le "Refuser" lors de la validation.
+                        Vous ne pouvez pas supprimer un ticket vous-même. Demandez l'annulation au technicien via le chat, ou demandez à votre Responsable de le "Refuser" lors de la validation.
                     </div>
                 </details>
 
@@ -362,7 +362,8 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Pour un ticket bloquant (Priorité Haute), le délai est de 4h ouvrées. Pour une demande standard, comptez 24h à 48h.
+                        Il n'y a pas de délai fixe de réponse. Les tickets sont traités dans l'ordre d'arrivée, selon la disponibilité des techniciens.
+                        En général, vous pouvez vous attendre à une première réponse dans les <strong>24 à 48 heures</strong> ouvrées. Les demandes urgentes (ex: panne complète) sont prioritaires.
                     </div>
                 </details>
 
@@ -373,7 +374,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        C'est une procédure simplifiée pour les achats inférieurs à <strong>400€</strong>. En cochant cette case, votre demande contourne la validation hiérarchique pour être traitée plus vite par la DAF.
+                        C'est une procédure simplifiée pour les achats inférieurs à <strong>400€</strong>. En accédan a ce formulaire, votre demande contourne la validation hiérarchique pour être traitée plus vite par la DAF.
                     </div>
                 </details>
 
@@ -383,7 +384,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Pas de panique. Ouvrez votre ticket dans l'historique et ajoutez le fichier PDF via la zone de discussion en bas de page.
+                        Pas de panique. Ouvrez votre ticket dans l'historique et ajoutez le fichier PDF via la zone de discussion en bas de page. (A venir)
                     </div>
                 </details>
 
@@ -393,7 +394,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        L'intranet gère les demandes techniques et administratives. Pour les congés, veuillez utiliser le portail RH dédié (ex: Silae).
+                        L'intranet gère les demandes techniques et administratives. Pour les congés, veuillez vous rapprocher de votre Responsable.
                     </div>
                 </details>
 
@@ -410,11 +411,11 @@
                 <!-- FAQ 16-20 : Divers -->
                 <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Je suis Manager mais je ne vois pas le menu Validation</span>
+                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Je suis Responsable mais je ne vois pas le menu Validation</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Il vous manque probablement le groupe de sécurité <code>GR-MANAGER</code> dans l'Active Directory. Ouvrez un ticket support pour régulariser vos droits.
+                        Il vous manque probablement le groupe de sécurité <code>RESPONSABLE</code> dans le serveur. Ouvrez un ticket support pour régulariser vos droits.
                     </div>
                 </details>
 
@@ -424,7 +425,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Cela signifie que son affectation "Service" dans l'AD est différente de la vôtre. Contactez les RH ou l'IT pour corriger l'organigramme.
+                        Cela signifie que son affectation "Service" dans l'AD est différente de la vôtre. Contactez le <strong>Service informatique</strong> pour corriger le probléme.
                     </div>
                 </details>
 
@@ -444,7 +445,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        Le choix du thème est enregistré dans votre navigateur (LocalStorage). Si vous changez de PC ou effacez vos cookies, il se réinitialise.
+                        Le choix du thème est enregistré dans votre navigateur. Si vous changez de PC ou effacez vos cookies, il se réinitialise.
                     </div>
                 </details>
 
@@ -454,7 +455,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                        <strong>N'OUVREZ PAS DE TICKET !</strong> Appelez immédiatement les secours (18 ou 112) et le PC Sécurité du bâtiment.
+                        <strong>N'OUVREZ PAS DE TICKET !</strong> Appelez immédiatement les secours (18 ou 112) et le PC Sécurité.
                     </div>
                 </details>
 
@@ -474,7 +475,7 @@
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
                     <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
-                       Il n'y a pas d'export Excel côté utilisateur pour le moment. Si vous avez besoin d'un rapport annuel, faites une demande au service IT.
+                       Il n'y a pas d'export Excel côté utilisateur pour le moment. Si vous avez besoin d'un rapport annuel, faites une demande au service Informatique.
                     </div>
                 </details>
                 
@@ -510,7 +511,7 @@
                         <i class="fa-solid fa-user-tie text-3xl text-slate-500 dark:text-slate-400 group-hover:text-blue-600"></i>
                     </div>
                     <h3 class="font-bold text-lg">Xavier RICHARD</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">RSI (Resp. Sécurité Info)</p>
+                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">RSI<br>Responsable Sécurité Informatique</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:xrichar@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> xrichar@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 7521</p>
@@ -523,7 +524,7 @@
                         <i class="fa-solid fa-headset text-3xl text-slate-500 dark:text-slate-400 group-hover:text-green-600"></i>
                     </div>
                     <h3 class="font-bold text-lg">Edwyn MEVREL</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Technicien Support</p>
+                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Technicien Support <br>Référent 91</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:emevrel@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> emevrel@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 9696</p>
@@ -536,7 +537,7 @@
                         <i class="fa-solid fa-headset text-3xl text-slate-500 dark:text-slate-400 group-hover:text-green-600"></i>
                     </div>
                     <h3 class="font-bold text-lg">Christen RENAULT</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Technicien Support</p>
+                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Technicien Support <br>Référent 94/93</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:crenault@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> crenault@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 7545</p>
@@ -545,11 +546,17 @@
 
                 <!-- ASSANE TRAORE -->
                 <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 text-center hover:shadow-lg transition group">
-                    <div class="w-20 h-20 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 group-hover:bg-orange-100 transition-colors">
-                        <i class="fa-solid fa-user-graduate text-3xl text-slate-500 dark:text-slate-400 group-hover:text-orange-600"></i>
+                    <div class="flex justify-center gap-4 mb-4">
+                        <div class="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                            <i class="fa-solid fa-user-graduate text-3xl text-slate-500 dark:text-slate-400 group-hover:text-orange-600"></i>
+                        </div>
+
+                        <div class="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center group-hover:bg-orange-100 transition-colors">
+                            <i class="fa-solid fa-headset text-3xl text-slate-500 dark:text-slate-400 group-hover:text-green-600"></i>
+                        </div>
                     </div>
                     <h3 class="font-bold text-lg">Assane TRAORE</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Apprenti Technicien</p>
+                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Apprenti Technicien<br>Support</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:astraore@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> astraore@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 6700</p>
@@ -638,7 +645,7 @@
                         <p>En haut à droite, l'icône <i class="fa-solid fa-bell"></i> vous alerte quand :</p>
                         <ul class="list-disc pl-5 mb-6">
                             <li>Un technicien a répondu à votre ticket.</li>
-                            <li>Votre demande a été validée par votre Manager.</li>
+                            <li>Votre demande a été validée par votre Responsable.</li>
                             <li>Le statut de votre ticket a changé (ex: Terminé).</li>
                         </ul>
                             <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
@@ -732,7 +739,7 @@
                                 <div class="flex items-start gap-3">
                                     <span class="badge-status bg-yellow-100 text-yellow-800 border border-yellow-200">ATTENTE_VALIDATION</span>
                                     <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">En attente du Manager (N1)</p>
+                                        <p class="font-semibold dark:text-white">En attente du Responsable (N1)</p>
                                         <p class="text-slate-500">Votre demande a été envoyée mais nécessite l'approbation de votre responsable hiérarchique avant d'être traitée. (Ex: Achat DAF, Matériel).</p>
                                     </div>
                                 </div>
@@ -773,7 +780,7 @@
                                     <span class="badge-status bg-red-100 text-red-800 border border-red-200 shrink-0">REFUSE</span>
                                     <div class="text-sm">
                                         <p class="font-semibold dark:text-white">Rejeté</p>
-                                        <p class="text-slate-500">Votre manager ou la direction a refusé la demande. Le motif du refus vous a été envoyé par email.</p>
+                                        <p class="text-slate-500">Votre responsable ou la direction a refusé la demande. Le motif du refus vous a été envoyé par email.</p>
                                     </div>
                                 </div>
                             </div>
@@ -852,7 +859,7 @@
                         <ol class="list-decimal pl-5 mb-4">
                             <li>Vous envoyez la demande.</li>
                             <li>Statut : <strong>ATTENTE VALIDATION HIERARCHIQUE </strong>. Votre responsable reçoit une notification.</li>
-                            <li>Une fois validé par le Manager, la demande part au service DAF pour traitement.</li>
+                            <li>Une fois validé par le Responsable, la demande part au service DAF pour traitement.</li>
                         </ol>
                             <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
                                 <img 
@@ -915,7 +922,7 @@
                             </div>
                         <h4 class="text-2xl font-bold text-yellow-600 mb-4">2. Traitement Direct</h4>
                         <p>Dès que vous cliquez sur "Envoyer", le statut passe directement à <strong>EN COURS (DAF)</strong>.</p>
-                        <p>Votre manager n'a pas besoin de valider, mais il sera notifié pour information.</p>
+                        <p>Votre responsable n'a pas besoin de valider, mais il sera notifié pour information.</p>
                             <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
                                 <img 
                                     src="static/tutos/status.png"
@@ -932,27 +939,27 @@
         </div>
     </div>
 
-    <!-- MODAL 6: VALIDATION MANAGER -->
+    <!-- MODAL 6: VALIDATION RESPONSABLE -->
     <div id="modal-validation" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-validation')"></div>
             <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-red-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-check-double mr-2"></i> Manager : Valider une demande</h3>
+                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-check-double mr-2"></i> Responsable : Valider une demande</h3>
                     <button onclick="closeModal('modal-validation')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
                 </div>
                 <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
                     <div class="prose dark:prose-invert max-w-none">
                         <h4 class="text-2xl font-bold text-red-600 mb-4">1. Accéder aux demandes</h4>
-                        <p>Dans le menu de gauche, cliquez sur <strong>"Validation Manager"</strong>. Vous verrez la liste de toutes les demandes en attente provenant de vos subordonnés.</p>
+                        <p>Dans le menu de gauche, cliquez sur <strong>"Validation Responsable"</strong>. Vous verrez la liste de toutes les demandes en attente provenant de votre equipe.</p>
                             <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
                                 <img 
                                     src="static/tutos/validation.png"
-                                    alt="validation manager"
+                                    alt="validation responsable"
                                     class="w-full rounded-lg shadow"
                                 >
                                 <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran de validation manager
+                                    Exemple d’écran de validation responsable
                                 </p>
                             </div>
                         <h4 class="text-2xl font-bold text-red-600 mb-4">2. Valider ou Refuser</h4>
@@ -986,7 +993,7 @@
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-fcpi')"></div>
             <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-user-plus mr-2"></i> Manager : Fiche Création de Poste</h3>
+                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-user-plus mr-2"></i> Responsable : Fiche Création de Poste</h3>
                     <button onclick="closeModal('modal-fcpi')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
                 </div>
                 <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">

@@ -69,6 +69,9 @@ def create_app(config_name='default'):
     from .routes.fcpi import fcpi_bp
     app.register_blueprint(fcpi_bp)
 
+    from .tech import tech as tech_blueprint
+    app.register_blueprint(tech_blueprint, url_prefix='/tech')
+
     # Application des correctifs Proxy
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     app.wsgi_app = ForceHostFix(app.wsgi_app) # Indispensable pour votre serveur
