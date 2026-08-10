@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 dark:bg-slate-950 min-h-screen transition-colors duration-300 max-w-4xl">
+
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{{ form_def.name }}</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide font-mono">/{{ form_def.slug }}</p>
+        </div>
+        <div class="flex gap-3">
+            <a href="{{ url_for('forms_admin.list_forms') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
+            </a>
+            <form action="{{ url_for('forms_admin.toggle_active', id=form_def.id) }}" method="POST">
+                <button type="submit" class="px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition
+                    {% if form_def.is_active %}bg-orange-100 text-orange-700 hover:bg-orange-200{% else %}bg-emerald-600 text-white hover:bg-emerald-500{% endif %}">
+                    {{ 'Désactiver' if form_def.is_active else 'Activer' }}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    {% if not form_def.is_active %}
+    <div class="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-2xl px-5 py-3 text-xs font-bold uppercase tracking-wide">
+        Formulaire en brouillon — invisible des utilisateurs tant qu'il n'est pas activé.
+    </div>
+    {% endif %}
+
+    <!-- INFOS -->
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+        <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">Informations</h2>
+        <form method="POST" action="{{ url_for('forms_admin.update_form', id=form_def.id) }}" class="space-y-4">
+            <div>
+                <label class="label-tiny">Nom</label>
+                <input type="text" name="name" value="{{ form_def.name }}" class="input-field" required>
+            </div>
+            <div>
+                <label class="label-tiny">Description</label>
+                <textarea name="description" class="input-field" rows="2">{{ form_def.description or '' }}</textarea>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+                <p class="label-tiny mb-2">Service destinataire — Espace Tech (optionnel)</p>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-3">
+                    Une fois toutes les étapes validées (ou immédiatement si le formulaire n'a aucune étape), un Ticket sera créé pour ce service et traité par un Solver dans l'Espace Tech. Laissez vide si ce formulaire ne débouche jamais sur un ticket (il se termine simplement, avec notification de l'auteur).
+                </p>
+                <div>
+                    <label class="label-tiny">Service destinataire</label>
+                    <select name="target_service" class="input-field">
+                        <option value="">-- Aucun (pas de ticket) --</option>
+                        {% for s in services %}
+                        <option value="{{ s }}" {% if form_def.target_service and form_def.target_service.value == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="bg-slate-800 dark:bg-slate-700 text-white font-black py-2 px-5 rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition text-xs uppercase tracking-widest">
+                Enregistrer
+            </button>
+        </form>
+    </div>
+
+    <!-- CHAMPS -->
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Champs du formulaire</h2>
+            <button type="button" onclick="addFieldRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="plus" class="w-4 h-4"></i> Ajouter un champ
+            </button>
+        </div>
+        <div id="fieldsContainer" class="space-y-3"></div>
+        <form id="fieldsForm" method="POST" action="{{ url_for('forms_admin.save_fields', id=form_def.id) }}">
+            <input type="hidden" name="fields_payload" id="fieldsPayload">
+            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest" onclick="return prepareFieldsSubmit()">
+                Enregistrer les champs
+            </button>
+        </form>
+    </div>
+
+    <!-- ETAPES -->
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Étapes de validation</h2>
+            <button type="button" onclick="addStepRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="plus" class="w-4 h-4"></i> Ajouter une étape
+            </button>
+        </div>
+        <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-4">Les étapes se déroulent dans l'ordre. Pour chaque étape, choisissez qui valide : <strong>service fixe</strong> (toujours le même service, ex: DAF) ou <strong>service du demandeur</strong> (dynamique — le Manager/Directeur du service de la personne qui soumet, comme la validation hiérarchique des tickets). Si aucun rôle n'est précisé, Manager et Directeur conviennent tous les deux.</p>
+        <div id="stepsContainer" class="space-y-3"></div>
+        <form id="stepsForm" method="POST" action="{{ url_for('forms_admin.save_steps', id=form_def.id) }}">
+            <input type="hidden" name="steps_payload" id="stepsPayload">
+            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest" onclick="return prepareStepsSubmit()">
+                Enregistrer les étapes
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Ligne de champ (template) -->
+<template id="fieldRowTemplate">
+    <div class="field-row bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 grid grid-cols-12 gap-3 items-start">
+        <div class="col-span-4">
+            <label class="label-tiny">Libellé</label>
+            <input type="text" class="input-field f-label" placeholder="Ex: Titre">
+        </div>
+        <div class="col-span-3">
+            <label class="label-tiny">Type</label>
+            <select class="input-field f-type">
+                {% for t in field_types %}
+                <option value="{{ t }}">{{ t }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-span-3">
+            <label class="label-tiny">Aide (optionnel)</label>
+            <input type="text" class="input-field f-help" placeholder="Texte d'aide">
+        </div>
+        <div class="col-span-2 flex items-end h-full gap-2">
+            <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300 mb-2">
+                <input type="checkbox" class="f-required"> Requis
+            </label>
+        </div>
+        <div class="col-span-9 f-options-wrap hidden">
+            <label class="label-tiny">Options (une par ligne)</label>
+            <textarea class="input-field f-options" rows="2" placeholder="Option A&#10;Option B"></textarea>
+        </div>
+        <div class="col-span-3 flex items-end justify-end gap-2 h-full">
+            <button type="button" onclick="moveRow(this, -1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+            <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+            <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+    </div>
+</template>
+
+<!-- Ligne d'étape (template) -->
+<template id="stepRowTemplate">
+    <div class="step-row bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 grid grid-cols-12 gap-3 items-end">
+        <div class="col-span-3">
+            <label class="label-tiny">Libellé de l'étape</label>
+            <input type="text" class="input-field s-label" placeholder="Ex: Validation Manager">
+        </div>
+        <div class="col-span-2">
+            <label class="label-tiny">Rôle validateur</label>
+            <select class="input-field s-role">
+                <option value="">Manager ou Directeur</option>
+                {% for r in roles %}
+                <option value="{{ r }}">{{ r }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-span-3">
+            <label class="label-tiny">Origine du service</label>
+            <select class="input-field s-source">
+                <option value="FIXED">Service fixe</option>
+                <option value="EMITTER">Service du demandeur</option>
+            </select>
+        </div>
+        <div class="col-span-2 s-service-wrap">
+            <label class="label-tiny">Service validateur</label>
+            <select class="input-field s-service">
+                <option value="">-- Aucun --</option>
+                {% for s in services %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-span-2 flex justify-end gap-2">
+            <button type="button" onclick="moveRow(this, -1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+            <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+            <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+    </div>
+</template>
+
+<script>
+    const existingFields = {{ form_def.fields|map(attribute='name')|list|tojson }};
+    const existingFieldsData = [
+        {% for f in form_def.fields %}
+        {
+            name: {{ f.name|tojson }},
+            label: {{ f.label|tojson }},
+            field_type: {{ f.field_type.value|tojson }},
+            is_required: {{ f.is_required|tojson }},
+            options: {{ (f.get_options()|join('\n'))|tojson }},
+            help_text: {{ (f.help_text or '')|tojson }}
+        },
+        {% endfor %}
+    ];
+    const existingSteps = [
+        {% for s in form_def.steps %}
+        {
+            label: {{ s.label|tojson }},
+            validator_role: {{ (s.validator_role.value if s.validator_role else '')|tojson }},
+            validator_service: {{ (s.validator_service.value if s.validator_service else '')|tojson }},
+            service_source: {{ s.service_source.value|tojson }}
+        },
+        {% endfor %}
+    ];
+
+    function addFieldRow(data) {
+        const tpl = document.getElementById('fieldRowTemplate');
+        const node = tpl.content.cloneNode(true);
+        const row = node.querySelector('.field-row');
+        if (data) {
+            row.querySelector('.f-label').value = data.label || '';
+            row.querySelector('.f-type').value = data.field_type || 'TEXT';
+            row.querySelector('.f-help').value = data.help_text || '';
+            row.querySelector('.f-required').checked = !!data.is_required;
+            row.querySelector('.f-options').value = data.options || '';
+        }
+        toggleOptionsVisibility(row);
+        row.querySelector('.f-type').addEventListener('change', () => toggleOptionsVisibility(row));
+        document.getElementById('fieldsContainer').appendChild(node);
+        lucide.createIcons();
+    }
+
+    function toggleOptionsVisibility(row) {
+        const type = row.querySelector('.f-type').value;
+        const wrap = row.querySelector('.f-options-wrap');
+        wrap.classList.toggle('hidden', type !== 'SELECT');
+    }
+
+    function addStepRow(data) {
+        const tpl = document.getElementById('stepRowTemplate');
+        const node = tpl.content.cloneNode(true);
+        const row = node.querySelector('.step-row');
+        if (data) {
+            row.querySelector('.s-label').value = data.label || '';
+            row.querySelector('.s-role').value = data.validator_role || '';
+            row.querySelector('.s-source').value = data.service_source || 'FIXED';
+            row.querySelector('.s-service').value = data.validator_service || '';
+        }
+        toggleServiceVisibility(row);
+        row.querySelector('.s-source').addEventListener('change', () => toggleServiceVisibility(row));
+        document.getElementById('stepsContainer').appendChild(node);
+        lucide.createIcons();
+    }
+
+    function toggleServiceVisibility(row) {
+        const isEmitter = row.querySelector('.s-source').value === 'EMITTER';
+        row.querySelector('.s-service-wrap').classList.toggle('hidden', isEmitter);
+    }
+
+    function moveRow(btn, dir) {
+        const row = btn.closest('.field-row, .step-row');
+        const parent = row.parentElement;
+        if (dir === -1 && row.previousElementSibling) {
+            parent.insertBefore(row, row.previousElementSibling);
+        } else if (dir === 1 && row.nextElementSibling) {
+            parent.insertBefore(row.nextElementSibling, row);
+        }
+    }
+
+    function removeRow(btn) {
+        btn.closest('.field-row, .step-row').remove();
+    }
+
+    function slugifyName(label) {
+        return label.trim().toLowerCase()
+            .normalize('NFD').replace(new RegExp('[\\u0300-\\u036f]', 'g'), '')
+            .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    }
+
+    function prepareFieldsSubmit() {
+        const rows = document.querySelectorAll('#fieldsContainer .field-row');
+        const payload = [];
+        rows.forEach(row => {
+            const label = row.querySelector('.f-label').value.trim();
+            if (!label) return;
+            payload.push({
+                label: label,
+                name: slugifyName(label),
+                field_type: row.querySelector('.f-type').value,
+                is_required: row.querySelector('.f-required').checked,
+                options: row.querySelector('.f-options').value,
+                help_text: row.querySelector('.f-help').value.trim()
+            });
+        });
+        document.getElementById('fieldsPayload').value = JSON.stringify(payload);
+        return true;
+    }
+
+    function prepareStepsSubmit() {
+        const rows = document.querySelectorAll('#stepsContainer .step-row');
+        const payload = [];
+        rows.forEach(row => {
+            const label = row.querySelector('.s-label').value.trim();
+            if (!label) return;
+            const source = row.querySelector('.s-source').value;
+            payload.push({
+                label: label,
+                validator_role: row.querySelector('.s-role').value,
+                service_source: source,
+                validator_service: source === 'EMITTER' ? '' : row.querySelector('.s-service').value
+            });
+        });
+        document.getElementById('stepsPayload').value = JSON.stringify(payload);
+        return true;
+    }
+
+    existingFieldsData.forEach(f => addFieldRow(f));
+    existingSteps.forEach(s => addStepRow(s));
+    lucide.createIcons();
+</script>
+
+<style>
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; font-size: 0.85rem; }
+    .input-field:focus { border-color: #3b82f6; background-color: white; }
+    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; }
+</style>
+{% endblock %}

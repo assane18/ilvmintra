@@ -3,625 +3,657 @@
 <head>
     <meta charset="UTF-8">
     <title>Générateur de Fiche de Prêt - ILVM</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
     <style>
-        body { 
-            font-family: 'Segoe UI', 'Roboto', Helvetica, Arial, sans-serif; 
-            background-color: #e9ecef; 
-            margin: 0; 
-            padding: 30px; 
-            color: #333;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #e9ecef; padding: 25px; color: #333; }
+
+        .panel {
+            background: white; padding: 30px; border-radius: 8px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            max-width: 1050px; margin: 0 auto;
         }
-        
-        /* --- INTERFACE DE COMMANDE --- */
-        .control-panel { 
-            background: white; 
-            padding: 40px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 15px rgba(0,0,0,0.05); 
-            max-width: 1000px; 
-            margin: 0 auto 40px auto; 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 30px;
+        .panel-title {
+            text-align: center; color: #003d80; font-size: 1.4rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 3px solid #003d80; padding-bottom: 12px; margin-bottom: 22px;
         }
-        
-        .full-width { grid-column: span 2; }
-        
-        h2 { 
-            margin-top: 0; 
-            color: #004085; 
-            font-size: 1.5rem; 
-            border-bottom: 2px solid #004085; 
-            padding-bottom: 15px; 
-            margin-bottom: 25px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .col-left { border-right: 1px solid #dee2e6; padding-right: 28px; }
+
+        .sec-title {
+            font-size: 0.83rem; font-weight: 700; color: #003d80; text-transform: uppercase;
+            letter-spacing: 0.5px; border-bottom: 2px solid #003d80; padding-bottom: 5px;
+            margin-bottom: 13px; margin-top: 18px;
         }
-        
-        .section-header { font-size: 1.1rem; font-weight: 600; color: #495057; margin-bottom: 15px; display: flex; align-items: center; }
-        .section-header::before { content: ''; display: inline-block; width: 4px; height: 18px; background-color: #004085; margin-right: 10px; border-radius: 2px; }
+        .sec-title:first-child { margin-top: 0; }
 
-        .input-group { margin-bottom: 20px; }
-        .input-group label { display: block; font-weight: 500; margin-bottom: 8px; color: #6c757d; font-size: 0.9rem; }
-        .input-group input[type="text"], .input-group input[type="date"], .input-group input[type="file"], .input-group select { 
-            width: 100%; padding: 10px 12px; border: 1px solid #ced4da; border-radius: 4px; box-sizing: border-box; font-size: 0.95rem; transition: border-color 0.2s; 
+        .field { margin-bottom: 13px; }
+        .field label { display: block; font-size: 0.82rem; color: #6c757d; font-weight: 600; margin-bottom: 5px; }
+        .field input[type=text], .field input[type=date], .field select, .field input[type=file] {
+            width: 100%; padding: 8px 11px; border: 1px solid #ced4da; border-radius: 4px;
+            font-size: 0.9rem; transition: border-color .2s;
         }
-        .input-group input:focus, .input-group select:focus { border-color: #004085; outline: none; }
-        
-        .checkbox-group { display: flex; gap: 15px; flex-wrap: wrap; background: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #e9ecef; }
-        .checkbox-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer; color: #495057; }
-        
-        .btn { background-color: #0056b3; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; transition: background-color 0.2s; }
-        .btn:hover { background-color: #004494; }
-        
-        .btn-green { background-color: #28a745; height: 55px; font-size: 1.1rem; margin-top: 20px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .btn-green:hover { background-color: #218838; }
+        .field input:focus, .field select:focus { border-color: #003d80; outline: none; box-shadow: 0 0 0 2px rgba(0,61,128,.1); }
+        .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
-        .status-msg { margin-top: 8px; font-size: 0.85rem; padding: 8px 12px; border-radius: 4px; display: none; }
-        .success { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
-        .error { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-
-        /* --- PDF TEMPLATE --- */
-
-        #fiche-template {
-            position: absolute;
-            left: -9999px; /* Hors écran au lieu de display:none */
-            top: 0;
-            width: 210mm;
-            min-height: 297mm;
-            background: white;
-            padding: 15mm 20mm; /* Marges plus pro */
-            box-sizing: border-box;
-            color: #000;
-            font-family: Arial, sans-serif;
-            font-size: 11pt;
-            line-height: 1.4;
+        .btn-row { display: flex; gap: 8px; align-items: center; position: relative; }
+        .btn { background: #003d80; color: white; border: none; padding: 8px 14px;
+               border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; }
+        .btn:hover { background: #002a5a; }
+        .btn-sm { padding: 6px 11px; font-size: 0.8rem; }
+        .btn-outline { background: white; color: #003d80; border: 2px solid #003d80;
+                       padding: 6px 12px; border-radius: 4px; text-decoration: none;
+                       font-weight: 600; font-size: 0.82rem; display: inline-block; }
+        .btn-outline:hover { background: #003d80; color: white; }
+        .btn-generate {
+            background: #198754; width: 100%; height: 52px; font-size: 1rem;
+            text-transform: uppercase; letter-spacing: 0.5px; border-radius: 5px;
+            border: none; color: white; cursor: pointer; font-weight: 700;
+            transition: background .2s; margin-top: 18px;
         }
-        
+        .btn-generate:hover { background: #146c43; }
+        .btn-generate:disabled { background: #6c757d; cursor: not-allowed; }
+        .btn-link { background: none; border: none; color: #003d80; cursor: pointer;
+                    font-size: 0.8rem; text-decoration: underline; padding: 0; }
 
-        
-        /* MODIF : Header en tableau pour éviter l'écrasement */
-        .pdf-header-table { width: 100%; border-bottom: 2px solid #0056b3; margin-bottom: 10px; padding-bottom: 5px; }
-        .pdf-header-table td { vertical-align: middle; }
-        .pdf-logo { width: 150px; } /* Logo agrandi */
-        .pdf-title { 
-            text-align: right; font-weight: bold; font-size: 18pt; 
-            color: #0056b3; text-transform: uppercase; 
+        .msg { font-size: 0.82rem; padding: 7px 10px; border-radius: 4px; margin-top: 6px; display: none; }
+        .msg.ok  { background: #d1e7dd; color: #0a3622; border: 1px solid #a3cfbb; display: block; }
+        .msg.err { background: #f8d7da; color: #58151c; border: 1px solid #f1aeb5; display: block; }
+
+        .hw-result { font-size: 0.83rem; margin-top: 5px; min-height: 18px; }
+        .chk-row { display: flex; gap: 12px; flex-wrap: wrap; background: #f8f9fa;
+                   padding: 10px; border-radius: 4px; border: 1px solid #e9ecef; }
+        .chk-item { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; cursor: pointer; }
+
+        .manual-box {
+            background: #fff9e6; border: 1px solid #ffc107; border-radius: 4px;
+            padding: 13px; margin-top: 8px; display: none;
         }
-        
-        /* MODIF : Marges réduites entre les blocs */
-        .section-box { margin-bottom: 10px; border: 1px solid #ddd; padding: 8px; border-radius: 5px; }
-        .section-title { 
-            font-weight: bold; color: #0056b3; border-bottom: 1px solid #0056b3; 
-            margin-bottom: 5px; font-size: 12pt; text-transform: uppercase;
+        .manual-box.open { display: block; }
+        .manual-box .sec-title { color: #856404; border-color: #ffc107; margin-top: 0; }
+
+        .info-band { background: #e8f0ff; border: 1px solid #b6d0ff; border-radius: 4px;
+                     padding: 8px 12px; font-size: 0.82rem; color: #003d80; margin-bottom: 10px; }
+
+        /* ─── Autocomplete dropdown ───────────────────────────────── */
+        .ac-wrap { position: relative; flex: 1; }
+        .ac-wrap input { width: 100%; }
+        .ac-list {
+            position: absolute; top: 100%; left: 0; right: 0; z-index: 999;
+            background: white; border: 1px solid #ced4da; border-top: none;
+            border-radius: 0 0 4px 4px; max-height: 220px; overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12); display: none;
         }
-        
-        .info-row { margin-bottom: 3px; display: flex; align-items: baseline; }
-        .info-label { width: 170px; font-weight: bold; font-size: 10pt; color: #444; }
-        .info-value { flex-grow: 1; border-bottom: 1px solid #000; padding-left: 8px; font-family: 'Courier New', Courier, monospace; font-weight: bold; min-height: 1.2em;}
-
-
-        /* Table État */
-        table.etat-table { width: 100%; border-collapse: collapse; margin-top: 5px; }
-        table.etat-table th, table.etat-table td { border: 1px solid #666; padding: 4px 8px; text-align: center; font-size: 9pt; }
-        table.etat-table th { background-color: #eee; }
-        /* MODIF : Empêche le texte de se couper */
-        table.etat-table td { white-space: nowrap; } 
-        .selected-state { font-weight: bold; text-decoration: underline; background-color: #ffffcc; padding: 2px 5px; border-radius: 3px; border: 1px solid #000; }
-
-        .conditions { font-size: 8pt; text-align: justify; margin-top: 10px; color: #555; }
-        
-        .signatures { display: flex; justify-content: space-between; margin-top: 15px; }
-        .sig-box { width: 48%; border: 1px solid #999; padding: 5px; height: 70px; font-size: 9pt;}
-        
-        .cut-line { 
-            border-top: 2px dashed #333; margin: 20px 0 10px 0; display: flex; 
-            justify-content: center; align-items: center;
+        .ac-list.open { display: block; }
+        .ac-item {
+            padding: 7px 11px; cursor: pointer; font-size: 0.85rem;
+            border-bottom: 1px solid #f0f0f0;
         }
-        .cut-icon { background: white; padding: 0 10px; font-size: 9pt; font-weight: bold; }
-
-        .hidden { display: none !important; }
+        .ac-item:hover, .ac-item.focused { background: #e8f0ff; }
+        .ac-item .ac-sn  { font-weight: 700; color: #003d80; }
+        .ac-item .ac-sub { color: #6c757d; font-size: 0.78rem; margin-left: 6px; }
+        .ac-item-ldap .ac-login { font-weight: 700; color: #003d80; }
+        .ac-item-ldap .ac-name  { color: #333; font-size: 0.82rem; margin-left: 6px; }
+        .ac-item-ldap .ac-dept  { color: #6c757d; font-size: 0.77rem; display: block; margin-top: 1px; }
     </style>
 </head>
 <body>
+<div class="panel">
+    <div class="panel-title">Générateur de Fiche de Prêt</div>
+    <div class="grid2">
 
-<div class="control-panel">
-    <div class="full-width">
-        <h2 style="text-align: center;">Générateur de Fiche de Prêt</h2>
-    </div>
+        <div class="col-left">
 
-    <div style="border-right: 1px solid #e9ecef; padding-right: 30px;">
-        
-        <div class="section-header">Base de Données</div>
-        <div class="input-group">
-            <label>Fichier Inventaire (Excel)</label>
-            <input type="file" id="excelFile" accept=".xlsx, .xls" />
-            <div id="excel-status" class="status-msg"></div>
-        </div>
-
-        <div class="section-header" style="margin-top: 30px;">Identité Emprunteur</div>
-        <div class="input-group">
-            <label>Identifiant Réseau (LDAP)</label>
-            <div style="display: flex; gap: 10px;">
-                <input type="text" id="usernameInput" placeholder="ex: jdupont">
-                <button class="btn" style="width: auto;" onclick="fetchLDAPUser()">Rechercher</button>
+            <div class="sec-title">Base de données inventaire</div>
+            <div class="info-band">Base chargée depuis le serveur. Importez un nouveau fichier pour la mettre à jour.</div>
+            <div class="field">
+                <label>Importer un fichier inventaire (.xlsx)</label>
+                <input type="file" id="fileInventaire" accept=".xlsx,.xls">
+                <div class="msg" id="msgInventaire"></div>
             </div>
-            <div id="ldap-status" class="status-msg"></div>
-        </div>
+            <div style="margin-bottom:18px;">
+                <a href="{{ url_for('tech.download_template') }}" class="btn-outline">⬇ Télécharger fichier exemple</a>
+            </div>
 
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 4px; border: 1px solid #e9ecef;">
-            <div class="input-group">
-                <label>Nom Complet</label>
-                <input type="text" id="userNom" placeholder="Nom Prénom">
+            <div class="sec-title">Identité de l'emprunteur</div>
+            <div class="field">
+                <label>Recherche LDAP (identifiant réseau)</label>
+                <div class="btn-row">
+                    <div class="ac-wrap">
+                        <input type="text" id="ldapInput" placeholder="ex: jdupont" autocomplete="off"
+                               oninput="onLdapInput()" onkeydown="onLdapKey(event)">
+                        <div class="ac-list" id="ldapList"></div>
+                    </div>
+                    <button class="btn btn-sm" onclick="rechercherLDAP(document.getElementById('ldapInput').value.trim())">Rechercher</button>
+                </div>
+                <div class="msg" id="msgLDAP"></div>
             </div>
-            <div class="input-group">
-                <label>Email</label>
-                <input type="text" id="userMail" placeholder="email@valmande.fr">
+            <div class="field">
+                <label>Nom et Prénom <span style="color:red">*</span></label>
+                <input type="text" id="empNom" placeholder="DUPONT Jean">
             </div>
-            <div class="input-group">
-                <label>Service / Affectation</label>
-                <select id="userService">
-                    <option value="" disabled selected>Sélectionner un service...</option>
-                    <option value="Accueil">Accueil</option>
-                    <option value="Archipelle">Archipelle</option>
-                    <option value="Autre">Autre</option>
-                    <option value="Cellule Parcours">Cellule Parcours</option>
-                    <option value="Csd">Csd</option>
-                    <option value="Daf">Daf</option>
-                    <option value="Dg">Dg</option>
-                    <option value="Drh">Drh</option>
-                    <option value="Eam Draveil">Eam Draveil</option>
-                    <option value="Esat">Esat</option>
-                    <option value="Espace Loisirs">Espace Loisirs</option>
-                    <option value="Fh">Fh</option>
-                    <option value="Fj">Fj</option>
-                    <option value="Fv">Fv</option>
-                    <option value="Généraux">Généraux</option>
-                    <option value="Gite">Gite</option>
-                    <option value="Imago">Imago</option>
-                    <option value="Ime Corbeil">Ime Corbeil</option>
-                    <option value="Informatique">Informatique</option>
-                    <option value="Magasin">Magasin</option>
-                    <option value="Mas">Mas</option>
-                    <option value="Mas Externat">Mas Externat</option>
-                    <option value="Mas Inclusive">Mas Inclusive</option>
-                    <option value="Patrimoine">Patrimoine</option>
-                    <option value="Qualité">Qualité</option>
-                    <option value="Sacat">Sacat</option>
-                    <option value="Samsah">Samsah</option>
-                    <option value="Savie">Savie</option>
-                    <option value="Secu">Secu</option>
-                    <option value="Sécurité Incendie">Sécurité Incendie</option>
-                    <option value="Sessad Corbeil">Sessad Corbeil</option>
-                    <option value="Sessad Créteil">Sessad Créteil</option>
-                    <option value="Sessad Tsa">Sessad Tsa</option>
-                    <option value="Sg">Sg</option>
-                    <option value="Sru">Sru</option>
-                    <option value="Syndicat">Syndicat</option>
-                    <option value="Technique">Technique</option>
-                    <option value="Tkitoi">Tkitoi</option>
-                    <option value="Ueea">Ueea</option>
-                    <option value="Uema">Uema</option>
+            <div class="field">
+                <label>Fonction / Poste</label>
+                <input type="text" id="empFonction" placeholder="Ex : Éducateur spécialisé">
+            </div>
+            <div class="field">
+                <label>Service / Département <span style="color:red">*</span></label>
+                <select id="empService">
+                    <option value="" disabled selected>-- Sélectionner --</option>
+                    <option>Accueil</option><option>Archipelle</option><option>Autre</option>
+                    <option>Cellule Parcours</option><option>Csd</option><option>Daf</option>
+                    <option>Dg</option><option>Drh</option><option>Eam Draveil</option>
+                    <option>Esat</option><option>Espace Loisirs</option><option>Fh</option>
+                    <option>Fj</option><option>Fv</option><option>Généraux</option>
+                    <option>Gite</option><option>Imago</option><option>Ime Corbeil</option>
+                    <option>Informatique</option><option>Magasin</option><option>Mas</option>
+                    <option>Mas Externat</option><option>Mas Inclusive</option><option>Patrimoine</option>
+                    <option>Qualité</option><option>Sacat</option><option>Samsah</option>
+                    <option>Savie</option><option>Secu</option><option>Sécurité Incendie</option>
+                    <option>Sessad Corbeil</option><option>Sessad Créteil</option><option>Sessad Tsa</option>
+                    <option>Sg</option><option>Sru</option><option>Syndicat</option>
+                    <option>Technique</option><option>Tkitoi</option><option>Ueea</option><option>Uema</option>
                 </select>
             </div>
-            <div class="input-group" style="margin-bottom: 0;">
-                <label>Téléphone (Facultatif)</label>
-                <input type="text" id="userTel" placeholder="Ex: 06 00 00 00 00">
-            </div>
-        </div>
-
-    </div>
-
-    <div>
-        <div class="section-header">Matériel & Prêt</div>
-        
-        <div class="input-group">
-            <label>Recherche Matériel (Scanner le SN)</label>
-            <input type="text" id="snInput" placeholder="Numéro de Série..." oninput="autoCompleteSN()" style="font-size: 1.1em; font-weight: bold; color: #004085;">
-            <div id="hardware-result" style="color: #0056b3; font-weight: bold; margin-top: 8px; font-size: 0.9rem; padding-left: 5px;"></div>
-        </div>
-
-        <div class="input-group">
-            <label>Période du Prêt</label>
-            <div style="display: flex; gap: 15px;">
-                <div style="flex:1">
-                    <small style="color:#6c757d">Date de départ</small>
-                    <input type="date" id="dateEmprunt">
+            <div class="row2">
+                <div class="field">
+                    <label>Téléphone</label>
+                    <input type="text" id="empTel" placeholder="06 00 00 00 00">
                 </div>
-                <div style="flex:1">
-                    <small style="color:#6c757d">Date de retour prévue</small>
-                    <input type="date" id="dateRetour">
+                <div class="field">
+                    <label>Email professionnel</label>
+                    <input type="text" id="empMail" placeholder="j.dupont@ilvm.fr">
                 </div>
             </div>
         </div>
 
-        <div class="input-group">
-            <label>Type de Prêt</label>
-            <select id="typePretSelect" onchange="updateDateRetour()">
-                <option value="longue">Longue Durée (3 ans)</option>
-                <option value="court">Exceptionnel (- de 7 jours)</option>
-                <option value="temp">Temporaire (1 mois)</option>
-            </select>
-        </div>
+        <div>
+            <div class="sec-title">Matériel informatique</div>
 
-        <div class="input-group">
-            <label>Accessoires Fournis</label>
-            <div class="checkbox-group">
-                <label class="checkbox-item"><input type="checkbox" id="chk_chargeur" checked> Chargeur</label>
-                <label class="checkbox-item"><input type="checkbox" id="chk_sacoche" checked> Sacoche</label>
-                <label class="checkbox-item"><input type="checkbox" id="chk_souris"> Souris</label>
-                <label class="checkbox-item"><input type="checkbox" id="chk_cable"> Câble</label>
-                <label class="checkbox-item"><input type="checkbox" id="chk_casque"> Casque</label>
+            <div class="field">
+                <label>Numéro de Série — scanner ou saisir <span style="color:red">*</span></label>
+                <div class="btn-row">
+                    <div class="ac-wrap">
+                        <input type="text" id="snInput" placeholder="Numéro de Série..."
+                               oninput="onSnInput()" onkeydown="onSnKey(event)"
+                               autocomplete="off"
+                               style="font-size:1rem; font-weight:bold; color:#003d80;">
+                        <div class="ac-list" id="snList"></div>
+                    </div>
+                    <button class="btn btn-sm" onclick="appliquerSN(document.getElementById('snInput').value.trim())">Chercher</button>
+                </div>
+                <div class="hw-result" id="hwResult"></div>
+                <button class="btn-link" onclick="toggleManuel(event)" style="margin-top:5px;">
+                    ✏️ Saisir le matériel manuellement
+                </button>
             </div>
-        </div>
 
-        <div class="input-group">
-            <label>État du matériel (Constat)</label>
-            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
-                <select id="etat_ecran"><option value="Bon">Écran : Bon</option><option value="Acceptable">Écran : Moyen</option><option value="Dégradé">Écran : Mauvais</option></select>
-                <select id="etat_clavier"><option value="Bon">Clavier : Bon</option><option value="Acceptable">Clavier : Moyen</option><option value="Dégradé">Clavier : Mauvais</option></select>
-                <select id="etat_coque"><option value="Bon">Coque : Bon</option><option value="Acceptable">Coque : Moyen</option><option value="Dégradé">Coque : Mauvais</option></select>
+            <div class="manual-box" id="manualBox">
+                <div class="sec-title">Saisie manuelle</div>
+                <div class="field">
+                    <label>Type de matériel <span style="color:red">*</span></label>
+                    <select id="matType" onchange="onTypeChange()">
+                        <option value="">-- Sélectionner --</option>
+                        <option value="Ordinateur portable">Ordinateur portable</option>
+                        <option value="Tablette">Tablette</option>
+                        <option value="Téléphone portable">Téléphone portable</option>
+                        <option value="Autre matériel">Autre matériel</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label>Marque / Modèle</label>
+                    <input type="text" id="matModele" placeholder="Ex : Dell Latitude 5540">
+                </div>
+                <div class="field" id="snManualField" style="display:none;">
+                    <label>Numéro de série (saisi manuellement)</label>
+                    <input type="text" id="matSN" placeholder="Ex : SN-XXXX">
+                </div>
+                <div class="field" id="imeiField" style="display:none;">
+                    <label>IMEI</label>
+                    <input type="text" id="matIMEI" placeholder="Ex : 351234567890123">
+                </div>
+                <div class="row2" id="pinpukRow" style="display:none;">
+                    <div class="field" style="margin-bottom:0;">
+                        <label>Code PIN</label>
+                        <input type="text" id="matPIN" placeholder="Ex : 1234" maxlength="8">
+                    </div>
+                    <div class="field" style="margin-bottom:0;">
+                        <label>Code PUK</label>
+                        <input type="text" id="matPUK" placeholder="Ex : 12345678" maxlength="8">
+                    </div>
+                </div>
             </div>
+
+            <div class="field" style="margin-top:14px;">
+                <label>Période du prêt</label>
+                <div class="row2">
+                    <div>
+                        <label style="font-size:0.78rem;color:#888;">Date de départ</label>
+                        <input type="date" id="dateDepart" onchange="calcDateRetour()">
+                    </div>
+                    <div>
+                        <label style="font-size:0.78rem;color:#888;">Date de retour prévue</label>
+                        <input type="date" id="dateRetour">
+                    </div>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>Type de Prêt</label>
+                <select id="typePret" onchange="calcDateRetour()">
+                    <option value="longue">Prêt longue durée (3 ans)</option>
+                    <option value="court">Prêt à titre exceptionnel (- de 7 jours)</option>
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Accessoires fournis</label>
+                <div class="chk-row">
+                    <label class="chk-item"><input type="checkbox" id="accChargeur" checked> Chargeur</label>
+                    <label class="chk-item"><input type="checkbox" id="accCable"> Câble USB</label>
+                    <label class="chk-item"><input type="checkbox" id="accHousse"> Housse/Protection</label>
+                    <label class="chk-item"><input type="checkbox" id="accSouris"> Souris</label>
+                    <label class="chk-item"><input type="checkbox" id="accCasque"> Casque</label>
+                </div>
+            </div>
+
+            <div class="field">
+                <label>État physique (constat au départ)</label>
+                <div style="display:grid; gap:6px;">
+                    <select id="etatEcran">
+                        <option value="Bon">Écran : Bon</option>
+                        <option value="Acceptable">Écran : Acceptable</option>
+                        <option value="Dégradé">Écran : Dégradé</option>
+                    </select>
+                    <select id="etatClavier">
+                        <option value="Bon">Clavier / Boutons : Bon</option>
+                        <option value="Acceptable">Clavier / Boutons : Acceptable</option>
+                        <option value="Dégradé">Clavier / Boutons : Dégradé</option>
+                    </select>
+                    <select id="etatCoque">
+                        <option value="Bon">Coque / Châssis : Bon</option>
+                        <option value="Acceptable">Coque / Châssis : Acceptable</option>
+                        <option value="Dégradé">Coque / Châssis : Dégradé</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn-generate" id="btnGenerer" onclick="genererPDF()">
+                📄 Générer la Fiche de Prêt (PDF)
+            </button>
+            <div class="msg" id="msgGenerer" style="margin-top:8px;"></div>
         </div>
     </div>
-
-    <div class="full-width">
-        <button class="btn btn-green" onclick="generatePDF()">Générer la Fiche PDF</button>
-    </div>
-</div>
-
-<div id="fiche-template">
-    
-    <table class="pdf-header-table">
-        <tr>
-            <td style="width: 30%;">
-                <img src="{{ url_for('static', filename='img/logo-pdf.png') }}" class="pdf-logo" alt="Logo">
-            </td>
-            <td style="width: 70%;" class="pdf-title">
-                FICHE DE PRÊT<br><span style="font-size: 12pt;">MATÉRIEL INFORMATIQUE</span>
-            </td>
-        </tr>
-    </table>
-
-    <div class="section-box">
-        <div class="section-title">Informations Emprunteur</div>
-        <div class="info-row"><span class="info-label">Nom / Prénom :</span><span class="info-value" id="pdf_nom"></span></div>
-        <div class="info-row"><span class="info-label">Service :</span><span class="info-value" id="pdf_service"></span></div>
-        <div class="info-row"><span class="info-label">Email :</span><span class="info-value" id="pdf_mail"></span></div>
-        <div class="info-row"><span class="info-label">Téléphone :</span><span class="info-value" id="pdf_tel"></span></div>
-    </div>
-
-    <div class="section-box">
-        <div class="section-title">Matériel & Accessoires</div>
-        <div class="info-row"><span class="info-label">Type :</span><span class="info-value" id="pdf_type"></span></div>
-        <div class="info-row"><span class="info-label">Marque / Modèle :</span><span class="info-value" id="pdf_modele"></span></div>
-        <div class="info-row"><span class="info-label">Numéro de Série (SN) :</span><span class="info-value" id="pdf_sn"></span></div>
-        
-        <div id="pdf_mobile_section" class="hidden">
-            <div class="info-row"><span class="info-label">IMEI :</span><span class="info-value" id="pdf_imei"></span></div>
-            <div class="info-row"><span class="info-label">Code PIN / PUK :</span><span class="info-value" id="pdf_pin"></span></div>
-        </div>
-
-        <div class="info-row" style="margin-top: 8px; border-top: 1px dashed #ccc; padding-top: 5px;">
-            <span class="info-label">Accessoires remis :</span>
-            <span class="info-value" id="pdf_accessoires" style="font-size: 9pt;"></span>
-        </div>
-    </div>
-
-    <div class="section-box">
-        <div class="section-title">État & Conditions</div>
-        <div class="info-row">
-            <span class="info-label">Type de prêt :</span>
-            <span class="info-value" id="pdf_type_pret"></span>
-        </div>
-
-        <table class="etat-table">
-            <tr>
-                <th style="width: 30%">Élément</th>
-                <th>État au départ (Constat)</th>
-                <th>État au retour</th>
-            </tr>
-            <tr>
-                <td>Écran</td>
-                <td id="pdf_etat_ecran">Bon / Acceptable / Dégradé</td>
-                <td></td>
-            </tr>
-            <tr>
-                <td>Clavier / Boutons</td>
-                <td id="pdf_etat_clavier">Bon / Acceptable / Dégradé</td>
-                <td></td>
-            </tr>
-            <tr>
-                <td>Coque / Châssis</td>
-                <td id="pdf_etat_coque">Bon / Acceptable / Dégradé</td>
-                <td></td>
-            </tr>
-        </table>
-
-        <div class="info-row" style="margin-top: 10px;">
-            <span class="info-label">Date d’emprunt :</span>
-            <span class="info-value" id="pdf_date_debut"></span>
-            <span class="info-label" style="width: auto; margin-left: 20px;">Retour prévu le :</span>
-            <span class="info-value" id="pdf_date_fin" style="width: 100px;"></span>
-        </div>
-    </div>
-
-    <div class="conditions">
-        <strong>ENGAGEMENT :</strong> L’emprunteur reconnaît avoir reçu le matériel ci-dessus en bon état de fonctionnement (sauf mention contraire dans le tableau d'état). Il s'engage à l'utiliser à des fins professionnelles, à ne pas installer de logiciels sans autorisation DSI et à signaler immédiatement tout vol ou casse. Le matériel devra être restitué propre et avec ses accessoires à la date indiquée.
-    </div>
-
-    <div class="signatures">
-        <div class="sig-box">
-            <strong>L'Emprunteur</strong><br>
-            <span style="font-size: 8pt; font-style: italic;">(Bon pour accord et réception)</span>
-        </div>
-        <div class="sig-box">
-            <strong>Le Service Informatique</strong><br>
-            <span style="font-size: 8pt; font-style: italic;">(Visa DSI)</span>
-        </div>
-    </div>
-
-    <div class="cut-line">
-        <span class="cut-icon">✂ COUPON DE RESTITUTION (A remplir au retour) ✂</span>
-    </div>
-    
-    <div style="background: #f9f9f9; padding: 10px; border: 1px solid #ddd;">
-        <div class="info-row"><span class="info-label">Matériel restitué le :</span><span class="info-value">____/____/______</span></div>
-        <div class="info-row"><span class="info-label">Par (Nom) :</span><span class="info-value">_________________________</span></div>
-        <div class="info-row"><span class="info-label">Visa Informatique :</span><span class="info-value">_________________________</span></div>
-    </div>
-
 </div>
 
 <script>
-    let stockData = [];
+var stockData    = [];
+var manuelOuvert = false;
+var ldapTimer    = null;
+var snFocusIdx   = -1;
+var ldapFocusIdx = -1;
 
-    // --- INITIALISATION (Dates par défaut + Chargement Stock) ---
-    window.onload = function() {
-        const today = new Date();
-        document.getElementById('dateEmprunt').valueAsDate = today;
-        updateDateRetour();
-        fetchInventory(); // Chargement auto du stock
-    };
-
-    function fetchInventory() {
-        const statusDiv = document.getElementById('excel-status');
-        // On appelle le backend pour charger le fichier 'stock.xlsx' local
-        const url = "{{ url_for('tech.get_inventory') }}";
-
-        fetch(url)
-            .then(res => res.json())
-            .then(data => {
-                stockData = data;
-                if(stockData.length > 0) {
-                    statusDiv.innerText = `✅ Base connectée : ${stockData.length} articles.`;
-                    statusDiv.className = "status-msg success";
-                    statusDiv.style.display = "block";
-                } else {
-                    console.log("Aucun stock chargé.");
-                }
-            })
-            .catch(err => console.error("Erreur stock", err));
-    }
-
-    function updateDateRetour() {
-        const type = document.getElementById('typePretSelect').value;
-        const dateInput = document.getElementById('dateEmprunt').valueAsDate;
-        if(!dateInput) return;
-
-        let newDate = new Date(dateInput);
-        if (type === 'longue') newDate.setFullYear(newDate.getFullYear() + 3);
-        else if (type === 'court') newDate.setDate(newDate.getDate() + 7);
-        else newDate.setMonth(newDate.getMonth() + 1);
-        
-        document.getElementById('dateRetour').valueAsDate = newDate;
-    }
-
-    // --- UPLOAD EXCEL ---
-    document.getElementById('excelFile').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return; // Pas de fichier sélectionné
-
-        // On utilise l'API Fetch pour envoyer au serveur
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const statusDiv = document.getElementById('excel-status');
-        statusDiv.innerText = "Envoi en cours..."; 
-        statusDiv.style.display = "block";
-
-        // MODIF : URL correcte pour l'upload
-        const url = "{{ url_for('tech.upload_inventory') }}";
-
-        fetch(url, {
-            method: 'POST',
-            body: formData
-        })
-        .then(r => r.json())
-        .then(data => {
-            if(data.success) {
-                statusDiv.innerText = "✅ " + data.message;
-                statusDiv.className = "status-msg success";
-                fetchInventory(); // Rafraîchir la liste
-            } else {
-                statusDiv.innerText = "❌ " + data.message;
-                statusDiv.className = "status-msg error";
-            }
-        })
-        .catch(err => {
-            statusDiv.innerText = "Erreur upload: " + err;
-            statusDiv.className = "status-msg error";
-        });
+/* ─── INIT ─────────────────────────────────────────── */
+window.addEventListener('load', function() {
+    document.getElementById('dateDepart').valueAsDate = new Date();
+    calcDateRetour();
+    chargerInventaire();
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#snInput') && !e.target.closest('#snList'))     fermerSnList();
+        if (!e.target.closest('#ldapInput') && !e.target.closest('#ldapList')) fermerLdapList();
     });
+});
 
-    // --- AUTO-COMPLETE ---
-    function autoCompleteSN() {
-        const inputVal = document.getElementById('snInput').value.trim();
-        const resultLabel = document.getElementById('hardware-result');
-        const item = stockData.find(row => row.SN && row.SN.toString() === inputVal);
-
-        if (item) {
-            resultLabel.innerText = `${item.Marque || ''} ${item.Modele || ''} (${item.Type || ''})`;
-            resultLabel.style.color = "#28a745";
-
-            document.getElementById('pdf_sn').innerText = item.SN;
-            document.getElementById('pdf_type').innerText = item.Type || "Matériel Informatique";
-            document.getElementById('pdf_modele').innerText = (item.Marque || "") + " " + (item.Modele || "");
-            
-            const typeLower = (item.Type || "").toLowerCase();
-            const isPC = typeLower.includes("ordinateur") || typeLower.includes("pc") || typeLower.includes("laptop");
-            
-            if (isPC) {
-                document.getElementById('pdf_mobile_section').classList.add('hidden');
-                document.getElementById('chk_chargeur').checked = true;
-                document.getElementById('chk_sacoche').checked = true;
-                document.getElementById('chk_souris').checked = true;
-            } else {
-                document.getElementById('pdf_mobile_section').classList.remove('hidden');
-                document.getElementById('pdf_imei').innerText = item.IMEI || "";
-                document.getElementById('pdf_pin').innerText = item.PIN || "";
-                
-                document.getElementById('chk_chargeur').checked = true;
-                document.getElementById('chk_souris').checked = false;
-                document.getElementById('chk_sacoche').checked = false;
+/* ─── INVENTAIRE ────────────────────────────────────── */
+function chargerInventaire() {
+    var msg = document.getElementById('msgInventaire');
+    fetch("{{ url_for('tech.get_inventory') }}")
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if (Array.isArray(data) && data.length > 0) {
+                stockData = data;
+                msg.textContent = '✅ Base connectée : ' + data.length + ' articles chargés.';
+                msg.className = 'msg ok';
             }
-        } else {
-            resultLabel.innerText = "SN inconnu dans la base";
-            resultLabel.style.color = "#dc3545";
+        }).catch(function(){});
+}
+
+document.getElementById('fileInventaire').addEventListener('change', function(e) {
+    var file = e.target.files[0]; if (!file) return;
+    var fd = new FormData(); fd.append('file', file);
+    var msg = document.getElementById('msgInventaire');
+    msg.textContent = 'Envoi en cours…'; msg.className = 'msg ok';
+    fetch("{{ url_for('tech.upload_inventory') }}", { method:'POST', body:fd })
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            msg.textContent = (data.success ? '✅ ' : '❌ ') + data.message;
+            msg.className = 'msg ' + (data.success ? 'ok' : 'err');
+            if (data.success) chargerInventaire();
+        }).catch(function(e){ msg.textContent = '❌ ' + e; msg.className = 'msg err'; });
+});
+
+/* ─── DATES ─────────────────────────────────────────── */
+function calcDateRetour() {
+    var type = document.getElementById('typePret').value;
+    var val  = document.getElementById('dateDepart').value;
+    if (!val) return;
+    var d = new Date(val + 'T12:00:00');
+    if (type === 'longue') d.setFullYear(d.getFullYear() + 3);
+    else                   d.setDate(d.getDate() + 7);
+    document.getElementById('dateRetour').valueAsDate = d;
+}
+
+/* ─── AUTOCOMPLETE SN ───────────────────────────────── */
+function onSnInput() {
+    var val = document.getElementById('snInput').value.trim().toUpperCase();
+    var list = document.getElementById('snList');
+    snFocusIdx = -1;
+    if (!val || stockData.length === 0) { fermerSnList(); return; }
+
+    var matches = stockData.filter(function(item) {
+        return item.SN && item.SN.toString().toUpperCase().indexOf(val) === 0;
+    }).slice(0, 12);
+
+    if (matches.length === 0) { fermerSnList(); return; }
+
+    list.innerHTML = '';
+    matches.forEach(function(item) {
+        var div = document.createElement('div');
+        div.className = 'ac-item';
+        var sn    = item.SN || '';
+        var label = ((item.Marque || '') + ' ' + (item.Modele || '')).trim();
+        var type  = item.Type || item.Categorie || '';
+        var statut = item.Statut || '';
+        var statutStyle = statut === 'Disponible' ? 'color:#0a3622;' : 'color:#842029;';
+        div.innerHTML = '<span class="ac-sn">' + esc(sn) + '</span>' +
+                        '<span class="ac-sub">' + esc(label) + (type ? ' — ' + esc(type) : '') + '</span>' +
+                        (statut ? '<span style="font-size:0.75rem;margin-left:8px;font-weight:700;' + statutStyle + '">' + esc(statut) + '</span>' : '');
+        div.addEventListener('mousedown', function(e) {
+            e.preventDefault();
+            appliquerSN(sn);
+        });
+        list.appendChild(div);
+    });
+    list.classList.add('open');
+}
+
+function onSnKey(e) {
+    var list  = document.getElementById('snList');
+    var items = list.querySelectorAll('.ac-item');
+    if (!list.classList.contains('open') || items.length === 0) return;
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        snFocusIdx = Math.min(snFocusIdx + 1, items.length - 1);
+        highlightSnItem(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        snFocusIdx = Math.max(snFocusIdx - 1, 0);
+        highlightSnItem(items);
+    } else if (e.key === 'Enter' && snFocusIdx >= 0) {
+        e.preventDefault();
+        appliquerSN(items[snFocusIdx].querySelector('.ac-sn').textContent);
+    } else if (e.key === 'Escape') {
+        fermerSnList();
+    }
+}
+
+function highlightSnItem(items) {
+    items.forEach(function(it, i) { it.classList.toggle('focused', i === snFocusIdx); });
+}
+
+function fermerSnList() {
+    document.getElementById('snList').classList.remove('open');
+    snFocusIdx = -1;
+}
+
+function appliquerSN(sn) {
+    document.getElementById('snInput').value = sn;
+    fermerSnList();
+    rechercherSN(sn);
+}
+
+function rechercherSN(sn) {
+    if (sn === undefined) sn = document.getElementById('snInput').value.trim();
+    var lbl = document.getElementById('hwResult');
+    if (!sn) { lbl.innerHTML = ''; return; }
+
+    var item = null;
+    for (var i = 0; i < stockData.length; i++) {
+        if (stockData[i].SN && stockData[i].SN.toString().toLowerCase() === sn.toLowerCase()) {
+            item = stockData[i]; break;
         }
     }
 
-    // --- RECHERCHE LDAP ---
-    function fetchLDAPUser() {
-        const username = document.getElementById('usernameInput').value;
-        const statusDiv = document.getElementById('ldap-status');
-        
-        if(!username) return;
-
-        // MODIF : Construction propre de l'URL LDAP avec url_for
-        // On génère la base de l'URL pour un user vide, puis on ajoute le username
-        let baseUrl = "{{ url_for('tech.get_user', username='') }}"; 
-        
-        fetch(baseUrl + username)
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    statusDiv.innerText = "Utilisateur trouvé";
-                    statusDiv.className = "status-msg success";
-                    statusDiv.style.display = "block";
-                    
-                    document.getElementById('userNom').value = data.nom || "";
-                    document.getElementById('userMail').value = data.mail || "";
-                    
-                    const select = document.getElementById('userService');
-                    let found = false;
-                    if(data.service) {
-                        for (let i = 0; i < select.options.length; i++) {
-                            if (select.options[i].text.toLowerCase().includes(data.service.toLowerCase())) {
-                                select.selectedIndex = i;
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    if(!found) select.value = "Autre";
-                    document.getElementById('userTel').value = data.telephone || "";
-                } else {
-                    statusDiv.innerText = "Utilisateur introuvable";
-                    statusDiv.className = "status-msg error";
-                    statusDiv.style.display = "block";
-                    document.getElementById('userNom').value = "";
-                    document.getElementById('userMail').value = "";
-                }
-            })
-            .catch(e => {
-                statusDiv.innerText = "Erreur Serveur LDAP";
-                statusDiv.className = "status-msg error";
-                statusDiv.style.display = "block";
-            });
+    if (item) {
+        var typeLabel = item.Type || item.Categorie || 'Matériel';
+        lbl.innerHTML = '<span style="color:#0a3622;font-weight:700;">✅ Trouvé : ' +
+            esc(((item.Marque||'') + ' ' + (item.Modele||'')).trim()) + ' (' + esc(typeLabel) + ')</span>';
+        document.getElementById('matModele').value = ((item.Marque||'') + ' ' + (item.Modele||'')).trim();
+        document.getElementById('matType').value   = typeLabel;
+        var tl = typeLabel.toLowerCase();
+        var isPhone  = tl.indexOf('téléphone') >= 0 || tl.indexOf('phone') >= 0;
+        var isTablet = tl.indexOf('tablette') >= 0 || tl.indexOf('tablet') >= 0;
+        if (isPhone || isTablet) {
+            document.getElementById('matIMEI').value = item.IMEI || '';
+            document.getElementById('imeiField').style.display = '';
+            document.getElementById('accHousse').checked = true;
+            document.getElementById('accSouris').checked = false;
+        } else {
+            document.getElementById('imeiField').style.display = 'none';
+            document.getElementById('accSouris').checked = true;
+            document.getElementById('accHousse').checked = false;
+        }
+        document.getElementById('pinpukRow').style.display = isPhone ? '' : 'none';
+        document.getElementById('snManualField').style.display = 'none';
+        document.getElementById('manualBox').classList.add('open');
+        manuelOuvert = true;
+    } else {
+        lbl.innerHTML = '<span style="color:#842029;font-weight:700;">⚠️ SN non trouvé — saisie manuelle ci-dessous</span>';
+        ouvrirManuel();
     }
-
-    // --- 4. FORMATAGE ET GENERATION PDF ---
-function generatePDF() {
-    const element = document.getElementById('fiche-template');
-    
-    // 1. Remplissage des données (Gardez votre logique actuelle ici)
-    document.getElementById('pdf_nom').innerText = document.getElementById('userNom').value;
-    document.getElementById('pdf_service').innerText = document.getElementById('userService').value;
-    document.getElementById('pdf_mail').innerText = document.getElementById('userMail').value;
-    document.getElementById('pdf_tel').innerText = document.getElementById('userTel').value;
-
-    const d1 = document.getElementById('dateEmprunt').value;
-    const d2 = document.getElementById('dateRetour').value;
-    document.getElementById('pdf_date_debut').innerText = d1 ? new Date(d1).toLocaleDateString('fr-FR') : "";
-    document.getElementById('pdf_date_fin').innerText = d2 ? new Date(d2).toLocaleDateString('fr-FR') : "";
-
-    const selPret = document.getElementById('typePretSelect');
-    document.getElementById('pdf_type_pret').innerText = selPret.options[selPret.selectedIndex].text;
-
-    let accList = [];
-    if(document.getElementById('chk_chargeur').checked) accList.push("Chargeur");
-    if(document.getElementById('chk_sacoche').checked) accList.push("Sacoche");
-    if(document.getElementById('chk_souris').checked) accList.push("Souris");
-    if(document.getElementById('chk_cable').checked) accList.push("Câble");
-    if(document.getElementById('chk_casque').checked) accList.push("Casque");
-    document.getElementById('pdf_accessoires').innerText = accList.join(" - ") || "Aucun";
-
-    formatStateCell('etat_ecran', 'pdf_etat_ecran');
-    formatStateCell('etat_clavier', 'pdf_etat_clavier');
-    formatStateCell('etat_coque', 'pdf_etat_coque');
-
-    // 2. CONFIGURATION OPTIMISÉE
-    const opt = {
-        margin: [0, 0],
-        filename: `Pret_${document.getElementById('userNom').value || 'Agent'}_${document.getElementById('snInput').value}.pdf`,
-        image: { type: 'jpeg', quality: 1.0 },
-        html2canvas: { 
-            scale: 3, // Augmenté pour une netteté parfaite
-            useCORS: true, 
-            letterRendering: true,
-            scrollY: 0,
-            windowWidth: 794 // Largeur A4 en pixels à 96dpi
-        },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    };
-
-    // 3. EXÉCUTION
-    // On rend l'élément visible pour html2pdf mais hors champ
-    element.style.left = '0';
-    element.style.position = 'relative';
-
-    html2pdf().set(opt).from(element).save().then(() => {
-        // On le remet en cachette après
-        element.style.left = '-9999px';
-        element.style.position = 'absolute';
-    });
 }
 
-    // Fonction utilitaire pour mettre en forme la cellule d'état
-    function formatStateCell(selectId, pdfCellId) {
-        const val = document.getElementById(selectId).value;
-        const cell = document.getElementById(pdfCellId);
-        
-        let html = "";
-        const states = ["Bon", "Acceptable", "Dégradé"];
-        
-        states.forEach((s, index) => {
-            if (s === val) {
-                html += `<span class="selected-state">${s}</span>`;
-            } else {
-                html += s;
-            }
-            if (index < states.length - 1) html += " / ";
-        });
-        
-        cell.innerHTML = html;
-    }
-</script>
+/* ─── SAISIE MANUELLE ───────────────────────────────── */
+function toggleManuel(e) {
+    e.preventDefault();
+    manuelOuvert ? fermerManuel() : ouvrirManuel();
+}
+function ouvrirManuel() {
+    manuelOuvert = true;
+    document.getElementById('manualBox').classList.add('open');
+    document.getElementById('snManualField').style.display = '';
+}
+function fermerManuel() {
+    manuelOuvert = false;
+    document.getElementById('manualBox').classList.remove('open');
+}
 
+function onTypeChange() {
+    var t       = document.getElementById('matType').value;
+    var isPhone = (t === 'Téléphone portable');
+    var needIMEI = (t === 'Tablette' || isPhone);
+    document.getElementById('imeiField').style.display   = needIMEI ? '' : 'none';
+    document.getElementById('pinpukRow').style.display   = isPhone  ? '' : 'none';
+    if (t === 'Ordinateur portable') {
+        document.getElementById('accChargeur').checked = true;
+        document.getElementById('accSouris').checked   = true;
+        document.getElementById('accHousse').checked   = false;
+    } else if (needIMEI) {
+        document.getElementById('accChargeur').checked = true;
+        document.getElementById('accHousse').checked   = true;
+        document.getElementById('accSouris').checked   = false;
+    }
+}
+
+/* ─── AUTOCOMPLETE LDAP ─────────────────────────────── */
+function onLdapInput() {
+    var val = document.getElementById('ldapInput').value.trim();
+    clearTimeout(ldapTimer);
+    fermerLdapList();
+    if (val.length < 2) return;
+    ldapTimer = setTimeout(function() { rechercherLDAP(val); }, 400);
+}
+
+function onLdapKey(e) {
+    var list  = document.getElementById('ldapList');
+    var items = list.querySelectorAll('.ac-item');
+    if (!list.classList.contains('open') || items.length === 0) {
+        if (e.key === 'Enter') rechercherLDAP(document.getElementById('ldapInput').value.trim());
+        return;
+    }
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        ldapFocusIdx = Math.min(ldapFocusIdx + 1, items.length - 1);
+        highlightLdapItem(items);
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        ldapFocusIdx = Math.max(ldapFocusIdx - 1, 0);
+        highlightLdapItem(items);
+    } else if (e.key === 'Enter' && ldapFocusIdx >= 0) {
+        e.preventDefault();
+        items[ldapFocusIdx].dispatchEvent(new Event('mousedown'));
+    } else if (e.key === 'Escape') {
+        fermerLdapList();
+    }
+}
+
+function highlightLdapItem(items) {
+    items.forEach(function(it, i) { it.classList.toggle('focused', i === ldapFocusIdx); });
+}
+
+function fermerLdapList() {
+    document.getElementById('ldapList').classList.remove('open');
+    ldapFocusIdx = -1;
+}
+
+function rechercherLDAP(username) {
+    if (!username) return;
+    var msg  = document.getElementById('msgLDAP');
+    var list = document.getElementById('ldapList');
+    var base = "{{ url_for('tech.get_user', username='') }}";
+    msg.textContent = '🔍 Recherche…'; msg.className = 'msg ok';
+    fetch(base + encodeURIComponent(username))
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+            if (data.success) {
+                msg.textContent = '✅ Utilisateur trouvé : ' + (data.nom || username);
+                msg.className = 'msg ok';
+                remplirEmprunteur(data);
+                fermerLdapList();
+            } else {
+                msg.textContent = '❌ Utilisateur introuvable'; msg.className = 'msg err';
+                fermerLdapList();
+            }
+        }).catch(function(){
+            msg.textContent = '❌ Erreur serveur LDAP'; msg.className = 'msg err';
+        });
+}
+
+function remplirEmprunteur(data) {
+    document.getElementById('empNom').value  = data.nom  || '';
+    document.getElementById('empMail').value = data.mail || '';
+    document.getElementById('empTel').value  = data.telephone || data.tel || '';
+    var sel = document.getElementById('empService');
+    if (data.service) {
+        for (var i = 0; i < sel.options.length; i++) {
+            if (sel.options[i].text.toLowerCase().indexOf(data.service.toLowerCase()) >= 0) {
+                sel.selectedIndex = i; break;
+            }
+        }
+    }
+}
+
+/* ─── UTILITAIRES ───────────────────────────────────── */
+function esc(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ─── GÉNÉRATION PDF (backend ReportLab) ────────────── */
+function genererPDF() {
+    var nom      = document.getElementById('empNom').value.trim();
+    var snScanne = document.getElementById('snInput').value.trim();
+    var snManuel = document.getElementById('matSN') ? document.getElementById('matSN').value.trim() : '';
+    var sn       = snScanne || snManuel;
+
+    if (!nom || !sn) {
+        alert('Veuillez renseigner au minimum le Nom/Prénom et le Numéro de Série.');
+        return;
+    }
+
+    var acc = [];
+    if (document.getElementById('accChargeur').checked) acc.push('chargeur');
+    if (document.getElementById('accCable').checked)    acc.push('cable');
+    if (document.getElementById('accHousse').checked)   acc.push('housse');
+    if (document.getElementById('accSouris').checked)   acc.push('souris');
+    if (document.getElementById('accCasque').checked)   acc.push('casque');
+
+    function fmtDate(val) {
+        if (!val) return '';
+        return new Date(val + 'T12:00:00').toLocaleDateString('fr-FR');
+    }
+
+    var payload = {
+        nom:          nom,
+        service:      document.getElementById('empService').value,
+        fonction:     document.getElementById('empFonction').value,
+        tel:          document.getElementById('empTel').value,
+        mail:         document.getElementById('empMail').value,
+        sn:           sn,
+        type_mat:     document.getElementById('matType').value,
+        modele:       document.getElementById('matModele').value,
+        imei:         document.getElementById('matIMEI').value,
+        pin:          document.getElementById('matPIN').value,
+        puk:          document.getElementById('matPUK').value,
+        accessoires:  acc,
+        type_pret:    document.getElementById('typePret').value,
+        date_depart:  fmtDate(document.getElementById('dateDepart').value),
+        date_retour:  fmtDate(document.getElementById('dateRetour').value),
+        etat_ecran:   document.getElementById('etatEcran').value,
+        etat_clavier: document.getElementById('etatClavier').value,
+        etat_coque:   document.getElementById('etatCoque').value,
+        
+        // Ajout explicite des informations demandées pour les 3 colonnes
+        colonne_1: { titre: "L'emprunteur", champs: ["Nom :", "Prénom :", "Signature :", "Date :"] },
+        colonne_2: { titre: "Le technicien qui s'en est occupé", champs: ["Nom :", "Prénom :", "Signature :", "Date :"] },
+        colonne_3: { titre: "Validation service informatique", champs: ["Nom :", "Prénom :", "Signature :", "Date :"] }
+    };
+
+    var btn = document.getElementById('btnGenerer');
+    var msg = document.getElementById('msgGenerer');
+    btn.disabled = true;
+    btn.textContent = '⏳ Génération en cours…';
+    msg.className = 'msg';
+
+    fetch("{{ url_for('tech.generer_fiche') }}", {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(payload)
+    })
+    .then(function(r) {
+        if (!r.ok) return r.json().then(function(e){ throw new Error(e.error || 'Erreur serveur'); });
+        return r.blob();
+    })
+    .then(function(blob) {
+        var url = URL.createObjectURL(blob);
+        var a   = document.createElement('a');
+        a.href  = url;
+        a.download = 'FichePret_' + nom.replace(/\s+/g,'_') + '_' + sn + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        msg.textContent = '✅ Fiche générée et téléchargée !';
+        msg.className = 'msg ok';
+    })
+    .catch(function(e) {
+        msg.textContent = '❌ Erreur : ' + e.message;
+        msg.className = 'msg err';
+    })
+    .finally(function() {
+        btn.disabled = false;
+        btn.textContent = '📄 Générer la Fiche de Prêt (PDF)';
+    });
+}
+</script>
 </body>
 </html>

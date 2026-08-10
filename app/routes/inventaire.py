@@ -130,17 +130,25 @@ def import_stock():
             flash('Erreur format : Colonne "SN" manquante.', 'danger')
             return redirect(url_for('inventaire.liste'))
             
+        def get_col(row, *keys):
+            for k in keys:
+                if k in row and str(row[k]).strip() not in ('', 'nan'):
+                    return str(row[k]).strip()
+            return ''
+
         count = 0
         for _, row in df.iterrows():
             sn_val = str(row['SN']).strip()
+            if sn_val in ('', 'nan'):
+                continue
             if not Materiel.query.filter_by(sn=sn_val).first():
                 db.session.add(Materiel(
-                    categorie=row.get('Categorie','Autre'), 
-                    modele=row.get('Modele','Inconnu'), 
-                    sn=sn_val, 
-                    hostname=row.get('Hostname',''), 
-                    imei=str(row.get('IMEI','')), 
-                    statut='Disponible'
+                    categorie = get_col(row, 'Categorie', 'Type') or 'Autre',
+                    modele    = get_col(row, 'Modele', 'Marque') or 'Inconnu',
+                    sn        = sn_val,
+                    hostname  = get_col(row, 'Hostname'),
+                    imei      = get_col(row, 'IMEI'),
+                    statut    = 'Disponible'
                 ))
                 count += 1
         db.session.commit()

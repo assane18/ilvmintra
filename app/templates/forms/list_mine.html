@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+    <div class="mb-6 flex items-center gap-4">
+        <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <h1 class="text-xl font-black text-slate-800 dark:text-white">Mes soumissions</h1>
+    </div>
+
+    <div class="space-y-3">
+        {% for s in submissions %}
+        <a href="{{ url_for('forms.view_submission', id=s.id) }}"
+            class="flex items-center justify-between px-5 py-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
+            <div>
+                <p class="font-bold text-slate-800 dark:text-white">{{ s.form.name }} — {{ s.uid_public }}</p>
+                <p class="text-xs text-slate-400 dark:text-slate-500">{{ s.created_at.strftime('%d/%m/%Y') }}</p>
+            </div>
+            <span class="text-xs px-3 py-1 rounded-full font-black
+                {% if s.status.value == 'EN_COURS' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
+                {% elif s.status.value == 'TERMINE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
+                {% else %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300{% endif %}">
+                {% if s.status.value == 'EN_COURS' %}{{ s.current_step.label if s.current_step else 'En cours' }}{% elif s.status.value == 'TERMINE' %}Terminé{% else %}Refusé{% endif %}
+            </span>
+        </a>
+        {% else %}
+        <p class="text-slate-400 italic text-center py-10">Aucune soumission pour l'instant.</p>
+        {% endfor %}
+    </div>
+</div>
+<script>lucide.createIcons();</script>
+{% endblock %}

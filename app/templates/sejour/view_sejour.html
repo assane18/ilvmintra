@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+
+    <div class="mb-6 flex items-center gap-4">
+        <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="text-xl font-black text-slate-800 dark:text-white">Dossier de Séjour — {{ sejour.uid_public }}</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ sejour.titre }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Colonne principale -->
+        <div class="md:col-span-2 space-y-6">
+
+            <!-- Infos -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4 text-teal-500"></i> Informations
+                </h3>
+                <dl class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500 dark:text-slate-400 font-medium">Demandeur</dt>
+                        <dd class="font-bold text-slate-800 dark:text-white">{{ sejour.author_name }}</dd>
+                    </div>
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500 dark:text-slate-400 font-medium">Service</dt>
+                        <dd class="font-bold text-slate-800 dark:text-white">{{ sejour.service_demandeur }}</dd>
+                    </div>
+                    {% if sejour.date_sejour %}
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500 dark:text-slate-400 font-medium">Date séjour</dt>
+                        <dd class="font-bold text-slate-800 dark:text-white">{{ sejour.date_sejour.strftime('%d/%m/%Y') }}</dd>
+                    </div>
+                    {% endif %}
+                    <div class="flex justify-between">
+                        <dt class="text-slate-500 dark:text-slate-400 font-medium">Déposé le</dt>
+                        <dd class="font-bold text-slate-800 dark:text-white">{{ sejour.created_at.strftime('%d/%m/%Y') }}</dd>
+                    </div>
+                </dl>
+                {% if sejour.description %}
+                <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
+                    <p class="text-xs font-bold text-slate-500 uppercase mb-1">Description</p>
+                    <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line">{{ sejour.description }}</p>
+                </div>
+                {% endif %}
+                {% if sejour.refusal_reason %}
+                <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-700">
+                    <p class="text-xs font-bold text-red-600 dark:text-red-400 uppercase mb-1">Motif de refus</p>
+                    <p class="text-sm text-red-700 dark:text-red-300">{{ sejour.refusal_reason }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Documents -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="paperclip" class="w-4 h-4 text-teal-500"></i> Documents joints
+                </h3>
+                <div class="space-y-2">
+                    {% if sejour.file_dossier %}
+                    <a href="{{ url_for('static', filename='uploads/sejour/' + sejour.uid_public + '/' + sejour.file_dossier) }}" target="_blank"
+                        class="flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-lg text-sm font-bold hover:bg-teal-100 transition">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> Dossier de séjour
+                    </a>
+                    {% else %}
+                    <p class="text-xs text-slate-400 italic">Dossier non joint</p>
+                    {% endif %}
+                    {% if sejour.file_pv_securite %}
+                    <a href="{{ url_for('static', filename='uploads/sejour/' + sejour.uid_public + '/' + sejour.file_pv_securite) }}" target="_blank"
+                        class="flex items-center gap-2 px-4 py-2 bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 rounded-lg text-sm font-bold hover:bg-orange-100 transition">
+                        <i data-lucide="shield" class="w-4 h-4"></i> PV de sécurité
+                    </a>
+                    {% endif %}
+                    {% if sejour.file_devis %}
+                    <a href="{{ url_for('static', filename='uploads/sejour/' + sejour.uid_public + '/' + sejour.file_devis) }}" target="_blank"
+                        class="flex items-center gap-2 px-4 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-lg text-sm font-bold hover:bg-purple-100 transition">
+                        <i data-lucide="receipt" class="w-4 h-4"></i> Devis
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Tickets enfants -->
+            {% if child_tickets %}
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="git-branch" class="w-4 h-4 text-teal-500"></i> Tickets générés
+                </h3>
+                <div class="space-y-2">
+                    {% for t in child_tickets %}
+                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}"
+                        class="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition">
+                        <span class="text-sm font-bold text-slate-700 dark:text-slate-200">{{ t.target_service.value }}</span>
+                        <span class="text-xs px-2 py-0.5 rounded-full font-bold
+                            {% if t.status.value == 'TERMINE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
+                            {% elif t.status.value == 'EN_COURS' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
+                            {% else %}bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300{% endif %}">
+                            {{ t.status.value }}
+                        </span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Colonne statut + actions -->
+        <div class="space-y-4">
+            <!-- Statut -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Statut</p>
+                <span class="inline-block px-4 py-2 rounded-full text-sm font-black
+                    {% if sejour.status.value == 'VALIDATION_MANAGER' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
+                    {% elif sejour.status.value == 'DISPATCHE_AUX_SERVICES' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
+                    {% elif sejour.status.value == 'TERMINE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
+                    {% else %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300{% endif %}">
+                    {% if sejour.status.value == 'VALIDATION_MANAGER' %}En attente de validation
+                    {% elif sejour.status.value == 'DISPATCHE_AUX_SERVICES' %}Transmis aux services
+                    {% elif sejour.status.value == 'TERMINE' %}Terminé
+                    {% else %}Refusé{% endif %}
+                </span>
+            </div>
+
+            <!-- Actions manager -->
+            {% if is_manager and sejour.status.value == 'VALIDATION_MANAGER' %}
+            <div class="bg-slate-900 dark:bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-sm space-y-3">
+                <p class="text-xs font-bold text-slate-400 uppercase">Actions</p>
+
+                <form action="{{ url_for('sejour.validate_sejour', id=sejour.id, action='validate') }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-emerald-400 uppercase mb-1 flex items-center gap-1">
+                            <i data-lucide="file-check" class="w-3.5 h-3.5"></i> Dossier signé (facultatif)
+                        </label>
+                        <input type="file" name="file_dossier_signe" accept=".pdf,.doc,.docx"
+                            class="w-full text-xs text-slate-300 bg-slate-800 border border-slate-600 rounded-lg p-2">
+                        <p class="text-[10px] text-slate-500 mt-1">Si joint, ce fichier signé sera transmis aux services à la place de l'original.</p>
+                    </div>
+                    <button type="submit" onclick="return confirm('Valider et transmettre ce dossier aux services ?')"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Valider & Transmettre
+                    </button>
+                </form>
+
+                <form action="{{ url_for('sejour.validate_sejour', id=sejour.id, action='refuse') }}" method="POST" class="space-y-2">
+                    <textarea name="refusal_reason" rows="2" placeholder="Motif du refus..."
+                        class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"></textarea>
+                    <button type="submit" onclick="return confirm('Refuser ce dossier ?')"
+                        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i> Refuser
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Dossier signé (après dispatch) -->
+            {% if sejour.file_dossier_signe %}
+            <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-700 shadow-sm">
+                <p class="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase mb-2">Dossier signé</p>
+                <a href="{{ url_for('static', filename='uploads/sejour/' + sejour.uid_public + '/' + sejour.file_dossier_signe) }}" target="_blank"
+                    class="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold hover:bg-emerald-100 transition">
+                    <i data-lucide="file-check" class="w-4 h-4"></i> Télécharger
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>
+    lucide.createIcons();
+    const isManager = {{ 'true' if is_manager else 'false' }};
+</script>
+{% endblock %}

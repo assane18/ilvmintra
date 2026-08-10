@@ -12,8 +12,33 @@ prets_bp = Blueprint('prets', __name__)
 @login_required
 def liste_prets():
     if request.method == 'POST':
-        # ... (Garde TOUTE ta logique de création de prêt ici sans rien changer) ...
-        pass # (Logique existante)
+        materiel_id = request.form.get('materiel_id')
+        nom         = request.form.get('nom', '').strip()
+        prenom      = request.form.get('prenom', '').strip()
+        service     = request.form.get('service', '').strip()
+        type_pret   = request.form.get('type_pret', '')
+
+        mat = Materiel.query.get(materiel_id)
+        if not mat:
+            flash('Matériel introuvable.', 'danger')
+        elif mat.statut != 'Disponible':
+            flash('Ce matériel n\'est pas disponible.', 'danger')
+        else:
+            pret = Pret(
+                materiel_id       = mat.id,
+                technicien_id     = current_user.id,
+                nom_emprunteur    = nom,
+                prenom_emprunteur = prenom,
+                service_emprunteur= service,
+                date_sortie       = datetime.now(),
+                statut_dossier    = 'En cours',
+                type_pret         = type_pret,
+            )
+            mat.statut = 'En prêt'
+            db.session.add(pret)
+            db.session.commit()
+            flash(f'Prêt créé : {mat.modele} ({mat.sn}) → {nom} {prenom}.', 'success')
+        return redirect(url_for('prets.liste_prets'))
 
     # Logique GET (Affichage + Recherche)
     search_query = request.args.get('q', '')
@@ -86,6 +111,7 @@ def export_prets():
             'ID_Pret': p.id,
             'Materiel_SN': p.materiel.sn if p.materiel else 'Inconnu',
             'Materiel_Modele': p.materiel.modele if p.materiel else 'Inconnu',
+            'Type': p.materiel.categorie if p.materiel else '',
             'Emprunteur': f"{p.nom_emprunteur} {p.prenom_emprunteur}",
             'Service': p.service_emprunteur,
             'Date_Sortie': p.date_sortie.strftime('%Y-%m-%d %H:%M') if p.date_sortie else '',
@@ -111,34 +137,67 @@ def import_prets():
     
     try:
         df = pd.read_excel(file)
-        count = 0
-        # Colonnes attendues : SN, Nom, Prenom, Service, Date_Sortie (YYYY-MM-DD)
-        for _, row in df.iterrows():
-            sn = str(row.get('SN', '')).strip()
-            mat = Materiel.query.filter_by(sn=sn).first()
-            
-            if mat and mat.statut == 'Disponible':
-                try:
-                    d_out = pd.to_datetime(row.get('Date_Sortie', datetime.now()))
-                except:
-                    d_out = datetime.now()
 
-                pret = Pret(
-                    materiel_id=mat.id,
-                    technicien_id=current_user.id,
-                    nom_emprunteur=row.get('Nom', 'Import'),
-                    prenom_emprunteur=row.get('Prenom', 'Import'),
-                    service_emprunteur=row.get('Service', 'Import'),
-                    statut_dossier='En cours',
-                    date_sortie=d_out
+        def col(row, *keys):
+            for k in keys:
+                if k in row and str(row[k]).strip() not in ('', 'nan', 'NaT', 'nat', 'None'):
+                    return str(row[k]).strip()
+            return ''
+
+        count = 0
+        skipped = 0
+        for _, row in df.iterrows():
+            sn = col(row, 'SN', 'Materiel_SN')
+            if not sn:
+                continue
+
+            mat = Materiel.query.filter_by(sn=sn).first()
+
+            # Créer le matériel s'il n'existe pas encore
+            if not mat:
+                mat = Materiel(
+                    sn=sn,
+                    modele=col(row, 'Materiel_Modele', 'Modele') or 'Importé',
+                    categorie=col(row, 'Type', 'Categorie', 'Materiel_Type') or 'Autre',
+                    statut='Disponible'
                 )
-                mat.statut = 'En pret'
-                db.session.add(pret)
-                count += 1
-                
+                db.session.add(mat)
+                db.session.flush()
+
+            if mat.statut != 'Disponible':
+                skipped += 1
+                continue
+
+            try:
+                _d = pd.to_datetime(col(row, 'Date_Sortie'))
+                d_out = datetime.now() if pd.isna(_d) else _d.to_pydatetime()
+            except Exception:
+                d_out = datetime.now()
+
+            nom_complet = col(row, 'Emprunteur', 'Nom', 'nom_emprunteur') or 'Import'
+            parts = nom_complet.split(' ', 1)
+
+            pret = Pret(
+                materiel_id       = mat.id,
+                technicien_id     = current_user.id,
+                nom_emprunteur    = col(row, 'Nom') or parts[0],
+                prenom_emprunteur = col(row, 'Prenom') or (parts[1] if len(parts) > 1 else ''),
+                service_emprunteur= col(row, 'Service') or '',
+                statut_dossier    = 'En cours',
+                date_sortie       = d_out,
+                type_pret         = col(row, 'Type_Pret', 'type_pret') or '',
+            )
+            mat.statut = 'En prêt'
+            db.session.add(pret)
+            count += 1
+
         db.session.commit()
-        flash(f'Import terminé : {count} prêts créés.', 'success')
+        msg = f'Import terminé : {count} prêt(s) créé(s)'
+        if skipped:
+            msg += f', {skipped} ignoré(s) (matériel déjà en prêt)'
+        flash(msg, 'success')
     except Exception as e:
+        db.session.rollback()
         flash(f'Erreur import : {e}', 'danger')
         
     return redirect(url_for('prets.liste_prets'))

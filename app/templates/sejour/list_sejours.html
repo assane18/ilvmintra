@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-5xl">
+
+    <div class="mb-6 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+                <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            </a>
+            <div>
+                <h1 class="text-xl font-black text-slate-800 dark:text-white">Dossiers de séjour</h1>
+                <p class="text-xs text-slate-500 dark:text-slate-400">{{ sejours|length }} dossier(s) au total</p>
+            </div>
+        </div>
+        <a href="{{ url_for('sejour.new_sejour') }}"
+            class="flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold px-4 py-2 rounded-xl text-sm transition">
+            <i data-lucide="plus" class="w-4 h-4"></i> Nouveau dossier
+        </a>
+    </div>
+
+    {% if sejours %}
+    <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-slate-50 dark:bg-slate-700/50 border-b border-slate-200 dark:border-slate-700">
+                    <th class="text-left px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">Référence</th>
+                    <th class="text-left px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">Titre</th>
+                    <th class="text-left px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide hidden md:table-cell">Service</th>
+                    <th class="text-left px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide hidden md:table-cell">Date séjour</th>
+                    <th class="text-left px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide hidden lg:table-cell">Déposé le</th>
+                    <th class="text-left px-4 py-3 font-bold text-slate-600 dark:text-slate-300 text-xs uppercase tracking-wide">Statut</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
+                {% for sejour in sejours %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/30 transition">
+                    <td class="px-4 py-3">
+                        <span class="font-mono text-xs font-bold text-teal-600 dark:text-teal-400">{{ sejour.uid_public }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <p class="font-semibold text-slate-800 dark:text-white">{{ sejour.titre or '—' }}</p>
+                    </td>
+                    <td class="px-4 py-3 hidden md:table-cell">
+                        <span class="text-slate-600 dark:text-slate-400">{{ sejour.service_demandeur or '—' }}</span>
+                    </td>
+                    <td class="px-4 py-3 hidden md:table-cell">
+                        <span class="text-slate-600 dark:text-slate-400">
+                            {% if sejour.date_sejour %}{{ sejour.date_sejour.strftime('%d/%m/%Y') }}{% else %}—{% endif %}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 hidden lg:table-cell">
+                        <span class="text-slate-500 dark:text-slate-500 text-xs">{{ sejour.created_at.strftime('%d/%m/%Y') }}</span>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if sejour.status.value == 'VALIDATION_MANAGER' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300">
+                            <i data-lucide="clock" class="w-3 h-3"></i> En attente
+                        </span>
+                        {% elif sejour.status.value == 'DISPATCHE_AUX_SERVICES' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
+                            <i data-lucide="send" class="w-3 h-3"></i> Transmis
+                        </span>
+                        {% elif sejour.status.value == 'TERMINE' %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                            <i data-lucide="check-circle" class="w-3 h-3"></i> Terminé
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
+                            <i data-lucide="x-circle" class="w-3 h-3"></i> Refusé
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <a href="{{ url_for('sejour.view_sejour', id=sejour.id) }}"
+                            class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-teal-50 dark:hover:bg-teal-900/30 text-slate-600 dark:text-slate-300 hover:text-teal-700 dark:hover:text-teal-300 text-xs font-bold transition">
+                            <i data-lucide="eye" class="w-3 h-3"></i> Voir
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% else %}
+    <div class="text-center py-20">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-100 dark:bg-slate-800 mb-4">
+            <i data-lucide="map" class="w-8 h-8 text-slate-400"></i>
+        </div>
+        <h3 class="text-lg font-bold text-slate-700 dark:text-slate-200 mb-1">Aucun dossier de séjour</h3>
+        <p class="text-sm text-slate-400 mb-6">Les dossiers déposés apparaîtront ici.</p>
+        <a href="{{ url_for('sejour.new_sejour') }}"
+            class="inline-flex items-center gap-2 bg-teal-600 hover:bg-teal-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition">
+            <i data-lucide="plus" class="w-4 h-4"></i> Déposer un dossier
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+<script>lucide.createIcons();</script>
+{% endblock %}

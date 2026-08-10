@@ -1,162 +1,295 @@
 import os
+import io
 import ldap
-from flask import render_template, request, jsonify, current_app
-from openpyxl import load_workbook
+from datetime import datetime
+from flask import render_template, request, jsonify, current_app, send_file, flash, redirect, url_for
+from flask_login import login_required, current_user
+from openpyxl import load_workbook, Workbook
+from openpyxl.styles import Font, PatternFill, Alignment
 from . import tech
 
 # ==============================================================================
-# 1. CONFIGURATION DES CHEMINS (Version Robuste)
+# CONFIGURATION
 # ==============================================================================
-# Récupère le dossier où se trouve ce fichier (app/tech/)
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Remonte de deux niveaux pour trouver la racine du projet (assane18-ilvmintra/)
-PROJECT_ROOT = os.path.dirname(os.path.dirname(CURRENT_DIR))
-# Définit le dossier data et le fichier stock
-DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
-DEFAULT_INVENTORY = os.path.join(DATA_DIR, 'stock.xlsx')
+FICHE_SAVE_DIR = '/mnt/ilvmfap1_info/INVENTAIRE DU PARC/Materiels/Historique des remises tel+pc/Fiche pret Generé'
 
-print(f"--- DEBUG: Chemin du fichier Excel visé : {DEFAULT_INVENTORY}")
-
-# ==============================================================================
-# 2. CONFIGURATION LDAP (En dur pour être sûr)
-# ==============================================================================
-LDAP_SERVER = 'ldap://192.168.1.9'
-LDAP_BASE_DN = 'DC=ilvm,DC=lan'
-LDAP_USER = 'CN=Admin Intra,CN=Users,DC=ilvm,DC=lan'
+LDAP_SERVER   = 'ldap://192.168.1.9'
+LDAP_BASE_DN  = 'DC=ilvm,DC=lan'
+LDAP_USER     = 'CN=Admin Intra,CN=Users,DC=ilvm,DC=lan'
 LDAP_PASSWORD = 'gq!nsXPYsM!LmFh4'
 
 # ==============================================================================
-# 3. ROUTES
+# HELPERS
+# ==============================================================================
+
+def _check_info_access():
+    user_role    = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
+    user_services = current_user.get_allowed_services()
+    return 'ADMIN' in user_role or 'INFORMATIQUE' in user_services or 'INFO' in user_services
+
+
+def _parse_date(s):
+    """Parse DD/MM/YYYY → datetime, retourne None si vide."""
+    if not s:
+        return None
+    try:
+        return datetime.strptime(s.strip(), '%d/%m/%Y')
+    except ValueError:
+        return None
+
+
+# ==============================================================================
+# ROUTES
 # ==============================================================================
 
 @tech.route('/generateur')
+@login_required
 def home():
+    if not _check_info_access():
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
     return render_template('tech/generateur_pret.html')
 
-def normalize_header(header):
-    """Nettoie les entêtes du fichier Excel"""
-    h = str(header).upper().strip()
-    if 'SERIE' in h or 'SERIAL' in h or h == 'SN' or 'S/N' in h: return 'SN'
-    if 'TYPE' in h: return 'Type'
-    if 'MARQUE' in h: return 'Marque'
-    if 'MODEL' in h: return 'Modele'
-    if 'IMEI' in h: return 'IMEI'
-    if 'PIN' in h: return 'PIN'
-    return h 
 
-@tech.route('/upload_inventory', methods=['POST'])
-def upload_inventory():
-    print("--- DEBUG: Tentative d'upload fichier")
-    if 'file' not in request.files: 
-        return jsonify({"success": False, "message": "Aucun fichier reçu"})
-    
-    file = request.files['file']
-    if not file.filename.endswith('.xlsx'): 
-        return jsonify({"success": False, "message": "Format invalide (.xlsx requis)"})
-    
+@tech.route('/generer_fiche', methods=['POST'])
+@login_required
+def generer_fiche():
+    if not _check_info_access():
+        return jsonify({'error': 'Accès refusé'}), 403
+
+    from .pdf_pret import generate_fiche_pret
+    from app.models import Materiel, Pret, db
+    import io as _io
+
+    data      = request.get_json(force=True)
+    logo_path = os.path.join(current_app.root_path, 'static', 'img', 'logo-pdf.png')
+
     try:
-        # On s'assure que le dossier data existe, sinon on le crée
-        if not os.path.exists(DATA_DIR):
-            os.makedirs(DATA_DIR)
-            print(f"--- DEBUG: Dossier {DATA_DIR} créé.")
+        pdf_bytes = generate_fiche_pret(data, logo_path)
+        nom_complet = (data.get('nom') or 'Agent').strip()
+        sn          = (data.get('sn')  or 'SN').strip()
+        filename    = f"FichePret_{nom_complet.replace(' ', '_')}_{sn}.pdf"
 
-        file.save(DEFAULT_INVENTORY)
-        print("--- DEBUG: Fichier sauvegardé avec succès.")
-        return jsonify({"success": True, "message": "Base mise à jour sur le serveur !"})
+        # ── Sauvegarde réseau ────────────────────────────────────────
+        try:
+            if os.path.isdir(FICHE_SAVE_DIR):
+                with open(os.path.join(FICHE_SAVE_DIR, filename), 'wb') as f:
+                    f.write(pdf_bytes)
+        except Exception as e:
+            print(f"--- WARN réseau : {e}")
+
+        # ── Enregistrement du prêt en base ──────────────────────────
+        try:
+            materiel = Materiel.query.filter_by(sn=sn).first()
+
+            # Créer le matériel s'il n'existe pas encore (saisie manuelle)
+            if not materiel:
+                materiel = Materiel(
+                    categorie=data.get('type_mat') or 'Autre',
+                    modele=data.get('modele') or '',
+                    sn=sn,
+                    imei=data.get('imei') or '',
+                    statut='En prêt'
+                )
+                db.session.add(materiel)
+                db.session.flush()
+            else:
+                materiel.statut = 'En prêt'
+
+            # Découpage nom / prénom (ex: "DUPONT Jean" → nom=DUPONT prenom=Jean)
+            parts = nom_complet.split(' ', 1)
+            nom_emp    = parts[0]
+            prenom_emp = parts[1] if len(parts) > 1 else ''
+
+            pret = Pret(
+                materiel_id        = materiel.id,
+                technicien_id      = current_user.id,
+                nom_emprunteur     = nom_emp,
+                prenom_emprunteur  = prenom_emp,
+                service_emprunteur = data.get('service') or '',
+                date_sortie        = _parse_date(data.get('date_depart')) or datetime.utcnow(),
+                date_retour_prevue = _parse_date(data.get('date_retour')),
+                statut_dossier     = 'En cours',
+                type_pret          = data.get('type_pret') or '',
+                accessoires        = ', '.join(data.get('accessoires') or []),
+                etat_ecran_sortie  = data.get('etat_ecran')  or 'Bon',
+                etat_clavier_sortie= data.get('etat_clavier') or 'Bon',
+                etat_coque_sortie  = data.get('etat_coque')  or 'Bon',
+            )
+            db.session.add(pret)
+            db.session.commit()
+            print(f"--- INFO: Prêt #{pret.id} créé pour {nom_complet} — {sn}")
+        except Exception as db_err:
+            db.session.rollback()
+            print(f"--- WARN DB prêt : {db_err}")
+
+        return send_file(
+            _io.BytesIO(pdf_bytes),
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
     except Exception as e:
-        print(f"--- ERROR Upload: {str(e)}")
-        return jsonify({"success": False, "message": str(e)})
+        return jsonify({'error': str(e)}), 500
+
 
 @tech.route('/get_inventory')
+@login_required
 def get_inventory():
-    print(f"--- DEBUG: Lecture inventaire depuis {DEFAULT_INVENTORY}")
-    
-    if not os.path.exists(DEFAULT_INVENTORY):
-        print("--- ERROR: Fichier introuvable sur le disque.")
+    """Retourne l'inventaire depuis la base de données (matériels disponibles)."""
+    from app.models import Materiel
+    try:
+        materiels = Materiel.query.order_by(Materiel.modele).all()
+        data = []
+        for m in materiels:
+            data.append({
+                'SN':     m.sn     or '',
+                'Modele': m.modele or '',
+                'Type':   m.categorie or '',
+                'IMEI':   m.imei   or '',
+                'Statut': m.statut or '',
+            })
+        return jsonify(data)
+    except Exception as e:
+        print(f"--- ERROR get_inventory DB : {e}")
         return jsonify([])
 
+
+@tech.route('/upload_inventory', methods=['POST'])
+@login_required
+def upload_inventory():
+    """Importe un fichier Excel dans la base de données (table materiels)."""
+    if not _check_info_access():
+        return jsonify({"success": False, "message": "Accès refusé"})
+
+    from app.models import Materiel, db
+
+    if 'file' not in request.files:
+        return jsonify({"success": False, "message": "Aucun fichier reçu"})
+
+    file = request.files['file']
+    if not file.filename.endswith('.xlsx'):
+        return jsonify({"success": False, "message": "Format invalide (.xlsx requis)"})
+
     try:
-        wb = load_workbook(DEFAULT_INVENTORY, data_only=True)
+        wb = load_workbook(file, data_only=True)
         ws = wb.active
-        data = []
-        
-        # Récupération des entêtes
-        headers = [normalize_header(cell.value) if cell.value else "Inconnu" for cell in ws[1]]
-            
+
+        # Normalisation des en-têtes
+        raw_headers = [str(c.value or '').upper().strip() for c in ws[1]]
+        def find_col(keywords):
+            for kw in keywords:
+                for i, h in enumerate(raw_headers):
+                    if kw in h:
+                        return i
+            return None
+
+        idx_sn       = find_col(['SERIE', 'SERIAL', 'S/N', 'SN'])
+        idx_cat      = find_col(['TYPE', 'CATEGORIE', 'CATEG'])
+        idx_modele   = find_col(['MODEL', 'MODELE', 'MARQUE'])
+        idx_hostname = find_col(['HOST', 'NOM'])
+        idx_imei     = find_col(['IMEI'])
+
+        if idx_sn is None:
+            return jsonify({"success": False, "message": "Colonne SN introuvable dans le fichier"})
+
+        added = skipped = 0
         for row in ws.iter_rows(min_row=2, values_only=True):
-            item = {}
-            for i, cell_value in enumerate(row):
-                if i < len(headers):
-                    val = str(cell_value).strip() if cell_value is not None else ""
-                    # Nettoyage des '.0' pour les nombres convertis en texte
-                    if headers[i] in ['IMEI', 'PIN', 'SN'] and val.endswith('.0'):
-                        val = val[:-2]
-                    item[headers[i]] = val
-            
-            # Logique spécifique : si Modèle vide mais Marque présente
-            if 'Marque' in item and ('Modele' not in item or not item['Modele']):
-                item['Modele'] = item['Marque']
+            def cell(idx):
+                if idx is None or idx >= len(row):
+                    return ''
+                v = row[idx]
+                s = str(v).strip() if v is not None else ''
+                return s[:-2] if s.endswith('.0') else s
 
-            # On garde seulement les lignes avec un identifiant
-            has_id = ('SN' in item and item['SN']) or ('IMEI' in item and item['IMEI'])
-            if has_id:
-                data.append(item)
-        
-        print(f"--- DEBUG: {len(data)} articles chargés.")
-        return jsonify(data)
+            sn = cell(idx_sn)
+            if not sn:
+                continue
+            if Materiel.query.filter_by(sn=sn).first():
+                skipped += 1
+                continue
 
+            m = Materiel(
+                sn        = sn,
+                categorie = cell(idx_cat)      or 'Autre',
+                modele    = cell(idx_modele)   or 'Inconnu',
+                hostname  = cell(idx_hostname) or '',
+                imei      = cell(idx_imei)     or '',
+                statut    = 'Disponible',
+            )
+            db.session.add(m)
+            added += 1
+
+        db.session.commit()
+        return jsonify({"success": True,
+                        "message": f"{added} article(s) importé(s), {skipped} déjà existant(s)."})
     except Exception as e:
-        print(f"--- ERROR Excel Read: {str(e)}")
-        return jsonify({"error": str(e)})
+        db.session.rollback()
+        return jsonify({"success": False, "message": str(e)})
+
+
+@tech.route('/download_template')
+@login_required
+def download_template():
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Inventaire"
+
+    headers     = ['Type', 'Modele', 'SN', 'Hostname', 'IMEI']
+    header_fill = PatternFill(start_color="0056B3", end_color="0056B3", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+
+    for col, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+
+    examples = [
+        ['Ordinateur portable', 'Dell Latitude 5540',  'SN-EXEMPLE-001', 'PC-EXEMPLE-01', ''],
+        ['Tablette',            'Samsung Galaxy Tab A8','SN-EXEMPLE-002', '',              '351234567890123'],
+        ['Téléphone portable',  'Apple iPhone 13',      'SN-EXEMPLE-003', '',              '352345678901234'],
+    ]
+    for row_data in examples:
+        ws.append(row_data)
+
+    for col in ws.columns:
+        max_len = max(len(str(cell.value or '')) for cell in col)
+        ws.column_dimensions[col[0].column_letter].width = max(max_len + 4, 12)
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return send_file(buf, as_attachment=True,
+                     download_name='Inventaire_Exemple.xlsx',
+                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
 
 @tech.route('/get_user/<username>')
 def get_user(username):
-    print(f"--- DEBUG: Recherche LDAP pour {username}")
     try:
-        # Initialisation
         l = ldap.initialize(LDAP_SERVER)
         l.protocol_version = ldap.VERSION3
         l.set_option(ldap.OPT_REFERRALS, 0)
-        
-        # Connexion (Bind)
         try:
             l.simple_bind_s(LDAP_USER, LDAP_PASSWORD)
-            print("--- DEBUG: Connexion LDAP (Bind) réussie.")
         except ldap.INVALID_CREDENTIALS:
-            print("--- ERROR: Mot de passe Admin LDAP incorrect.")
-            return jsonify({"success": False, "message": "Erreur Auth LDAP (Mot de passe Admin)"})
+            return jsonify({"success": False, "message": "Erreur Auth LDAP"})
         except Exception as e:
-            print(f"--- ERROR LDAP Bind: {str(e)}")
-            return jsonify({"success": False, "message": f"Erreur Connexion Serveur: {str(e)}"})
+            return jsonify({"success": False, "message": f"Erreur connexion : {e}"})
 
-        # Recherche
-        search_filter = f"(sAMAccountName={username})"
-        attributes = ['displayName', 'mail', 'department', 'telephoneNumber']
-        
-        result = l.search_s(LDAP_BASE_DN, ldap.SCOPE_SUBTREE, search_filter, attributes)
+        result = l.search_s(LDAP_BASE_DN, ldap.SCOPE_SUBTREE,
+                            f"(sAMAccountName={username})",
+                            ['displayName', 'mail', 'department', 'telephoneNumber'])
 
-        if result and len(result) > 0 and result[0][1]:
-            user_data = result[0][1]
-            # Décodage sécurisé
-            def decode_attr(attr_name):
-                val = user_data.get(attr_name, [b''])
-                if val:
-                    return val[0].decode('utf-8', errors='ignore')
-                return ""
-
-            response_data = {
-                "success": True,
-                "nom": decode_attr('displayName'),
-                "mail": decode_attr('mail'),
-                "service": decode_attr('department'),
-                "telephone": decode_attr('telephoneNumber')
-            }
-            print(f"--- DEBUG: Utilisateur trouvé: {response_data['nom']}")
-            return jsonify(response_data)
-        else:
-            print("--- DEBUG: Utilisateur introuvable.")
-            return jsonify({"success": False, "message": "Utilisateur introuvable"})
-            
+        if result and result[0][1]:
+            u = result[0][1]
+            def dec(k):
+                v = u.get(k, [b''])
+                return v[0].decode('utf-8', errors='ignore') if v else ''
+            return jsonify({"success": True, "nom": dec('displayName'),
+                            "mail": dec('mail'), "service": dec('department'),
+                            "telephone": dec('telephoneNumber')})
+        return jsonify({"success": False, "message": "Utilisateur introuvable"})
     except Exception as e:
-        print(f"--- ERROR LDAP Search: {str(e)}")
         return jsonify({"success": False, "message": str(e)})

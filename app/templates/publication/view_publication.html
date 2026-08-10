@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+
+    <div class="mb-6 flex items-center gap-4">
+        <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="text-xl font-black text-slate-800 dark:text-white">Publication — {{ pub.uid_public }}</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">{{ pub.titre }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Contenu principal -->
+        <div class="md:col-span-2 space-y-6">
+
+            <!-- Texte -->
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="newspaper" class="w-4 h-4 text-sky-500"></i> Contenu
+                </h3>
+                <h2 class="text-lg font-black text-slate-900 dark:text-white mb-3">{{ pub.titre }}</h2>
+                <p class="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-line leading-relaxed">{{ pub.contenu }}</p>
+            </div>
+
+            <!-- Visuels -->
+            {% if pub.get_files() %}
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="image" class="w-4 h-4 text-sky-500"></i> Visuels joints
+                </h3>
+                <div class="space-y-2">
+                    {% for fname in pub.get_files() %}
+                    <a href="{{ url_for('static', filename='uploads/publications/' + pub.uid_public + '/' + fname) }}" target="_blank"
+                        class="flex items-center gap-2 px-4 py-2 bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300 rounded-lg text-sm font-bold hover:bg-sky-100 transition">
+                        <i data-lucide="file-image" class="w-4 h-4"></i> {{ fname }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Notes Communication -->
+            {% if pub.communication_notes %}
+            <div class="bg-sky-50 dark:bg-sky-900/20 p-4 rounded-xl border border-sky-200 dark:border-sky-700">
+                <p class="text-xs font-bold text-sky-600 dark:text-sky-400 uppercase mb-1">Notes Communication</p>
+                <p class="text-sm text-sky-800 dark:text-sky-300">{{ pub.communication_notes }}</p>
+            </div>
+            {% endif %}
+
+            <!-- Motif de refus -->
+            {% if pub.refusal_reason %}
+            <div class="bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-200 dark:border-red-700">
+                <p class="text-xs font-bold text-red-600 dark:text-red-400 uppercase mb-1">Motif de refus</p>
+                <p class="text-sm text-red-700 dark:text-red-300">{{ pub.refusal_reason }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Colonne statut + actions -->
+        <div class="space-y-4">
+            <!-- Méta -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-3 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-500 dark:text-slate-400">Auteur</span>
+                    <span class="font-bold text-slate-800 dark:text-white">{{ pub.author_name }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500 dark:text-slate-400">Déposé le</span>
+                    <span class="font-bold text-slate-800 dark:text-white">{{ pub.created_at.strftime('%d/%m/%Y') }}</span>
+                </div>
+            </div>
+
+            <!-- Statut -->
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Statut</p>
+                <span class="inline-block px-4 py-2 rounded-full text-sm font-black
+                    {% if pub.status.value == 'VALIDATION_DIRECTEUR' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
+                    {% elif pub.status.value == 'EN_CORRECTION' %}bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300
+                    {% elif pub.status.value == 'PUBLIE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
+                    {% else %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300{% endif %}">
+                    {% if pub.status.value == 'VALIDATION_DIRECTEUR' %}En attente Directeur
+                    {% elif pub.status.value == 'EN_CORRECTION' %}En cours (Communication)
+                    {% elif pub.status.value == 'PUBLIE' %}Publié
+                    {% else %}Refusé{% endif %}
+                </span>
+            </div>
+
+            <!-- Actions Directeur -->
+            {% if is_manager and pub.status.value == 'VALIDATION_DIRECTEUR' %}
+            <div class="bg-slate-900 dark:bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-3">
+                <p class="text-xs font-bold text-slate-400 uppercase">Validation Directeur</p>
+                <form action="{{ url_for('publication.validate_publication', id=pub.id, action='validate') }}" method="POST">
+                    <button type="submit" onclick="return confirm('Valider et transmettre à la Communication ?')"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Valider
+                    </button>
+                </form>
+                <form action="{{ url_for('publication.validate_publication', id=pub.id, action='refuse') }}" method="POST" class="space-y-2">
+                    <textarea name="refusal_reason" rows="2" placeholder="Motif du refus..."
+                        class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"></textarea>
+                    <button type="submit" onclick="return confirm('Refuser cette publication ?')"
+                        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i> Refuser
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+            <!-- Actions Communication -->
+            {% if is_communication and pub.status.value == 'EN_CORRECTION' %}
+            <div class="bg-slate-900 dark:bg-slate-800 p-5 rounded-2xl border border-slate-700 space-y-3">
+                <p class="text-xs font-bold text-slate-400 uppercase">Traitement Communication</p>
+                <form action="{{ url_for('publication.publish', id=pub.id) }}" method="POST" class="space-y-2">
+                    <textarea name="communication_notes" rows="3" placeholder="Notes de mise en page (optionnel)..."
+                        class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-sky-500 resize-none"></textarea>
+                    <button type="submit" onclick="return confirm('Confirmer la publication ?')"
+                        class="w-full bg-sky-600 hover:bg-sky-500 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="globe" class="w-4 h-4"></i> Publier
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>lucide.createIcons();</script>
+{% endblock %}

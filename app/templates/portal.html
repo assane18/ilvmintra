@@ -371,6 +371,38 @@
                 </div>
             </a>
 
+            <!-- Carte Dossier de Séjour -->
+            <a href="{{ url_for('sejour.new_sejour') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="map-pin" class="w-24 h-24 text-teal-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-teal-50 dark:bg-teal-900/30 rounded-2xl flex items-center justify-center mb-4 text-teal-600 dark:text-teal-400 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                    <i data-lucide="map-pin" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Dossier de Séjour</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Déposez votre dossier séjour, devis et PV de sécurité.</p>
+                <div class="mt-4 flex items-center text-teal-600 dark:text-teal-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Déposer un dossier <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+
+            <!-- Carte Publication Actualités (Manager/Directeur/Admin) -->
+            <a href="{{ url_for('publication.new_publication') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="newspaper" class="w-24 h-24 text-sky-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-sky-50 dark:bg-sky-900/30 rounded-2xl flex items-center justify-center mb-4 text-sky-600 dark:text-sky-400 group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                    <i data-lucide="newspaper" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Publication Actualités</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Soumettez une actualité avec texte et visuels.</p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold px-2 py-1 rounded border border-slate-200 dark:border-slate-600 uppercase">
+                        Manager/Directeur Only
+                    </span>
+                </div>
+            </a>
+
         </div>
 
         <!-- Section "Mes dernières demandes" -->

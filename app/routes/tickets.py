@@ -468,9 +468,11 @@ def view_ticket(ticket_uid):
 def set_rdv(ticket_id):
     t = Ticket.query.get_or_404(ticket_id)
     role = safe_role_str(current_user)
-    is_rh = 'DRH' in current_user.get_allowed_services()
-    if not (('SOLVER' in role and is_rh) or 'ADMIN' in role):
-         flash("Action réservée aux Solvers RH.", "danger")
+    user_services = current_user.get_allowed_services()
+    is_rh = 'DRH' in user_services
+    is_imago = 'IMAGO' in user_services
+    if not (('SOLVER' in role and (is_rh or is_imago)) or 'ADMIN' in role):
+         flash("Action réservée aux Solvers RH et Imago.", "danger")
          return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
          
     date_str = request.form.get('rdv_date')
@@ -552,10 +554,29 @@ def manager_dashboard():
         fcpi_requests = list({r.id: r for r in fcpi_requests}.values())
         fcpi_requests.sort(key=lambda x: x.created_at, reverse=True)
 
-        return render_template('tickets/manager_dashboard.html', 
-                            tickets_n1=tickets_n1, 
-                            tickets_n2=tickets_n2, 
-                            fcpi_requests=fcpi_requests)
+        # Formulaires génériques : une étape EMITTER (service du demandeur) est
+        # l'équivalent d'une validation N1 hiérarchique ; une étape FIXED (service
+        # choisi par l'admin) est l'équivalent d'une validation N2 technique.
+        # On les insère donc directement dans les onglets N1/N2 existants plutôt
+        # que dans un onglet séparé.
+        from app.models import FormSubmission, FormSubmissionStatus, ServiceSource
+        from app.decorators import can_validate_step
+        pending_forms = FormSubmission.query.filter_by(status=FormSubmissionStatus.IN_PROGRESS).all()
+        matching_forms = [
+            s for s in pending_forms
+            if s.current_step and can_validate_step(current_user, s.current_step, s)
+        ]
+        form_submissions_n1 = [s for s in matching_forms if s.current_step.service_source == ServiceSource.EMITTER]
+        form_submissions_n2 = [s for s in matching_forms if s.current_step.service_source == ServiceSource.FIXED]
+        form_submissions_n1.sort(key=lambda s: s.created_at, reverse=True)
+        form_submissions_n2.sort(key=lambda s: s.created_at, reverse=True)
+
+        return render_template('tickets/manager_dashboard.html',
+                            tickets_n1=tickets_n1,
+                            tickets_n2=tickets_n2,
+                            fcpi_requests=fcpi_requests,
+                            form_submissions_n1=form_submissions_n1,
+                            form_submissions_n2=form_submissions_n2)
 
     except Exception as e:
         flash(f"Erreur Dashboard: {e}", "danger")
@@ -694,11 +715,26 @@ def daf_director_sign(ticket_id):
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, filename))
                 t.daf_signed_file = filename
-                
-                t.status = TicketStatus.IN_PROGRESS
-                
+                t.status = TicketStatus.DONE
+                t.closed_at = get_paris_time()
+
+                # Notifier le gestionnaire (solver) que le bon signé est disponible
+                if t.solver:
+                    create_notification(
+                        user=t.solver,
+                        message=f"Le bon de commande {t.uid_public} a été signé par le Directeur. Dossier clôturé.",
+                        category='success',
+                        link=url_for('tickets.view_ticket', ticket_uid=t.uid_public)
+                    )
+                # Notifier le demandeur
+                create_notification(
+                    user=t.author,
+                    message=f"Votre bon de commande {t.uid_public} a été signé et clôturé.",
+                    category='success',
+                    link=url_for('tickets.view_ticket', ticket_uid=t.uid_public)
+                )
                 db.session.commit()
-                flash("Bon signé. Ticket clôturé.", "success")
+                flash("Bon signé. Bon de commande clôturé et transmis au gestionnaire.", "success")
         return redirect(url_for('tickets.manager_dashboard'))
     except Exception as e:
         flash(f"Erreur: {e}", "danger")
@@ -711,7 +747,7 @@ def close_ticket(ticket_id):
         t = Ticket.query.get_or_404(ticket_id)
         t.status = TicketStatus.DONE
         t.closed_at = get_paris_time()
-        
+
         # --- NOTIFICATION CLOTURE ---
         create_notification(
             user=t.author,
@@ -724,6 +760,32 @@ def close_ticket(ticket_id):
         # ----------------------
 
         db.session.commit()
+
+        # --- SUIVI AUTO SÉJOUR : si ce ticket est un enfant de séjour, vérifier si tout est terminé ---
+        if t.uid_public and t.uid_public.startswith('SEJ-'):
+            try:
+                from app.models import DossierSejour, SejourStatus
+                import json as _json
+                sejours = DossierSejour.query.filter_by(status=SejourStatus.DISPATCHED).all()
+                for sejour in sejours:
+                    child_ids = sejour.get_child_tickets()
+                    if t.id in child_ids:
+                        children = Ticket.query.filter(Ticket.id.in_(child_ids)).all()
+                        if children and all(c.status == TicketStatus.DONE for c in children):
+                            sejour.status = SejourStatus.DONE
+                            from app.models import Notification as Notif
+                            n = Notif(
+                                user=sejour.author,
+                                message=f"Votre dossier de séjour {sejour.uid_public} a été entièrement traité par tous les services.",
+                                category='success',
+                                link=url_for('sejour.view_sejour', id=sejour.id)
+                            )
+                            db.session.add(n)
+                            db.session.commit()
+            except Exception:
+                pass
+        # ----------------------
+
         flash("Ticket clôturé avec succès.", "success")
         return redirect(url_for('tickets.solver_dashboard'))
     except Exception as e:

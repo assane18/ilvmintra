@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mx-auto px-4 py-8 max-w-3xl">
+
+    <div class="mb-6 flex items-center gap-4">
+        <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <div>
+            <h1 class="text-xl font-black text-slate-800 dark:text-white">{{ submission.form.name }} — {{ submission.uid_public }}</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Déposé par {{ submission.author_name }} le {{ submission.created_at.strftime('%d/%m/%Y') }}</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <div class="md:col-span-2 space-y-6">
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="info" class="w-4 h-4 text-teal-500"></i> Contenu
+                </h3>
+                <dl class="space-y-3 text-sm">
+                    {% for field in submission.form.fields %}
+                    <div>
+                        <dt class="text-slate-500 dark:text-slate-400 font-medium text-xs uppercase mb-0.5">{{ field.label }}</dt>
+                        <dd class="font-bold text-slate-800 dark:text-white whitespace-pre-line">
+                            {% set val = data.get(field.name) %}
+                            {% if field.field_type.value == 'CHECKBOX' %}
+                                {{ 'Oui' if val else 'Non' }}
+                            {% elif val %}
+                                {{ val }}
+                            {% else %}
+                                <span class="text-slate-300 dark:text-slate-600 italic font-normal">-</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                    {% endfor %}
+                </dl>
+                {% if submission.refusal_reason %}
+                <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-700">
+                    <p class="text-xs font-bold text-red-600 dark:text-red-400 uppercase mb-1">Motif de refus</p>
+                    <p class="text-sm text-red-700 dark:text-red-300">{{ submission.refusal_reason }}</p>
+                </div>
+                {% endif %}
+            </div>
+
+            {% if submission.files %}
+            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
+                    <i data-lucide="paperclip" class="w-4 h-4 text-teal-500"></i> Documents joints
+                </h3>
+                <div class="space-y-2">
+                    {% for f in submission.files %}
+                    <a href="{{ url_for('static', filename='uploads/forms/' + submission.form.slug + '/' + submission.uid_public + '/' + f.stored_filename) }}" target="_blank"
+                        class="flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-lg text-sm font-bold hover:bg-teal-100 transition">
+                        <i data-lucide="file-text" class="w-4 h-4"></i> {{ f.original_filename or f.stored_filename }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="space-y-4">
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-2">Statut</p>
+                <span class="inline-block px-4 py-2 rounded-full text-sm font-black
+                    {% if submission.status.value == 'EN_COURS' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
+                    {% elif submission.status.value == 'TERMINE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
+                    {% else %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300{% endif %}">
+                    {% if submission.status.value == 'EN_COURS' %}{{ submission.current_step.label if submission.current_step else 'En cours' }}
+                    {% elif submission.status.value == 'TERMINE' %}Terminé
+                    {% else %}Refusé{% endif %}
+                </span>
+            </div>
+
+            {% if submission.form.steps %}
+            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <p class="text-xs font-bold text-slate-400 uppercase mb-3">Parcours</p>
+                <div class="space-y-2">
+                    {% for step in submission.form.steps %}
+                    <div class="flex items-center gap-2 text-xs font-bold
+                        {% if submission.status.value == 'TERMINE' or loop.index0 < submission.current_step_index %}text-emerald-600 dark:text-emerald-400
+                        {% elif submission.status.value == 'EN_COURS' and loop.index0 == submission.current_step_index %}text-yellow-600 dark:text-yellow-400
+                        {% elif submission.status.value == 'REFUSE' and loop.index0 == submission.current_step_index %}text-red-600 dark:text-red-400
+                        {% else %}text-slate-300 dark:text-slate-600{% endif %}">
+                        <i data-lucide="{% if submission.status.value == 'TERMINE' or loop.index0 < submission.current_step_index %}check-circle{% elif submission.status.value == 'REFUSE' and loop.index0 == submission.current_step_index %}x-circle{% else %}circle{% endif %}" class="w-3.5 h-3.5"></i>
+                        {{ step.label }}
+                    </div>
+                    {% endfor %}
+                    {% if submission.form.final_recipient_role or submission.form.final_recipient_service %}
+                    <div class="flex items-center gap-2 text-xs font-bold
+                        {% if submission.status.value == 'TERMINE' %}text-emerald-600 dark:text-emerald-400{% else %}text-slate-300 dark:text-slate-600{% endif %}">
+                        <i data-lucide="{% if submission.status.value == 'TERMINE' %}check-circle{% else %}circle{% endif %}" class="w-3.5 h-3.5"></i>
+                        {% if submission.form.final_recipient_service %}{{ submission.form.final_recipient_service.value }}{% else %}{{ submission.form.final_recipient_role.value }}{% endif %}
+                        <span class="text-slate-300 dark:text-slate-600 font-normal normal-case">(destinataire final)</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% if can_validate %}
+            <div class="bg-slate-900 dark:bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-sm space-y-3">
+                <p class="text-xs font-bold text-slate-400 uppercase">Actions — {{ submission.current_step.label }}</p>
+
+                <form action="{{ url_for('forms.validate_submission', id=submission.id, action='validate') }}" method="POST">
+                    <button type="submit" onclick="return confirm('Valider cette étape ?')"
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i> Valider
+                    </button>
+                </form>
+
+                <form action="{{ url_for('forms.validate_submission', id=submission.id, action='refuse') }}" method="POST" class="space-y-2">
+                    <textarea name="refusal_reason" rows="2" placeholder="Motif du refus..."
+                        class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"></textarea>
+                    <button type="submit" onclick="return confirm('Refuser cette soumission ?')"
+                        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i> Refuser
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script>lucide.createIcons();</script>
+{% endblock %}

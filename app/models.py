@@ -71,8 +71,39 @@ class RecruitmentStatus(str, enum.Enum):
     WAITING_RH_MGR = "VALIDATION_RH_MANAGER"
     WAITING_RH_DIR = "VALIDATION_RH_DIRECTEUR"
     REFUSED = "REFUSE"
-    DISPATCHED = "DISPATCHE_AUX_SERVICES" 
+    DISPATCHED = "DISPATCHE_AUX_SERVICES"
     DONE = "TERMINE"
+
+class SejourStatus(str, enum.Enum):
+    VALIDATION_MANAGER = "VALIDATION_MANAGER"
+    DISPATCHED = "DISPATCHE_AUX_SERVICES"
+    REFUSED = "REFUSE"
+    DONE = "TERMINE"
+
+class PublicationStatus(str, enum.Enum):
+    VALIDATION_DIRECTEUR = "VALIDATION_DIRECTEUR"
+    EN_CORRECTION = "EN_CORRECTION"
+    PUBLIE = "PUBLIE"
+    REFUSE = "REFUSE"
+
+class FormFieldType(str, enum.Enum):
+    TEXT = "TEXT"
+    TEXTAREA = "TEXTAREA"
+    DATE = "DATE"
+    SELECT = "SELECT"
+    CHECKBOX = "CHECKBOX"
+    NUMBER = "NUMBER"
+    FILE = "FILE"
+    MULTI_FILE = "MULTI_FILE"
+
+class FormSubmissionStatus(str, enum.Enum):
+    IN_PROGRESS = "EN_COURS"
+    REFUSED = "REFUSE"
+    DONE = "TERMINE"
+
+class ServiceSource(str, enum.Enum):
+    FIXED = "FIXED"
+    EMITTER = "EMITTER"
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
@@ -303,6 +334,202 @@ class Pret(db.Model):
     etat_ecran_retour = db.Column(db.String(50))
     etat_clavier_retour = db.Column(db.String(50))
     etat_coque_retour = db.Column(db.String(50))
+
+
+class DossierSejour(db.Model):
+    __tablename__ = 'dossiers_sejour'
+    id = db.Column(db.Integer, primary_key=True)
+    uid_public = db.Column(db.String(30), unique=True, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = db.relationship('User', backref='my_sejours')
+    status = db.Column(db.Enum(SejourStatus), default=SejourStatus.VALIDATION_MANAGER)
+    titre = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    date_sejour = db.Column(db.DateTime, nullable=True)
+    service_demandeur = db.Column(db.String(100), nullable=True)
+    file_dossier = db.Column(db.String(255), nullable=True)
+    file_dossier_signe = db.Column(db.String(255), nullable=True)
+    file_pv_securite = db.Column(db.String(255), nullable=True)
+    file_devis = db.Column(db.String(255), nullable=True)
+    refusal_reason = db.Column(db.Text, nullable=True)
+    child_tickets_ids = db.Column(db.Text, default='[]')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def get_child_tickets(self):
+        if not self.child_tickets_ids: return []
+        try: return json.loads(self.child_tickets_ids) or []
+        except: return []
+
+    @property
+    def author_name(self):
+        return self.author.username if self.author else "Utilisateur supprimé"
+
+    def __repr__(self):
+        return f'<DossierSejour {self.uid_public}>'
+
+
+class Publication(db.Model):
+    __tablename__ = 'publications'
+    id = db.Column(db.Integer, primary_key=True)
+    uid_public = db.Column(db.String(30), unique=True, index=True)
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = db.relationship('User', backref='my_publications')
+    status = db.Column(db.Enum(PublicationStatus), default=PublicationStatus.VALIDATION_DIRECTEUR)
+    titre = db.Column(db.String(200), nullable=False)
+    contenu = db.Column(db.Text, nullable=False)
+    files_json = db.Column(db.Text, default='[]')
+    refusal_reason = db.Column(db.Text, nullable=True)
+    communication_notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def get_files(self):
+        if not self.files_json: return []
+        try: return json.loads(self.files_json) or []
+        except: return []
+
+    @property
+    def author_name(self):
+        return self.author.username if self.author else "Utilisateur supprimé"
+
+    def __repr__(self):
+        return f'<Publication {self.uid_public}>'
+
+
+class FormDefinition(db.Model):
+    __tablename__ = 'form_definitions'
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(60), unique=True, index=True, nullable=False)
+    name = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, default=False)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.relationship('User')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Service qui recevra un Ticket une fois toutes les étapes validées (ou immédiatement
+    # si le formulaire n'a aucune étape). None = pas de Ticket créé, juste DONE + notification
+    # de l'auteur (cas d'un formulaire qui ne débouche jamais sur l'Espace Tech).
+    target_service = db.Column(db.Enum(ServiceType), nullable=True)
+
+    fields = db.relationship('FormField', backref='form', order_by='FormField.order_index',
+                              cascade='all, delete-orphan')
+    steps = db.relationship('FormWorkflowStep', backref='form', order_by='FormWorkflowStep.order_index',
+                             cascade='all, delete-orphan')
+
+    @property
+    def submissions_count(self):
+        return FormSubmission.query.filter_by(form_definition_id=self.id).count()
+
+    def __repr__(self):
+        return f'<FormDefinition {self.slug}>'
+
+
+class FormField(db.Model):
+    __tablename__ = 'form_fields'
+    id = db.Column(db.Integer, primary_key=True)
+    form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
+    name = db.Column(db.String(60), nullable=False)
+    label = db.Column(db.String(150), nullable=False)
+    field_type = db.Column(db.Enum(FormFieldType), nullable=False)
+    is_required = db.Column(db.Boolean, default=False)
+    options_json = db.Column(db.Text, nullable=True)
+    help_text = db.Column(db.String(255), nullable=True)
+    order_index = db.Column(db.Integer, default=0)
+
+    __table_args__ = (db.UniqueConstraint('form_definition_id', 'name', name='uq_form_field_name'),)
+
+    def get_options(self):
+        if not self.options_json:
+            return []
+        try:
+            return json.loads(self.options_json) or []
+        except Exception:
+            return []
+
+    def __repr__(self):
+        return f'<FormField {self.name}>'
+
+
+class FormWorkflowStep(db.Model):
+    __tablename__ = 'form_workflow_steps'
+    id = db.Column(db.Integer, primary_key=True)
+    form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
+    order_index = db.Column(db.Integer, nullable=False)
+    label = db.Column(db.String(150), nullable=False)
+    validator_role = db.Column(db.Enum(UserRole), nullable=True)
+    validator_service = db.Column(db.Enum(ServiceType), nullable=True)
+    # FIXED : validator_service est un service choisi par l'admin (cas "destinataire").
+    # EMITTER : validator_service est ignoré, le service à matcher est celui du
+    # demandeur lui-même (cas "émetteur" — Manager/Directeur du service du demandeur).
+    service_source = db.Column(db.Enum(ServiceSource), default=ServiceSource.FIXED, nullable=False)
+
+    def __repr__(self):
+        return f'<FormWorkflowStep {self.label}>'
+
+
+class FormSubmission(db.Model):
+    __tablename__ = 'form_submissions'
+    id = db.Column(db.Integer, primary_key=True)
+    uid_public = db.Column(db.String(40), unique=True, index=True)
+    form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
+    form = db.relationship('FormDefinition')
+    author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    author = db.relationship('User', backref='my_form_submissions')
+    data_json = db.Column(db.Text, default='{}')
+    current_step_index = db.Column(db.Integer, default=0)
+    status = db.Column(db.Enum(FormSubmissionStatus), default=FormSubmissionStatus.IN_PROGRESS)
+    refusal_reason = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Ticket généré à la finalisation (si le formulaire a un target_service). Empêche
+    # toute double création et permet de faire le lien depuis la soumission.
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=True)
+    ticket = db.relationship('Ticket')
+
+    files = db.relationship('FormSubmissionFile', backref='submission', cascade='all, delete-orphan')
+
+    def get_data(self):
+        if not self.data_json:
+            return {}
+        try:
+            return json.loads(self.data_json) or {}
+        except Exception:
+            return {}
+
+    def set_data(self, data_dict):
+        self.data_json = json.dumps(data_dict)
+
+    def get_files_for(self, field_name):
+        return [f for f in self.files if f.field_name == field_name]
+
+    @property
+    def author_name(self):
+        return self.author.username if self.author else "Utilisateur supprimé"
+
+    @property
+    def current_step(self):
+        steps = self.form.steps
+        if 0 <= self.current_step_index < len(steps):
+            return steps[self.current_step_index]
+        return None
+
+    def __repr__(self):
+        return f'<FormSubmission {self.uid_public}>'
+
+
+class FormSubmissionFile(db.Model):
+    __tablename__ = 'form_submission_files'
+    id = db.Column(db.Integer, primary_key=True)
+    submission_id = db.Column(db.Integer, db.ForeignKey('form_submissions.id'), nullable=False)
+    field_name = db.Column(db.String(60), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=True)
+    stored_filename = db.Column(db.String(255), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<FormSubmissionFile {self.stored_filename}>'
 
 
 class Notification(db.Model):

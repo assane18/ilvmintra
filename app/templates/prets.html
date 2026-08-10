@@ -123,7 +123,7 @@
                         </td>
                         <td class="px-6 py-4 text-right flex justify-end gap-2">
                             {% if p.statut_dossier == 'En cours' %}
-                            <button onclick="openRetourModal('{{ p.id }}', '{{ p.materiel.modele }}', '{{ p.nom_emprunteur }}')" class="bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 p-2 rounded-lg hover:bg-emerald-200 transition" title="Valider Retour">
+                            <button onclick="openRetourModal('{{ url_for('prets.valider_retour', id=p.id) }}', '{{ p.materiel.modele }}', '{{ p.nom_emprunteur }}')" class="bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 p-2 rounded-lg hover:bg-emerald-200 transition" title="Valider Retour">
                                 <i data-lucide="check" class="w-4 h-4"></i>
                             </button>
                             {% endif %}
@@ -142,6 +142,52 @@
                 </tbody>
             </table>
         </div>
+    </div>
+</div>
+
+<!-- MODAL VALIDER RETOUR -->
+<div id="retourModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white/95 dark:bg-slate-800/95 rounded-2xl shadow-2xl w-full max-w-lg p-6 border border-slate-100 dark:border-slate-700">
+        <div class="flex justify-between items-center mb-5">
+            <h3 class="text-xl font-bold text-slate-800 dark:text-white">Valider le Retour</h3>
+            <button onclick="document.getElementById('retourModal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-6 h-6"></i></button>
+        </div>
+        <p id="retourInfoText" class="text-sm text-slate-500 dark:text-slate-400 mb-5 font-medium bg-slate-50 dark:bg-slate-700/50 p-3 rounded-xl"></p>
+        <form id="retourForm" method="POST" class="space-y-4">
+            <div>
+                <label class="label-tiny">Date de retour réelle</label>
+                <input type="datetime-local" name="custom_date_retour" class="input-field">
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="label-tiny">État Écran</label>
+                    <select name="etat_ecran_retour" class="input-field">
+                        <option value="Bon">Bon</option>
+                        <option value="Acceptable">Acceptable</option>
+                        <option value="Dégradé">Dégradé</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-tiny">Clavier / Boutons</label>
+                    <select name="etat_clavier_retour" class="input-field">
+                        <option value="Bon">Bon</option>
+                        <option value="Acceptable">Acceptable</option>
+                        <option value="Dégradé">Dégradé</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-tiny">Coque / Châssis</label>
+                    <select name="etat_coque_retour" class="input-field">
+                        <option value="Bon">Bon</option>
+                        <option value="Acceptable">Acceptable</option>
+                        <option value="Dégradé">Dégradé</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="w-full bg-emerald-600 text-white font-black py-4 rounded-xl hover:bg-emerald-500 transition shadow-lg text-xs uppercase tracking-widest">
+                Confirmer le retour
+            </button>
+        </form>
     </div>
 </div>
 
@@ -179,11 +225,13 @@
         <form method="POST" class="space-y-4">
             <input type="hidden" name="action_pret" value="create">
             <div>
-                <label class="label-tiny">Matériel Disponible</label>
-                <select name="materiel_id" class="input-field" required>
+                <label class="label-tiny">Recherche par numéro de série</label>
+                <input type="text" id="snSearch" oninput="filtrerMateriel()" placeholder="Taper le SN ou le modèle..." class="input-field mb-2">
+                <label class="label-tiny">Matériel disponible</label>
+                <select name="materiel_id" id="materielSelect" class="input-field" required size="4" style="height:auto;">
                     <option value="">-- Choisir --</option>
                     {% for m in materiels %}
-                    <option value="{{ m.id }}">{{ m.modele }} ({{ m.sn }})</option>
+                    <option value="{{ m.id }}" data-sn="{{ m.sn|lower }}" data-modele="{{ m.modele|lower }}">{{ m.modele }} — {{ m.sn }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -209,12 +257,26 @@
 <script>
     lucide.createIcons();
 
-    function openRetourModal(id, materiel, emprunteur) {
+    function filtrerMateriel() {
+        var q = document.getElementById('snSearch').value.toLowerCase();
+        var sel = document.getElementById('materielSelect');
+        var opts = sel.querySelectorAll('option');
+        opts.forEach(function(opt) {
+            if (!opt.value) return;
+            var match = opt.dataset.sn.includes(q) || opt.dataset.modele.includes(q);
+            opt.style.display = match ? '' : 'none';
+        });
+        // Auto-sélectionner si un seul résultat
+        var visible = Array.from(opts).filter(o => o.value && o.style.display !== 'none');
+        if (visible.length === 1) sel.value = visible[0].value;
+    }
+
+    function openRetourModal(url, materiel, emprunteur) {
         const modal = document.getElementById('retourModal');
         const form = document.getElementById('retourForm');
         const info = document.getElementById('retourInfoText');
-        info.innerText = `${materiel} - Emprunté par ${emprunteur}`;
-        form.action = `/pret/${id}/retour`; 
+        info.innerText = `${materiel} — Emprunté par ${emprunteur}`;
+        form.action = url;
         modal.classList.remove('hidden');
     }
 </script>
