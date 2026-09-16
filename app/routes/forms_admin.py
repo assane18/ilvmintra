@@ -7,7 +7,7 @@ from app import db
 from app.decorators import admin_required
 from app.models import (
     FormDefinition, FormField, FormWorkflowStep, FormFieldType,
-    UserRole, ServiceType, ServiceSource,
+    UserRole, ServiceType, ServiceSource, FormDispatchTarget, TICKET_FIELD_MAPPING_CHOICES,
 )
 
 forms_admin_bp = Blueprint('forms_admin', __name__, url_prefix='/admin/forms')
@@ -71,6 +71,7 @@ def edit_form(id):
         field_types=field_types,
         roles=roles,
         services=services,
+        ticket_field_choices=TICKET_FIELD_MAPPING_CHOICES,
     )
 
 
@@ -83,9 +84,23 @@ def update_form(id):
     if name:
         form_def.name = name
     form_def.description = request.form.get('description', '').strip()
+    form_def.manager_only = bool(request.form.get('manager_only'))
 
-    target_service_value = request.form.get('target_service') or None
-    form_def.target_service = ServiceType(target_service_value) if target_service_value else None
+    raw_templates = request.form.get('structured_field_templates', '').strip()
+    if not raw_templates:
+        form_def.structured_field_templates_json = None
+    else:
+        try:
+            parsed = json.loads(raw_templates)
+            if not isinstance(parsed, dict):
+                raise ValueError("doit être un objet JSON")
+            invalid_keys = [k for k in parsed if k not in TICKET_FIELD_MAPPING_CHOICES]
+            if invalid_keys:
+                raise ValueError(f"colonne(s) inconnue(s) : {', '.join(invalid_keys)}")
+            form_def.structured_field_templates_json = json.dumps(parsed)
+        except (ValueError, TypeError) as e:
+            flash(f"Colonnes Ticket calculées invalides, non enregistrées : {e}", "danger")
+            return redirect(url_for('forms_admin.edit_form', id=form_def.id))
 
     db.session.commit()
     flash("Informations du formulaire mises à jour.", "success")
@@ -106,6 +121,7 @@ def save_fields(id):
 
     seen_names = set()
     new_fields = []
+    pending_conditions = []  # (field, condition_field_name, condition_value)
     for index, item in enumerate(payload):
         label = (item.get('label') or '').strip()
         field_type_value = item.get('field_type')
@@ -123,8 +139,11 @@ def save_fields(id):
         seen_names.add(name)
 
         options_list = [o.strip() for o in (item.get('options') or '').split('\n') if o.strip()]
+        maps_to = item.get('maps_to_ticket_field') or None
+        if maps_to not in TICKET_FIELD_MAPPING_CHOICES:
+            maps_to = None
 
-        new_fields.append(FormField(
+        field = FormField(
             form_definition_id=form_def.id,
             name=name,
             label=label,
@@ -133,11 +152,27 @@ def save_fields(id):
             options_json=json.dumps(options_list) if options_list else None,
             help_text=(item.get('help_text') or '').strip() or None,
             order_index=index,
-        ))
+            maps_to_ticket_field=maps_to,
+        )
+        new_fields.append(field)
+        condition_field_name = item.get('condition_field_name') or None
+        if condition_field_name:
+            pending_conditions.append((field, condition_field_name, item.get('condition_value') or None))
 
     FormField.query.filter_by(form_definition_id=form_def.id).delete()
     for f in new_fields:
         db.session.add(f)
+    db.session.flush()
+
+    # Résolution des conditions d'affichage : le champ référencé doit exister
+    # dans ce même lot et précéder le champ dépendant (ordre = déclaration).
+    names_to_fields = {f.name: f for f in new_fields}
+    for field, condition_field_name, condition_value in pending_conditions:
+        ref = names_to_fields.get(condition_field_name)
+        if ref and ref.order_index < field.order_index:
+            field.condition_field_id = ref.id
+            field.condition_value = condition_value
+
     db.session.commit()
     flash("Champs du formulaire enregistrés.", "success")
     return redirect(url_for('forms_admin.edit_form', id=id))
@@ -157,6 +192,7 @@ def save_steps(id):
 
     role_values = [r.value for r in UserRole]
     service_values = [s.value for s in ServiceType]
+    skippable_roles = {UserRole.MANAGER.value, UserRole.DIRECTEUR.value, UserRole.ADMIN.value}
 
     new_steps = []
     for index, item in enumerate(payload):
@@ -164,6 +200,7 @@ def save_steps(id):
         role_value = item.get('validator_role') or None
         service_source_value = item.get('service_source') or ServiceSource.FIXED.value
         service_value = item.get('validator_service') or None
+        skip_roles = [r for r in (item.get('skip_for_author_roles') or []) if r in skippable_roles]
 
         if not label:
             continue
@@ -188,6 +225,7 @@ def save_steps(id):
             validator_role=UserRole(role_value) if role_value else None,
             validator_service=ServiceType(service_value) if service_value else None,
             service_source=ServiceSource(service_source_value),
+            skip_for_author_roles_json=json.dumps(skip_roles),
         ))
 
     FormWorkflowStep.query.filter_by(form_definition_id=form_def.id).delete()
@@ -195,6 +233,61 @@ def save_steps(id):
         db.session.add(s)
     db.session.commit()
     flash("Étapes de validation enregistrées.", "success")
+    return redirect(url_for('forms_admin.edit_form', id=id))
+
+
+@forms_admin_bp.route('/<int:id>/dispatch_targets/save', methods=['POST'])
+@login_required
+@admin_required
+def save_dispatch_targets(id):
+    form_def = FormDefinition.query.get_or_404(id)
+
+    try:
+        payload = json.loads(request.form.get('dispatch_targets_payload') or '[]')
+    except ValueError:
+        flash("Données de destinataires invalides.", "danger")
+        return redirect(url_for('forms_admin.edit_form', id=id))
+
+    service_values = [s.value for s in ServiceType]
+    checkbox_fields_by_name = {f.name: f for f in form_def.fields if f.field_type == FormFieldType.CHECKBOX}
+    file_field_names = {f.name for f in form_def.fields if f.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE)}
+
+    new_targets = []
+    for item in payload:
+        label = (item.get('label') or '').strip()
+        service_value = item.get('target_service') or None
+        condition_field_name = item.get('condition_field_name') or None
+
+        if not label or not service_value or service_value not in service_values:
+            continue
+
+        condition_field = checkbox_fields_by_name.get(condition_field_name) if condition_field_name else None
+
+        # included_file_fields absent du payload (clé non envoyée) = "tous les
+        # fichiers" (comportement par défaut, None) ; présent (même vide) =
+        # sélection explicite.
+        included_files_json = None
+        if 'included_file_fields' in item:
+            selected = [n for n in (item.get('included_file_fields') or []) if n in file_field_names]
+            included_files_json = json.dumps(selected)
+
+        new_targets.append(FormDispatchTarget(
+            form_definition_id=form_def.id,
+            label=label,
+            target_service=ServiceType(service_value),
+            condition_field_id=condition_field.id if condition_field else None,
+            included_file_fields_json=included_files_json,
+            ticket_category_template=(item.get('ticket_category_template') or '').strip() or None,
+            ticket_title_template=(item.get('ticket_title_template') or '').strip() or None,
+            ticket_description_template=(item.get('ticket_description_template') or '').strip() or None,
+            uid_suffix=(item.get('uid_suffix') or '').strip()[:20] or None,
+        ))
+
+    FormDispatchTarget.query.filter_by(form_definition_id=form_def.id).delete()
+    for t in new_targets:
+        db.session.add(t)
+    db.session.commit()
+    flash("Destinataires enregistrés.", "success")
     return redirect(url_for('forms_admin.edit_form', id=id))
 
 
@@ -206,9 +299,6 @@ def toggle_active(id):
     if not form_def.is_active:
         if not form_def.fields:
             flash("Impossible d'activer un formulaire sans champ.", "danger")
-            return redirect(url_for('forms_admin.edit_form', id=id))
-        if not form_def.steps:
-            flash("Impossible d'activer un formulaire sans étape de validation.", "danger")
             return redirect(url_for('forms_admin.edit_form', id=id))
     form_def.is_active = not form_def.is_active
     db.session.commit()
@@ -235,22 +325,46 @@ def duplicate_form(id):
         description=original.description,
         is_active=False,
         created_by=current_user,
-        target_service=original.target_service,
+        manager_only=original.manager_only,
+        structured_field_templates_json=original.structured_field_templates_json,
     )
     db.session.add(copy)
     db.session.flush()
 
+    field_id_map = {}
     for f in original.fields:
-        db.session.add(FormField(
+        new_field = FormField(
             form_definition_id=copy.id, name=f.name, label=f.label, field_type=f.field_type,
             is_required=f.is_required, options_json=f.options_json, help_text=f.help_text,
-            order_index=f.order_index,
-        ))
+            order_index=f.order_index, maps_to_ticket_field=f.maps_to_ticket_field,
+        )
+        db.session.add(new_field)
+        db.session.flush()
+        field_id_map[f.id] = new_field.id
+
+    # 2e passe : les conditions d'affichage référencent d'autres champs du même
+    # formulaire, donc seulement une fois que tous les champs ont un nouvel id.
+    for f in original.fields:
+        if f.condition_field_id:
+            new_field = FormField.query.filter_by(form_definition_id=copy.id, name=f.name).first()
+            new_field.condition_field_id = field_id_map.get(f.condition_field_id)
+            new_field.condition_value = f.condition_value
+
     for s in original.steps:
         db.session.add(FormWorkflowStep(
             form_definition_id=copy.id, order_index=s.order_index, label=s.label,
             validator_role=s.validator_role, validator_service=s.validator_service,
-            service_source=s.service_source,
+            service_source=s.service_source, skip_for_author_roles_json=s.skip_for_author_roles_json,
+        ))
+    for t in original.dispatch_targets:
+        db.session.add(FormDispatchTarget(
+            form_definition_id=copy.id, label=t.label, target_service=t.target_service,
+            condition_field_id=field_id_map.get(t.condition_field_id),
+            included_file_fields_json=t.included_file_fields_json,
+            ticket_category_template=t.ticket_category_template,
+            ticket_title_template=t.ticket_title_template,
+            ticket_description_template=t.ticket_description_template,
+            uid_suffix=t.uid_suffix,
         ))
 
     db.session.commit()

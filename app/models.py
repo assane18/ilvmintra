@@ -91,6 +91,7 @@ class FormFieldType(str, enum.Enum):
     TEXTAREA = "TEXTAREA"
     DATE = "DATE"
     SELECT = "SELECT"
+    MULTI_SELECT = "MULTI_SELECT"
     CHECKBOX = "CHECKBOX"
     NUMBER = "NUMBER"
     FILE = "FILE"
@@ -160,7 +161,11 @@ class Ticket(db.Model):
     solver = db.relationship('User', foreign_keys=[solver_id], backref='assigned_tickets')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True)
-    category_ticket = db.Column(db.String(50)) 
+    # Horodatage de la PREMIÈRE prise en charge (passage à IN_PROGRESS) — nul
+    # pour les tickets historiques créés avant l'ajout de cette colonne, à
+    # exclure du calcul des délais d'assignation plutôt que compté comme 0.
+    assigned_at = db.Column(db.DateTime, nullable=True)
+    category_ticket = db.Column(db.String(50))
     hostname = db.Column(db.String(64), nullable=True)
     service_demandeur = db.Column(db.String(100), nullable=True)
     tel_demandeur = db.Column(db.String(20), nullable=True)
@@ -407,15 +412,35 @@ class FormDefinition(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Service qui recevra un Ticket une fois toutes les étapes validées (ou immédiatement
-    # si le formulaire n'a aucune étape). None = pas de Ticket créé, juste DONE + notification
-    # de l'auteur (cas d'un formulaire qui ne débouche jamais sur l'Espace Tech).
-    target_service = db.Column(db.Enum(ServiceType), nullable=True)
+    # Réservé aux Manager/Directeur/Admin pour la SOUMISSION (pas la validation),
+    # comme "Demande Matériel" ou FCPI aujourd'hui. Appliqué côté route
+    # (new_submission) — le lien reste visible sur le portail avec un badge,
+    # même pattern "piège" que l'existant.
+    manager_only = db.Column(db.Boolean, default=False)
+
+    # Colonnes structurées de Ticket calculées à partir de PLUSIEURS champs
+    # combinés (ex: new_user_fullname = "$nom_agent $prenom_agent"), pour les
+    # cas que le mapping 1:1 de FormField.maps_to_ticket_field ne peut pas
+    # exprimer. JSON : {colonne_ticket: "template $champ"}. Appliqué à TOUS
+    # les tickets créés par la soumission (comme service_demandeur/
+    # new_user_fullname dans l'ancien fcpi.py, identiques pour chaque cible).
+    structured_field_templates_json = db.Column(db.Text, nullable=True)
+
+    def get_structured_templates(self):
+        if not self.structured_field_templates_json:
+            return {}
+        try:
+            data = json.loads(self.structured_field_templates_json)
+            return data if isinstance(data, dict) else {}
+        except (ValueError, TypeError):
+            return {}
 
     fields = db.relationship('FormField', backref='form', order_by='FormField.order_index',
                               cascade='all, delete-orphan')
     steps = db.relationship('FormWorkflowStep', backref='form', order_by='FormWorkflowStep.order_index',
                              cascade='all, delete-orphan')
+    dispatch_targets = db.relationship('FormDispatchTarget', backref='form', order_by='FormDispatchTarget.id',
+                                        cascade='all, delete-orphan')
 
     @property
     def submissions_count(self):
@@ -423,6 +448,17 @@ class FormDefinition(db.Model):
 
     def __repr__(self):
         return f'<FormDefinition {self.slug}>'
+
+
+# Colonnes structurées de Ticket qu'un FormField peut alimenter directement
+# (voir FormField.maps_to_ticket_field). Sous-ensemble des colonnes "libres"
+# du modèle Ticket déjà utilisées par les anciens modules (FCPI, tickets
+# standard) — pas daf_* qui sont propres au circuit DAF hors moteur.
+TICKET_FIELD_MAPPING_CHOICES = [
+    'hostname', 'tel_demandeur', 'materiel_list', 'new_user_acces',
+    'lieu_installation', 'destinataire_materiel', 'new_user_fullname',
+    'new_user_service', 'new_user_date', 'service_demandeur',
+]
 
 
 class FormField(db.Model):
@@ -437,6 +473,22 @@ class FormField(db.Model):
     help_text = db.Column(db.String(255), nullable=True)
     order_index = db.Column(db.Integer, default=0)
 
+    # Visibilité conditionnelle : ce champ n'apparaît que si condition_field a
+    # une certaine valeur. Pour un condition_field de type CHECKBOX,
+    # condition_value est ignoré (visible si coché). Pour SELECT/MULTI_SELECT,
+    # visible si la valeur soumise correspond à condition_value.
+    # None = toujours visible (comportement par défaut, inchangé).
+    condition_field_id = db.Column(db.Integer, db.ForeignKey('form_fields.id'), nullable=True)
+    condition_value = db.Column(db.String(255), nullable=True)
+    condition_field = db.relationship('FormField', remote_side=[id])
+
+    # Si renseigné, la valeur soumise pour ce champ est copiée directement dans
+    # la colonne correspondante du Ticket créé (en plus d'apparaître dans la
+    # description générique), pour reproduire les anciens modules qui
+    # alimentent des colonnes structurées (ex: FCPI -> materiel_list,
+    # new_user_acces...). Doit être une des clés de TICKET_FIELD_MAPPING_CHOICES.
+    maps_to_ticket_field = db.Column(db.String(50), nullable=True)
+
     __table_args__ = (db.UniqueConstraint('form_definition_id', 'name', name='uq_form_field_name'),)
 
     def get_options(self):
@@ -446,6 +498,14 @@ class FormField(db.Model):
             return json.loads(self.options_json) or []
         except Exception:
             return []
+
+    def is_visible(self, data):
+        if not self.condition_field_id or not self.condition_field:
+            return True
+        ref = self.condition_field
+        if ref.field_type == FormFieldType.CHECKBOX:
+            return bool(data.get(ref.name))
+        return data.get(ref.name) == self.condition_value
 
     def __repr__(self):
         return f'<FormField {self.name}>'
@@ -463,15 +523,90 @@ class FormWorkflowStep(db.Model):
     # EMITTER : validator_service est ignoré, le service à matcher est celui du
     # demandeur lui-même (cas "émetteur" — Manager/Directeur du service du demandeur).
     service_source = db.Column(db.Enum(ServiceSource), default=ServiceSource.FIXED, nullable=False)
+    # Liste JSON de UserRole (MANAGER/DIRECTEUR/ADMIN) : si l'auteur de la
+    # soumission a déjà l'un de ces rôles, cette étape est sautée automatiquement
+    # (ex: un Directeur n'a pas besoin de la validation "équipe" de sa propre
+    # demande). Vide par défaut = jamais sautée, comportement inchangé.
+    skip_for_author_roles_json = db.Column(db.Text, default='[]')
+
+    def get_skip_roles(self):
+        if not self.skip_for_author_roles_json:
+            return []
+        try:
+            return json.loads(self.skip_for_author_roles_json) or []
+        except Exception:
+            return []
+
+    def is_skipped_for(self, user):
+        if not user:
+            return False
+        return str(user.role.value) in self.get_skip_roles()
 
     def __repr__(self):
         return f'<FormWorkflowStep {self.label}>'
 
 
+class FormDispatchTarget(db.Model):
+    """Un service qui reçoit un Ticket une fois la soumission terminée (toutes
+    les étapes validées, ou immédiatement si le formulaire n'a aucune étape).
+    Un formulaire peut avoir plusieurs destinataires (ex: FCPI -> DRH+INFO+SECU
+    systématiques, +IMAGO conditionnel). Aucun destinataire = pas de Ticket créé,
+    juste DONE + notification de l'auteur."""
+    __tablename__ = 'form_dispatch_targets'
+    id = db.Column(db.Integer, primary_key=True)
+    form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
+    label = db.Column(db.String(100), nullable=False)
+    target_service = db.Column(db.Enum(ServiceType), nullable=False)
+    # None = toujours dispatché. Sinon : dispatché seulement si ce champ
+    # (obligatoirement de type CHECKBOX) est coché dans la soumission.
+    condition_field_id = db.Column(db.Integer, db.ForeignKey('form_fields.id'), nullable=True)
+    condition_field = db.relationship('FormField')
+
+    # Liste JSON des noms de champs FILE/MULTI_FILE à copier dans le Ticket créé
+    # pour ce destinataire. None/vide = tous les fichiers de la soumission
+    # (comportement par défaut, inchangé) — permet un routage sélectif comme
+    # l'ancien FCPI (CV+fiche de poste -> DRH, photo -> SECU, rien -> INFO/IMAGO).
+    included_file_fields_json = db.Column(db.Text, nullable=True)
+
+    # Personnalisation du Ticket créé pour ce destinataire — pour reproduire
+    # fidèlement les anciens modules (ex: FCPI met "Nouvel Utilisateur" en
+    # catégorie, un titre et une description sur mesure par service). Chaîne
+    # avec placeholders $nom_du_champ (syntaxe string.Template), substitués par
+    # les valeurs soumises. Vide/None = comportement générique par défaut.
+    ticket_category_template = db.Column(db.String(100), nullable=True)
+    ticket_title_template = db.Column(db.String(255), nullable=True)
+    ticket_description_template = db.Column(db.Text, nullable=True)
+    # Suffixe court (ex: "DRH", "INF") utilisé pour un uid de ticket lisible
+    # (F<id soumission>-<suffixe>). None = uid opaque par défaut (F<id>-<id cible>).
+    uid_suffix = db.Column(db.String(20), nullable=True)
+
+    def is_satisfied(self, data):
+        if not self.condition_field_id or not self.condition_field:
+            return True
+        return bool(data.get(self.condition_field.name))
+
+    def get_included_file_fields(self):
+        """None = non configuré -> tous les fichiers (défaut). Une liste (même
+        vide) = sélection explicite de champs fichier à inclure."""
+        if self.included_file_fields_json is None:
+            return None
+        try:
+            return json.loads(self.included_file_fields_json)
+        except Exception:
+            return None
+
+    def __repr__(self):
+        return f'<FormDispatchTarget {self.label}>'
+
+
 class FormSubmission(db.Model):
     __tablename__ = 'form_submissions'
     id = db.Column(db.Integer, primary_key=True)
-    uid_public = db.Column(db.String(40), unique=True, index=True)
+    # 100 = marge pour couvrir le pire cas "FRM-{slug jusqu'à 60}-{date}-{compteur}"
+    # (slug de form_definitions autorisé jusqu'à 60 caractères, cf. migration
+    # a1f3c9d07b22 — l'ancienne limite de 40 plantait sur les formulaires à
+    # nom long, ex: "demande-cr-ation-de-formulaire").
+    uid_public = db.Column(db.String(100), unique=True, index=True)
     form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
     form = db.relationship('FormDefinition')
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
@@ -483,10 +618,9 @@ class FormSubmission(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Ticket généré à la finalisation (si le formulaire a un target_service). Empêche
-    # toute double création et permet de faire le lien depuis la soumission.
-    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=True)
-    ticket = db.relationship('Ticket')
+    # Ticket(s) généré(s) à la finalisation (un par FormDispatchTarget satisfait).
+    # Liste d'ids JSON, même convention que DossierSejour.child_tickets_ids.
+    ticket_ids_json = db.Column(db.Text, default='[]')
 
     files = db.relationship('FormSubmissionFile', backref='submission', cascade='all, delete-orphan')
 
@@ -503,6 +637,25 @@ class FormSubmission(db.Model):
 
     def get_files_for(self, field_name):
         return [f for f in self.files if f.field_name == field_name]
+
+    def get_ticket_ids(self):
+        if not self.ticket_ids_json:
+            return []
+        try:
+            return json.loads(self.ticket_ids_json) or []
+        except Exception:
+            return []
+
+    def add_ticket_id(self, ticket_id):
+        ids = self.get_ticket_ids()
+        ids.append(ticket_id)
+        self.ticket_ids_json = json.dumps(ids)
+
+    def get_tickets(self):
+        ids = self.get_ticket_ids()
+        if not ids:
+            return []
+        return Ticket.query.filter(Ticket.id.in_(ids)).all()
 
     @property
     def author_name(self):

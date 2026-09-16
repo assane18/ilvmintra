@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+
+    <!-- En-tête -->
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                <i data-lucide="bar-chart-3" class="w-8 h-8 text-indigo-600"></i> Statistiques
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">
+                {% if scope is none %}Tous les services{% else %}Votre périmètre : {{ scope|join(', ') if scope else 'aucun service assigné' }}{% endif %}
+            </p>
+        </div>
+        <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
+        </a>
+    </div>
+
+    <!-- Filtres -->
+    <form method="GET" action="{{ url_for('tickets.stats_dashboard') }}" id="statsFilterForm" class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8 flex flex-wrap items-end gap-4">
+        <div>
+            <label class="label-tiny block text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Période</label>
+            <select name="period" id="periodSelect" onchange="document.getElementById('customDates').classList.toggle('hidden', this.value !== 'custom')" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+                <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>Ce mois-ci</option>
+                <option value="last_3_months" {% if period == 'last_3_months' %}selected{% endif %}>3 derniers mois</option>
+                <option value="last_12_months" {% if period == 'last_12_months' %}selected{% endif %}>12 derniers mois</option>
+                <option value="this_year" {% if period == 'this_year' %}selected{% endif %}>Cette année</option>
+                <option value="custom" {% if period == 'custom' %}selected{% endif %}>Période personnalisée</option>
+            </select>
+        </div>
+        <div id="customDates" class="flex gap-3 {% if period != 'custom' %}hidden{% endif %}">
+            <div>
+                <label class="label-tiny block text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Du</label>
+                <input type="date" name="start" value="{{ start }}" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+            </div>
+            <div>
+                <label class="label-tiny block text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Au</label>
+                <input type="date" name="end" value="{{ end }}" class="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+            </div>
+        </div>
+        <div class="flex-1 min-w-[240px]">
+            <label class="label-tiny block text-[11px] font-black uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">Services</label>
+            <div class="flex flex-wrap gap-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2">
+                {% for svc in all_services %}
+                <label class="flex items-center gap-1.5 text-xs font-bold text-slate-600 dark:text-slate-300 cursor-pointer">
+                    <input type="checkbox" name="services" value="{{ svc }}" {% if svc in selected_services %}checked{% endif %} class="rounded">
+                    {{ svc }}
+                </label>
+                {% else %}
+                <span class="text-xs text-slate-400 italic">Aucun service disponible</span>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white font-black py-2 px-5 rounded-xl text-xs uppercase tracking-widest transition flex items-center gap-2">
+                <i data-lucide="filter" class="w-4 h-4"></i> Filtrer
+            </button>
+            <button type="submit" formaction="{{ url_for('tickets.export_stats') }}" class="bg-emerald-600 hover:bg-emerald-500 text-white font-black py-2 px-5 rounded-xl text-xs uppercase tracking-widest transition flex items-center gap-2">
+                <i data-lucide="download" class="w-4 h-4"></i> Exporter
+            </button>
+        </div>
+    </form>
+
+    <!-- Note : services soumis en un seul champ nom "services" côté navigateur (checkboxes multiples) -->
+
+    {% if not sections %}
+    <div class="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 p-16 text-center">
+        <i data-lucide="bar-chart-3" class="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3"></i>
+        <p class="text-slate-400 dark:text-slate-500 font-bold">Aucune donnée pour cette sélection.</p>
+    </div>
+    {% endif %}
+
+    {% for s in sections %}
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 mb-8">
+        <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+            <i data-lucide="server" class="w-5 h-5 text-indigo-600"></i> {{ s.service }}
+        </h2>
+
+        <!-- KPI cards -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4">
+                <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wide">Reçus</p>
+                <p class="text-2xl font-black text-slate-800 dark:text-white">{{ s.received }}</p>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4">
+                <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wide">Clôturés</p>
+                <p class="text-2xl font-black text-slate-800 dark:text-white">{{ s.closed }}</p>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4">
+                <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wide">Délai assignation (moy. / méd.)</p>
+                <p class="text-2xl font-black text-slate-800 dark:text-white">
+                    {% if s.assign_avg_h is not none %}{{ s.assign_avg_h }}h <span class="text-sm text-slate-400">/ {{ s.assign_median_h }}h</span>{% else %}N/A{% endif %}
+                </p>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4">
+                <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wide">Délai clôture (moy. / méd.)</p>
+                <p class="text-2xl font-black text-slate-800 dark:text-white">
+                    {% if s.close_avg_h is not none %}{{ s.close_avg_h }}h <span class="text-sm text-slate-400">/ {{ s.close_median_h }}h</span>{% else %}N/A{% endif %}
+                </p>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4">
+                <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wide">Taux de refus</p>
+                <p class="text-2xl font-black text-slate-800 dark:text-white">{{ s.refusal_rate }}%</p>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900/50 rounded-2xl p-4 col-span-2 md:col-span-3">
+                <p class="text-[10px] font-black uppercase text-slate-400 dark:text-slate-500 tracking-wide mb-1">Top catégories</p>
+                {% if s.top_categories %}
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    {% for cat, count in s.top_categories %}{{ cat }} ({{ count }}){% if not loop.last %} · {% endif %}{% endfor %}
+                </p>
+                {% else %}
+                <p class="text-sm text-slate-400 italic">—</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Graphiques -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="bg-slate-50 dark:bg-slate-900/30 rounded-2xl p-4">
+                <h3 class="font-bold text-slate-700 dark:text-slate-300 text-xs uppercase mb-3 text-center">Répartition par statut</h3>
+                <div class="h-48">
+                    <canvas id="statusChart_{{ loop.index }}"></canvas>
+                </div>
+            </div>
+            <div class="bg-slate-50 dark:bg-slate-900/30 rounded-2xl p-4 lg:col-span-2">
+                <h3 class="font-bold text-slate-700 dark:text-slate-300 text-xs uppercase mb-3 text-center">Évolution mensuelle (reçus / clôturés)</h3>
+                <div class="h-48">
+                    <canvas id="monthlyChart_{{ loop.index }}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+
+<script>
+    lucide.createIcons();
+
+    const sectionsData = {{ sections|tojson }};
+
+    sectionsData.forEach((s, i) => {
+        const idx = i + 1;
+
+        const statusCtx = document.getElementById('statusChart_' + idx);
+        if (statusCtx) {
+            const labels = Object.keys(s.status_counts);
+            const values = Object.values(s.status_counts);
+            new Chart(statusCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: values,
+                        backgroundColor: ['#f97316', '#2563eb', '#10b981', '#ef4444', '#8b5cf6', '#0ea5e9', '#eab308', '#64748b', '#ec4899'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { cutout: '65%', maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } } }
+            });
+        }
+
+        const monthlyCtx = document.getElementById('monthlyChart_' + idx);
+        if (monthlyCtx) {
+            const months = Object.keys(s.monthly);
+            const received = months.map(m => s.monthly[m].received);
+            const closed = months.map(m => s.monthly[m].closed);
+            new Chart(monthlyCtx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: months,
+                    datasets: [
+                        { label: 'Reçus', data: received, backgroundColor: '#6366f1' },
+                        { label: 'Clôturés', data: closed, backgroundColor: '#10b981' },
+                    ]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 9 } } } }
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

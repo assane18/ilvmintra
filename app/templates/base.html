@@ -27,7 +27,9 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
+    <!-- Récapitulatif de confirmation avant création (formulaires opt-in via data-recap-confirm) -->
+    <script src="{{ url_for('static', filename='js/recap_confirm.js') }}" defer></script>
+
     <style>
         /* Vos styles personnalisés conservés */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -141,6 +143,18 @@
                 <a href="{{ url_for('main.help_center') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-teal-600 hover:bg-teal-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-teal-400 dark:hover:bg-slate-800">
                     <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
                 </a>
+
+                {% if current_user.is_authenticated and current_user.role.value in ['DIRECTEUR', 'ADMIN'] %}
+                <a href="{{ url_for('tickets.stats_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-indigo-400 dark:hover:bg-slate-800">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Statistiques
+                </a>
+                {% endif %}
+
+                {% if current_user.is_authenticated and current_user.role.value == 'ADMIN' %}
+                <a href="{{ url_for('main.admin_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition flex items-center gap-2 dark:text-slate-300 dark:hover:text-blue-400 dark:hover:bg-slate-800">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> Administration
+                </a>
+                {% endif %}
 
             </div>
         </div>

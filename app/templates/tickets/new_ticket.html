@@ -30,7 +30,7 @@
             <p class="text-slate-500 dark:text-slate-400">Remplissez les informations ci-dessous.</p>
         </div>
 
-        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="Demande {{ service.value if service_name != 'MATERIEL' else 'MATÉRIEL' }}">
             
             <!-- SÉLECTEUR SERVICE DEMANDEUR (Si User a plusieurs GU) -->
             {% if user_origins|length > 1 %}

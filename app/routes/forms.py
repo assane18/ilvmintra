@@ -4,13 +4,16 @@ from werkzeug.utils import secure_filename
 import os
 import shutil
 from datetime import datetime
+from string import Template
 
 from app import db
 from app.decorators import can_validate_step
 from app.models import (
     FormDefinition, FormSubmission, FormSubmissionFile, FormFieldType,
     FormSubmissionStatus, ServiceSource, Notification, Ticket, TicketStatus,
+    TICKET_FIELD_MAPPING_CHOICES,
 )
+from app.emails import send_form_step_alert, send_form_refused_notification, send_service_alert
 
 forms_bp = Blueprint('forms', __name__, url_prefix='/forms')
 
@@ -43,6 +46,7 @@ def _notify_step_validators(submission, step):
         return
     from app.models import User
     candidates = User.query.all()
+    matched_emails = []
     for u in candidates:
         if _step_matches(u, step, submission):
             n = Notification(
@@ -52,6 +56,21 @@ def _notify_step_validators(submission, step):
                 link=url_for('forms.view_submission', id=submission.id)
             )
             db.session.add(n)
+            if u.email:
+                matched_emails.append(u.email)
+    if matched_emails:
+        send_form_step_alert(submission, step, list(set(matched_emails)))
+
+
+def _first_eligible_step_index(form_def, author, start=0):
+    """Première étape (à partir de `start`) qui n'est pas sautée pour ce
+    demandeur (skip_for_author_roles). Retourne len(steps) si toutes les
+    étapes restantes sont sautées (= finalisation immédiate)."""
+    steps = form_def.steps
+    for i in range(start, len(steps)):
+        if not steps[i].is_skipped_for(author):
+            return i
+    return len(steps)
 
 
 def _render_submission_text(submission):
@@ -64,48 +83,106 @@ def _render_submission_text(submission):
     return "\n".join(lines)
 
 
-def _create_ticket_from_submission(submission):
-    """Crée un Ticket réel routé vers submission.form.target_service, calqué sur
-    sejour.py:_create_sejour_ticket. Idempotent via submission.ticket_id."""
-    if submission.ticket_id:
-        return submission.ticket
+def _render_template_or_default(template_str, data, default):
+    """Rend un modèle $nom_du_champ (string.Template) avec les données de la
+    soumission ; un placeholder sans correspondance reste tel quel (pas
+    d'erreur). Retourne `default` si aucun modèle n'est configuré ou si le
+    rendu échoue/est vide."""
+    if not template_str:
+        return default
+    try:
+        safe_data = {k: ('' if v is None else v) for k, v in data.items()}
+        rendered = Template(template_str).safe_substitute(safe_data).strip()
+        return rendered or default
+    except Exception:
+        return default
+
+
+def _create_one_ticket(submission, target):
+    """Crée un Ticket pour un FormDispatchTarget donné. Idempotent via l'uid
+    dérivé. Copie les fichiers de la soumission sélectionnés pour ce
+    destinataire (target.get_included_file_fields() — None = tous,
+    comportement par défaut ; liste = seulement ces champs, comme l'ancien
+    FCPI qui routait des fichiers différents par service). Catégorie/titre/
+    description personnalisables par modèle ($nom_du_champ) pour reproduire
+    fidèlement les anciens modules ; valeurs génériques sinon."""
     form_def = submission.form
-    if not form_def.target_service:
-        return None
+    data = submission.get_data()
+    # Les champs MULTI_SELECT sont stockés en liste Python — pour les modèles
+    # ($nom_du_champ) et le mapping de colonnes, on les aplatit en texte
+    # séparé par virgules, comme l'ancien FCPI (",".join(request.form.getlist(...)))
+    # produisait déjà pour Recruitment.materiels_demandes.
+    flat_data = {k: (','.join(v) if isinstance(v, list) else v) for k, v in data.items()}
 
     # Ticket.uid_public est limité à 30 caractères (contrairement à
-    # FormSubmission.uid_public qui tolère jusqu'à 40) : on ne peut pas se
-    # contenter de suffixer l'uid de la soumission pour les slugs longs.
-    uid = f"FRM-{submission.id}-TCK"
+    # FormSubmission.uid_public qui tolère jusqu'à 40) — uid_suffix donne un
+    # identifiant lisible (F<id soumission>-<suffixe>, ex: F42-DRH) comme les
+    # anciens modules ; sinon repli sur un uid opaque garanti unique.
+    uid = f"F{submission.id}-{target.uid_suffix}" if target.uid_suffix else f"FRM-{submission.id}-{target.id}"
     existing = Ticket.query.filter_by(uid_public=uid).first()
     if existing:
-        submission.ticket_id = existing.id
         return existing
+
+    default_title = f"[{form_def.name}] {submission.uid_public} — {target.label}"
+    default_description = _render_submission_text(submission)
+    # 'Standard' par défaut (et non un libellé personnalisé) pour que le
+    # ticket tombe dans pool_standard côté solver_dashboard si aucune
+    # catégorie n'est configurée — les catégories libres non reconnues y
+    # resteraient invisibles dans l'Espace Tech.
+    category = _render_template_or_default(target.ticket_category_template, flat_data, 'Standard')
+    title = _render_template_or_default(target.ticket_title_template, flat_data, default_title)
+    description = _render_template_or_default(target.ticket_description_template, flat_data, default_description)
 
     ticket = Ticket(
         uid_public=uid,
-        title=f"[{form_def.name}] {submission.uid_public}",
-        description=_render_submission_text(submission),
+        title=title,
+        description=description,
         author_id=submission.author_id,
-        target_service=form_def.target_service,
+        target_service=target.target_service,
         status=TicketStatus.PENDING,
-        # 'Standard' (et non un libellé personnalisé) pour que le ticket tombe
-        # dans pool_standard côté solver_dashboard — les catégories libres n'y
-        # sont pas reconnues et resteraient invisibles dans l'Espace Tech. Le
-        # nom du formulaire reste visible dans le titre du ticket.
-        category_ticket='Standard',
+        category_ticket=category,
         service_demandeur=submission.author.service if submission.author else None,
         created_at=datetime.utcnow(),
     )
 
-    if submission.files:
+    # Champs mappés vers des colonnes structurées du Ticket (ex: FCPI ->
+    # materiel_list, new_user_acces...), en plus de la description générique.
+    for field in form_def.fields:
+        if field.maps_to_ticket_field:
+            value = flat_data.get(field.name) or None
+            # new_user_date est un DateTime côté Ticket (comme
+            # Recruitment.date_entree dans l'ancien FCPI) — un champ DATE du
+            # moteur stocke une chaîne "AAAA-MM-JJ" brute, à convertir.
+            if value and field.field_type == FormFieldType.DATE and field.maps_to_ticket_field == 'new_user_date':
+                try:
+                    value = datetime.strptime(value, '%Y-%m-%d')
+                except ValueError:
+                    value = None
+            setattr(ticket, field.maps_to_ticket_field, value)
+
+    # Colonnes structurées calculées à partir de PLUSIEURS champs combinés
+    # (ex: new_user_fullname = "$nom_agent $prenom_agent"), non exprimables
+    # par le mapping 1:1 ci-dessus. Appliqué à tous les tickets de la
+    # soumission, comme l'ancien fcpi.py qui les fixait identiquement pour
+    # chacun des 4 tickets créés.
+    for column, tmpl in form_def.get_structured_templates().items():
+        if column in TICKET_FIELD_MAPPING_CHOICES and hasattr(ticket, column):
+            rendered = _render_template_or_default(tmpl, flat_data, None)
+            if rendered:
+                setattr(ticket, column, rendered)
+
+    included_fields = target.get_included_file_fields()
+    files_to_copy = submission.files if included_fields is None \
+        else [f for f in submission.files if f.field_name in included_fields]
+
+    if files_to_copy:
         base = os.path.join(current_app.root_path, 'static', 'uploads')
         src_dir = os.path.join(base, 'forms', form_def.slug, submission.uid_public)
         dest_dir = os.path.join(base, 'tickets', uid)
         ticket_files = []
         if os.path.exists(src_dir):
             os.makedirs(dest_dir, exist_ok=True)
-            for f in submission.files:
+            for f in files_to_copy:
                 src = os.path.join(src_dir, f.stored_filename)
                 if os.path.exists(src):
                     shutil.copy2(src, dest_dir)
@@ -116,13 +193,30 @@ def _create_ticket_from_submission(submission):
 
     db.session.add(ticket)
     db.session.flush()
-    submission.ticket_id = ticket.id
     return ticket
 
 
+def _create_tickets_from_submission(submission):
+    """Crée un Ticket par FormDispatchTarget dont la condition est satisfaite.
+    Idempotent (safe à rappeler)."""
+    data = submission.get_data()
+    already = set(submission.get_ticket_ids())
+    for target in submission.form.dispatch_targets:
+        if not target.is_satisfied(data):
+            continue
+        ticket = _create_one_ticket(submission, target)
+        if ticket.id not in already:
+            submission.add_ticket_id(ticket.id)
+            already.add(ticket.id)
+            from app.routes.tickets import get_service_emails, notify_solvers_new_ticket
+            send_service_alert(ticket, get_service_emails(target.target_service))
+            notify_solvers_new_ticket(ticket)
+
+
 def _finalize_submission(submission):
-    """Marque la soumission comme terminée, notifie l'auteur, et crée un Ticket
-    réel si le formulaire a un target_service (sinon rien de plus ne se passe)."""
+    """Marque la soumission comme terminée, notifie l'auteur, et crée les
+    Ticket(s) réels pour chaque destinataire dont la condition est satisfaite
+    (aucun destinataire configuré = pas de Ticket, juste DONE + notification)."""
     submission.status = FormSubmissionStatus.DONE
     db.session.add(Notification(
         user=submission.author,
@@ -130,8 +224,8 @@ def _finalize_submission(submission):
         category='success',
         link=url_for('forms.view_submission', id=submission.id)
     ))
-    if submission.form.target_service:
-        _create_ticket_from_submission(submission)
+    if submission.form.dispatch_targets:
+        _create_tickets_from_submission(submission)
 
 
 @forms_bp.route('/<slug>/new', methods=['GET', 'POST'])
@@ -141,6 +235,11 @@ def new_submission(slug):
     if not form_def.is_active:
         abort(404)
 
+    if form_def.manager_only:
+        role = str(current_user.role.value).upper()
+        if not ('MANAGER' in role or 'DIRECTEUR' in role or 'ADMIN' in role):
+            return render_template('errors/catdance.html'), 403
+
     if request.method == 'POST':
         today_str = datetime.now().strftime('%Y%m%d')
         count = FormSubmission.query.filter(
@@ -148,20 +247,34 @@ def new_submission(slug):
         ).count() + 1
         uid = f"FRM-{slug}-{today_str}-{str(count).zfill(3)}"
 
+        # Les champs sont traités dans l'ordre (order_index) et `data` est
+        # construit au fur et à mesure : un champ conditionnel doit référencer
+        # un champ qui le précède dans l'ordre (convention naturelle de
+        # l'éditeur — on ajoute le champ déclencheur avant le champ dépendant).
+        # Un champ non visible n'est ni exigé, ni lu depuis le formulaire soumis.
         data = {}
         errors = []
         for field in form_def.fields:
             if field.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE):
                 continue
-            value = request.form.get(field.name, '').strip()
-            if field.is_required and not value:
-                errors.append(f"Le champ « {field.label} » est obligatoire.")
+            visible = field.is_visible(data)
+            if field.field_type == FormFieldType.MULTI_SELECT:
+                values = request.form.getlist(field.name) if visible else []
+                if visible and field.is_required and not values:
+                    errors.append(f"Le champ « {field.label} » est obligatoire.")
+                data[field.name] = values
+                continue
             if field.field_type == FormFieldType.CHECKBOX:
-                value = bool(request.form.get(field.name))
+                data[field.name] = bool(request.form.get(field.name)) if visible else False
+                continue
+            value = request.form.get(field.name, '').strip() if visible else ''
+            if visible and field.is_required and not value:
+                errors.append(f"Le champ « {field.label} » est obligatoire.")
             data[field.name] = value
 
         file_fields = [f for f in form_def.fields if f.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE)]
-        for field in file_fields:
+        visible_file_fields = [f for f in file_fields if f.is_visible(data)]
+        for field in visible_file_fields:
             files = request.files.getlist(field.name)
             files = [f for f in files if f and f.filename]
             if field.is_required and not files:
@@ -172,20 +285,21 @@ def new_submission(slug):
                 flash(e, "danger")
             return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form)
 
+        initial_index = _first_eligible_step_index(form_def, current_user, 0)
         submission = FormSubmission(
             uid_public=uid,
             form_definition_id=form_def.id,
             author=current_user,
-            current_step_index=0,
+            current_step_index=initial_index,
             status=FormSubmissionStatus.IN_PROGRESS,
         )
         submission.set_data(data)
         db.session.add(submission)
         db.session.flush()
 
-        if file_fields:
+        if visible_file_fields:
             upload_path = _upload_dir(slug, uid)
-            for field in file_fields:
+            for field in visible_file_fields:
                 for f in request.files.getlist(field.name):
                     if f and f.filename:
                         stored_name = secure_filename(f.filename)
@@ -197,7 +311,7 @@ def new_submission(slug):
                             stored_filename=stored_name,
                         ))
 
-        if form_def.steps:
+        if initial_index < len(form_def.steps):
             _notify_step_validators(submission, submission.current_step)
             flash(f"Formulaire soumis ({uid}). En attente de validation.", "success")
         else:
@@ -250,17 +364,20 @@ def validate_submission(id, action):
 
     if action == 'refuse':
         submission.status = FormSubmissionStatus.REFUSED
-        submission.refusal_reason = request.form.get('refusal_reason', 'Refusé.')
+        reason = request.form.get('refusal_reason', 'Refusé.')
+        submission.refusal_reason = f"Refusé par {current_user.fullname} : {reason}"
         db.session.add(Notification(
             user=submission.author,
             message=f"Votre formulaire {submission.uid_public} a été refusé.",
             category='danger',
             link=url_for('forms.view_submission', id=submission.id)
         ))
+        if submission.author and submission.author.email:
+            send_form_refused_notification(submission, submission.author.email)
         flash("Soumission refusée.", "warning")
 
     elif action == 'validate':
-        next_index = submission.current_step_index + 1
+        next_index = _first_eligible_step_index(submission.form, submission.author, submission.current_step_index + 1)
         if next_index < len(submission.form.steps):
             submission.current_step_index = next_index
             _notify_step_validators(submission, submission.current_step)

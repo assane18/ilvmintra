@@ -173,6 +173,18 @@
                          <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
                     </a>
 
+                    {% if current_user.role.value in ['DIRECTEUR', 'ADMIN'] %}
+                    <a href="{{ url_for('tickets.stats_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Statistiques
+                    </a>
+                    {% endif %}
+
+                    {% if current_user.role.value == 'ADMIN' %}
+                    <a href="{{ url_for('main.admin_dashboard') }}" class="px-3 py-1.5 rounded-md text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-2">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i> Administration
+                    </a>
+                    {% endif %}
+
                 </div>
             </div>
 
@@ -227,8 +239,8 @@
         <!-- Grille Services -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto mb-16">
             
-            <!-- Carte Informatique -->
-            <a href="{{ url_for('tickets.new_ticket', service_name='INFO') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Informatique (basculée vers le moteur de formulaires — pilote info-v2) -->
+            <a href="{{ url_for('forms.new_submission', slug='info-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="monitor-cog" class="w-24 h-24 text-blue-600"></i>
                 </div>
@@ -243,8 +255,8 @@
             </a>
 
 
-            <!-- Carte DRH (NOUVELLE) -->
-            <a href="{{ url_for('tickets.new_ticket', service_name='DRH') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte DRH (basculée vers le moteur de formulaires — pilote drh-v2) -->
+            <a href="{{ url_for('forms.new_submission', slug='drh-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="file-stack" class="w-24 h-24 text-pink-500"></i>
                 </div>
@@ -273,8 +285,8 @@
                 </div>
             </a>
 
-            <!-- Carte Technique -->
-            <a href="{{ url_for('tickets.new_ticket', service_name='TECH') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Technique (basculée vers le moteur de formulaires — pilote tech-v2) -->
+            <a href="{{ url_for('forms.new_submission', slug='tech-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="wrench" class="w-24 h-24 text-orange-600"></i>
                 </div>
@@ -288,8 +300,8 @@
                 </div>
             </a>
 
-            <!-- Carte Généraux -->
-            <a href="{{ url_for('tickets.new_ticket', service_name='GEN') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Généraux (basculée vers le moteur de formulaires — pilote generaux-v2) -->
+            <a href="{{ url_for('forms.new_submission', slug='generaux-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="box" class="w-24 h-24 text-emerald-600"></i>
                 </div>
@@ -305,7 +317,8 @@
 
 
             <!-- CARTE IMAGO -->
-            <a href="{{ url_for('tickets.new_ticket', service_name='IMAGO') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Dépannage Imago (basculée vers le moteur de formulaires — pilote imago-v2) -->
+            <a href="{{ url_for('forms.new_submission', slug='imago-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="layers" class="w-24 h-24 text-indigo-600"></i>
                 </div>
@@ -337,8 +350,8 @@
                 </div>
             </a>
 
-            <!-- Carte Demande Matériel (RESTREINT MANAGER/DIRECTEUR) -->
-            <a href="{{ url_for('tickets.new_ticket', service_name='MATERIEL') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Demande Matériel (RESTREINT MANAGER/DIRECTEUR) — basculée vers le moteur de formulaires, pilote materiel-v2 -->
+            <a href="{{ url_for('forms.new_submission', slug='materiel-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="monitor-smartphone" class="w-24 h-24 text-teal-600"></i>
                 </div>
@@ -354,7 +367,12 @@
                 </div>
             </a>
 
-            <!-- Carte FCPI (Agent Recruté) - PIÈGE CATDANCE -->
+            <!-- Carte FCPI (Agent Recruté) - PIÈGE CATDANCE
+                 Bascule vers fcpi-v2 tentée le 2026-09-16 puis annulée : le moteur applique maps_to_ticket_field
+                 et structured_field_templates_json à TOUS les tickets d'une soumission multi-destinataires, alors
+                 que le legacy (fcpi.py::validate_fcpi) ne renseignait materiel_list/lieu_installation/
+                 destinataire_materiel QUE sur les tickets INFO (et lieu_installation sur SECU) — pas de mécanisme
+                 de scoping par destinataire dans le moteur actuel. fcpi-v2 repassé en is_active=False en attendant. -->
             <a href="{{ url_for('fcpi.check_access') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="user-plus" class="w-24 h-24 text-pink-600"></i>
@@ -371,8 +389,8 @@
                 </div>
             </a>
 
-            <!-- Carte Dossier de Séjour -->
-            <a href="{{ url_for('sejour.new_sejour') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Dossier de Séjour (basculée vers le moteur de formulaires — pilote sejour-v2 ; limite acceptée : pas d'upload de dossier signé à la validation, DRH/DAF/SG reçoivent l'original) -->
+            <a href="{{ url_for('forms.new_submission', slug='sejour-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="map-pin" class="w-24 h-24 text-teal-600"></i>
                 </div>
@@ -386,8 +404,8 @@
                 </div>
             </a>
 
-            <!-- Carte Publication Actualités (Manager/Directeur/Admin) -->
-            <a href="{{ url_for('publication.new_publication') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+            <!-- Carte Publication Actualités (Manager/Directeur/Admin) — basculée vers le moteur de formulaires, pilote publication-v2 -->
+            <a href="{{ url_for('forms.new_submission', slug='publication-v2') }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
                 <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                     <i data-lucide="newspaper" class="w-24 h-24 text-sky-600"></i>
                 </div>
@@ -402,6 +420,40 @@
                     </span>
                 </div>
             </a>
+
+            {% for form_def in active_forms %}
+            {% if form_def.manager_only %}
+            <a href="{{ url_for('forms.new_submission', slug=form_def.slug) }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="clipboard-list" class="w-24 h-24 text-indigo-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">{{ form_def.name }}</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{{ form_def.description or "Formulaire" }}</p>
+                <div class="mt-4 flex items-center gap-2">
+                    <span class="bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-300 text-[10px] font-bold px-2 py-1 rounded border border-slate-200 dark:border-slate-600 uppercase">
+                        Manager/Directeur Only
+                    </span>
+                </div>
+            </a>
+            {% else %}
+            <a href="{{ url_for('forms.new_submission', slug=form_def.slug) }}" class="card-service bg-white/95 dark:bg-slate-800/90 backdrop-blur-sm p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden">
+                <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <i data-lucide="clipboard-list" class="w-24 h-24 text-indigo-600"></i>
+                </div>
+                <div class="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                    <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+                </div>
+                <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">{{ form_def.name }}</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">{{ form_def.description or "Formulaire" }}</p>
+                <div class="mt-4 flex items-center text-indigo-600 dark:text-indigo-400 text-sm font-bold opacity-0 group-hover:opacity-100 transition-opacity transform translate-y-2 group-hover:translate-y-0">
+                    Faire une demande <i data-lucide="arrow-right" class="w-4 h-4 ml-1"></i>
+                </div>
+            </a>
+            {% endif %}
+            {% endfor %}
 
         </div>
 

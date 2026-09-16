@@ -1,9 +1,16 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
-from app.models import UserRole, Ticket
-from app import db 
+from app.models import UserRole, Ticket, FormDefinition, User
+from app import db
+from app.decorators import admin_required
 
 main_bp = Blueprint('main', __name__)
+
+# Pilotes du moteur de formulaires déjà basculés en direct avec leur propre
+# tuile dédiée dans portal.html (icône/texte historique conservés, juste le
+# lien qui pointe désormais vers forms.new_submission) — à exclure de la
+# boucle active_forms générique ci-dessous pour ne pas les afficher deux fois.
+LIVE_PILOT_SLUGS = {'info-v2', 'imago-v2', 'drh-v2', 'materiel-v2', 'tech-v2', 'generaux-v2', 'sejour-v2', 'publication-v2'}
 
 @main_bp.route('/')
 def index():
@@ -18,8 +25,12 @@ def user_portal():
     recent_tickets = Ticket.query.filter_by(author_id=current_user.id)\
                                  .order_by(Ticket.created_at.desc())\
                                  .limit(15).all()
-    
-    return render_template('portal.html', user=current_user, tickets=recent_tickets)
+
+    active_forms = FormDefinition.query.filter_by(is_active=True)\
+        .filter(FormDefinition.slug.notin_(LIVE_PILOT_SLUGS))\
+        .order_by(FormDefinition.name).all()
+
+    return render_template('portal.html', user=current_user, tickets=recent_tickets, active_forms=active_forms)
 
 @main_bp.route('/my_history')
 @login_required
@@ -47,11 +58,14 @@ def my_history():
 
 @main_bp.route('/admin/dashboard')
 @login_required
+@admin_required
 def admin_dashboard():
-    # Sécurité : Admin Only
-    if 'ADMIN' not in str(current_user.role.value).upper():
-        return redirect(url_for('main.user_portal'))
-    return redirect(url_for('users.list_users'))
+    return render_template(
+        'admin_hub.html',
+        users_count=User.query.count(),
+        forms_count=FormDefinition.query.count(),
+        active_forms_count=FormDefinition.query.filter_by(is_active=True).count(),
+    )
 
 @main_bp.route('/dashboard')
 @login_required

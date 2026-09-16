@@ -9,7 +9,11 @@ from datetime import datetime
 import pytz
 import json
 import os
+import io
 import socket
+import statistics
+from collections import defaultdict, Counter
+from dateutil.relativedelta import relativedelta
 import pandas as pd
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
@@ -42,6 +46,30 @@ def create_notification(user, message, category='info', link=None):
 def get_hostname_from_ip(ip_address):
     try: return socket.gethostbyaddr(ip_address)[0]
     except: return ip_address
+
+def notify_solvers_new_ticket(ticket):
+    """Notifications in-app pour les solvers/admins concernés par un nouveau
+    ticket PENDING (prise en charge directe, sans étape de validation) —
+    factorisé pour être appelé aussi bien par la création historique
+    (new_ticket) que par le moteur de formulaires (forms.py::
+    _create_tickets_from_submission), qui ne créait jusqu'ici que l'alerte
+    email (send_service_alert) sans notification in-app."""
+    service_enum = ticket.target_service
+    uid = ticket.uid_public
+    solvers = User.query.filter(User.role.in_([UserRole.SOLVER, UserRole.ADMIN])).all()
+    for s in solvers:
+        if s.role == UserRole.ADMIN:
+            create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
+            continue
+
+        allowed = s.get_allowed_services()
+        if service_enum == ServiceType.IMAGO:
+            if 'IMAGO' in allowed or 'GS-IMAGO' in allowed:
+                create_notification(s, f"Urgence Imago : {uid}", 'warning', url_for('tickets.solver_dashboard'))
+        else:
+            target_str = str(service_enum.value) if hasattr(service_enum, 'value') else str(service_enum)
+            if target_str in allowed or service_enum.name in allowed:
+                create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
 
 def safe_role_str(user):
     if not user or not user.role: return ""
@@ -316,20 +344,7 @@ def new_ticket(service_name):
                      create_notification(u, f"Demande Matériel à valider : {uid}", 'warning', url_for('tickets.manager_dashboard'))
 
         elif status == TicketStatus.PENDING:
-            solvers = User.query.filter(User.role.in_([UserRole.SOLVER, UserRole.ADMIN])).all()
-            for s in solvers:
-                 if s.role == UserRole.ADMIN:
-                     create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
-                     continue
-                 
-                 allowed = s.get_allowed_services()
-                 if service_enum == ServiceType.IMAGO:
-                     if 'IMAGO' in allowed or 'GS-IMAGO' in allowed:
-                         create_notification(s, f"Urgence Imago : {uid}", 'warning', url_for('tickets.solver_dashboard'))
-                 else:
-                     target_str = str(service_enum.value) if hasattr(service_enum, 'value') else str(service_enum)
-                     if target_str in allowed or service_enum.name in allowed:
-                         create_notification(s, f"Nouveau ticket : {uid}", 'info', url_for('tickets.solver_dashboard'))
+            notify_solvers_new_ticket(t)
 
         flash(f'Demande {uid} enregistrée.', 'success')
         return redirect(url_for('main.user_portal'))
@@ -582,12 +597,417 @@ def manager_dashboard():
         flash(f"Erreur Dashboard: {e}", "danger")
         return redirect(url_for('main.user_portal'))
 
+
+# --- STATISTIQUES (DIRECTEUR/ADMIN) ---
+
+_SERVICE_NAME_TO_VALUE = {s.name: s.value for s in ServiceType}
+
+
+def _canon_service(tok):
+    """Normalise un token de service (parfois stocké en .name, parfois en
+    .value selon l'endroit du code — incohérence préexistante) vers la forme
+    .value canonique, pour pouvoir comparer/regrouper de façon fiable."""
+    if tok is None:
+        return None
+    if hasattr(tok, 'value'):
+        tok = tok.value
+    return _SERVICE_NAME_TO_VALUE.get(tok, tok)
+
+
+def _get_stats_scope(user):
+    """Périmètre des services visibles pour le dashboard/export Statistiques.
+    None = illimité (ADMIN). Sinon liste triée de services (valeurs
+    ServiceType), union des services d'origine et des services gérés — même
+    normalisation que manager_dashboard() (dont le cas spécial 'GS-DRH' ->
+    'DRH', tickets.py:502-513), réutilisée ici pour ne jamais faire diverger
+    la sécurité entre les deux dashboards."""
+    if 'ADMIN' in safe_role_str(user):
+        return None
+    my_origins = user.get_origin_services() or []
+    raw_targets = user.get_allowed_services() or []
+    valid_names = [s.name for s in ServiceType]
+    valid_values = [s.value for s in ServiceType]
+    my_targets = []
+    for t in raw_targets:
+        if t == 'GS-DRH':
+            my_targets.append('DRH')
+        elif t in valid_names or t in valid_values:
+            my_targets.append(t)
+    combined = {_canon_service(t) for t in (list(my_origins) + my_targets)}
+    combined.discard(None)
+    return sorted(combined)
+
+
+def _stats_period_bounds(period, start_str, end_str, now):
+    today_end = now.replace(hour=23, minute=59, second=59, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    if period == 'this_month':
+        return month_start, today_end
+    if period == 'last_3_months':
+        return month_start - relativedelta(months=2), today_end
+    if period == 'this_year':
+        return now.replace(month=1, day=1, hour=0, minute=0, second=0, microsecond=0), today_end
+    if period == 'custom' and start_str and end_str:
+        try:
+            start = datetime.strptime(start_str, '%Y-%m-%d')
+            end = datetime.strptime(end_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59)
+            return start, end
+        except ValueError:
+            pass
+    # défaut : last_12_months
+    return month_start - relativedelta(months=11), today_end
+
+
+def _empty_stats_entry():
+    return {
+        'received': 0, 'closed': 0,
+        'assign_avg_h': None, 'assign_median_h': None,
+        'close_avg_h': None, 'close_median_h': None,
+        'status_counts': {}, 'refusal_rate': 0,
+        'top_categories': [], 'monthly': {},
+    }
+
+
+def _compute_stats(scope_services, period_start, period_end, monthly_start, monthly_end):
+    """Calcule les métriques par service (KPI de la période + évolution
+    mensuelle sur sa propre fenêtre, indépendante de `period`). Deux requêtes
+    "lean" (with_entities, pas l'ORM complet) plutôt qu'une par service, pour
+    éviter le N+1 — voir plan Statistiques. scope_services=None -> illimité."""
+    window_start = min(period_start, monthly_start)
+    window_end = max(period_end, monthly_end)
+
+    q_created = Ticket.query.with_entities(
+        Ticket.target_service, Ticket.status, Ticket.created_at,
+        Ticket.assigned_at, Ticket.category_ticket,
+    ).filter(Ticket.created_at.between(window_start, window_end))
+    if scope_services is not None:
+        q_created = q_created.filter(Ticket.target_service.in_(scope_services))
+
+    q_closed = Ticket.query.with_entities(
+        Ticket.target_service, Ticket.created_at, Ticket.closed_at,
+    ).filter(Ticket.status == TicketStatus.DONE, Ticket.closed_at.between(window_start, window_end))
+    if scope_services is not None:
+        q_closed = q_closed.filter(Ticket.target_service.in_(scope_services))
+
+    def label(v):
+        return v.value if hasattr(v, 'value') else str(v)
+
+    created_by_service = defaultdict(list)
+    for row in q_created.all():
+        created_by_service[label(row.target_service)].append(row)
+
+    closed_by_service = defaultdict(list)
+    for row in q_closed.all():
+        closed_by_service[label(row.target_service)].append(row)
+
+    services = sorted(set(created_by_service) | set(closed_by_service))
+    stats = {}
+    for svc in services:
+        c_rows = [r for r in created_by_service[svc] if period_start <= r.created_at <= period_end]
+        d_rows = [r for r in closed_by_service[svc] if period_start <= r.closed_at <= period_end]
+
+        assign_delays = [(r.assigned_at - r.created_at).total_seconds() / 3600 for r in c_rows if r.assigned_at]
+        close_delays = [(r.closed_at - r.created_at).total_seconds() / 3600 for r in d_rows]
+        status_counts = Counter(label(r.status) for r in c_rows)
+        refused = status_counts.get(TicketStatus.REFUSED.value, 0)
+        top_categories = Counter(r.category_ticket or 'Non renseigné' for r in c_rows).most_common(3)
+
+        monthly = defaultdict(lambda: {'received': 0, 'closed': 0})
+        for r in created_by_service[svc]:
+            if monthly_start <= r.created_at <= monthly_end:
+                monthly[r.created_at.strftime('%Y-%m')]['received'] += 1
+        for r in closed_by_service[svc]:
+            if monthly_start <= r.closed_at <= monthly_end:
+                monthly[r.closed_at.strftime('%Y-%m')]['closed'] += 1
+
+        stats[svc] = {
+            'received': len(c_rows),
+            'closed': len(d_rows),
+            'assign_avg_h': round(statistics.mean(assign_delays), 1) if assign_delays else None,
+            'assign_median_h': round(statistics.median(assign_delays), 1) if assign_delays else None,
+            'close_avg_h': round(statistics.mean(close_delays), 1) if close_delays else None,
+            'close_median_h': round(statistics.median(close_delays), 1) if close_delays else None,
+            'status_counts': dict(status_counts),
+            'refusal_rate': round(refused / len(c_rows) * 100, 1) if c_rows else 0,
+            'top_categories': top_categories,
+            'monthly': dict(sorted(monthly.items())),
+        }
+    return stats
+
+
+# Sous-ensemble "Services Supports" de ServiceType (models.py:26-34) — les
+# catégories techniques susceptibles de recevoir des tickets (portail,
+# FCPI, Séjour...), à distinguer des ~30 "Services Établissements" (unités
+# organisationnelles, jamais des cibles de ticket). Certains support n'ont
+# pas encore de ticket réel (ex: SECU, TECH) mais restent des options
+# pertinentes du filtre — pas seulement ceux ayant déjà des données.
+_SUPPORT_SERVICES = [ServiceType.INFO, ServiceType.DAF, ServiceType.GEN, ServiceType.TECH,
+                      ServiceType.DRH, ServiceType.SECU, ServiceType.AUTRE, ServiceType.IMAGO]
+
+
+def _relevant_services():
+    """Services pertinents pour le filtre du dashboard Statistiques : union
+    des Services Supports (toujours proposés, même sans ticket) et de tout
+    autre service ayant déjà reçu un ticket (ex: SG, catégorisé "établissement"
+    dans l'enum mais réellement utilisé par le dispatch Séjour)."""
+    values = {s.value for s in _SUPPORT_SERVICES}
+    rows = db.session.query(Ticket.target_service).distinct().all()
+    for (svc,) in rows:
+        if svc is not None:
+            values.add(svc.value if hasattr(svc, 'value') else str(svc))
+    return sorted(values)
+
+
+def _resolve_display_services(scope, requested_list):
+    """Applique la sélection explicite (?services=A&services=B, une case à
+    cocher = un paramètre) par-dessus le périmètre autorisé. Intersection
+    stricte côté serveur pour un Directeur — ne jamais faire confiance à la
+    liste cochée côté client."""
+    requested = [_canon_service(s) for s in (requested_list or []) if s]
+    if scope is not None:
+        if requested:
+            allowed = sorted(set(scope) & set(requested))
+            if not allowed:
+                flash("Aucun service sélectionné n'est dans votre périmètre.", "warning")
+                allowed = sorted(scope)
+        else:
+            allowed = sorted(scope)
+    else:
+        allowed = sorted(set(requested)) if requested else None
+    return allowed
+
+
+@tickets_bp.route('/stats')
+@login_required
+@nocache
+def stats_dashboard():
+    if not check_permission(['DIRECTEUR']):
+        return render_template('errors/catdance.html'), 403
+
+    scope = _get_stats_scope(current_user)
+    if scope is not None and not scope:
+        flash("Aucun service ne vous est actuellement assigné.", "warning")
+        return render_template('tickets/stats_dashboard.html', sections=[], scope=[], period='last_12_months',
+                                start='', end='', selected_services=[])
+
+    period = request.args.get('period', 'last_12_months')
+    start_str = request.args.get('start', '')
+    end_str = request.args.get('end', '')
+    requested_raw = request.args.getlist('services')
+
+    now = get_paris_time()
+    period_start, period_end = _stats_period_bounds(period, start_str, end_str, now)
+    monthly_start = (now.replace(day=1, hour=0, minute=0, second=0, microsecond=0) - relativedelta(months=11))
+    monthly_end = now
+
+    display_services = _resolve_display_services(scope, requested_raw)
+
+    stats = _compute_stats(display_services, period_start, period_end, monthly_start, monthly_end)
+
+    if display_services is None:
+        # ADMIN sans sélection explicite : uniquement les services ayant des
+        # données sur la fenêtre, pour éviter ~30 sections vides.
+        display_services = sorted(stats.keys())
+
+    sections = []
+    for svc in display_services:
+        sections.append({'service': svc, **stats.get(svc, _empty_stats_entry())})
+
+    return render_template(
+        'tickets/stats_dashboard.html',
+        sections=sections,
+        scope=scope,
+        all_services=_relevant_services() if scope is None else scope,
+        period=period, start=start_str, end=end_str,
+        selected_services=display_services or [],
+        period_start=period_start, period_end=period_end,
+    )
+
+
+def _sanitize_sheet_name(name, used):
+    """Nom de feuille Excel valide (31 car. max, sans : \\ / ? * [ ]) et
+    unique dans le classeur (suffixe numérique en cas de collision après
+    troncature)."""
+    invalid = set(':\\/?*[]')
+    cleaned = ''.join(c for c in str(name) if c not in invalid).strip() or 'Service'
+    cleaned = cleaned[:31]
+    base, n = cleaned, 1
+    while cleaned in used:
+        suffix = f'_{n}'
+        cleaned = base[:31 - len(suffix)] + suffix
+        n += 1
+    used.add(cleaned)
+    return cleaned
+
+
+@tickets_bp.route('/stats/export')
+@login_required
+def export_stats():
+    if not check_permission(['DIRECTEUR']):
+        return render_template('errors/catdance.html'), 403
+
+    scope = _get_stats_scope(current_user)
+    if scope is not None and not scope:
+        flash("Aucun service ne vous est actuellement assigné.", "warning")
+        return redirect(url_for('tickets.stats_dashboard'))
+
+    period = request.args.get('period', 'last_12_months')
+    start_str = request.args.get('start', '')
+    end_str = request.args.get('end', '')
+    requested_raw = request.args.getlist('services')
+
+    now = get_paris_time()
+    period_start, period_end = _stats_period_bounds(period, start_str, end_str, now)
+    monthly_start = (now.replace(day=1, hour=0, minute=0, second=0, microsecond=0) - relativedelta(months=11))
+    monthly_end = now
+
+    # Re-validation stricte côté serveur — indépendante de ce qu'affichait la
+    # page, jamais de confiance dans la liste transmise (surtout pour un
+    # Directeur : ne jamais exporter un service hors de son périmètre).
+    export_services = _resolve_display_services(scope, requested_raw)
+    stats = _compute_stats(export_services, period_start, period_end, monthly_start, monthly_end)
+    if export_services is None:
+        export_services = sorted(stats.keys()) if stats else ([s.value for s in ServiceType])
+
+    if not export_services:
+        flash("Aucune donnée à exporter pour cette sélection.", "warning")
+        return redirect(url_for('tickets.stats_dashboard'))
+
+    # --- Feuille Résumé ---
+    summary_rows = []
+    for svc in export_services:
+        s = stats.get(svc, _empty_stats_entry())
+        top_cats = s['top_categories'] + [('', '')] * 3
+        summary_rows.append({
+            'Service': svc,
+            'Periode': f"{period_start.strftime('%Y-%m-%d')} au {period_end.strftime('%Y-%m-%d')}",
+            'Tickets_Recus': s['received'],
+            'Tickets_Clotures': s['closed'],
+            'Delai_Moyen_Assignation_h': s['assign_avg_h'],
+            'Delai_Median_Assignation_h': s['assign_median_h'],
+            'Delai_Moyen_Cloture_h': s['close_avg_h'],
+            'Delai_Median_Cloture_h': s['close_median_h'],
+            'Taux_Refus_%': s['refusal_rate'],
+            'Top_Categorie_1': top_cats[0][0], 'Top_Categorie_2': top_cats[1][0], 'Top_Categorie_3': top_cats[2][0],
+        })
+    df_summary = pd.DataFrame(summary_rows)
+
+    # --- Feuille Evolution_Mensuelle ---
+    monthly_rows = []
+    for svc in export_services:
+        s = stats.get(svc, _empty_stats_entry())
+        for month, vals in s['monthly'].items():
+            monthly_rows.append({
+                'Service': svc, 'Mois': month,
+                'Tickets_Recus': vals['received'], 'Tickets_Clotures': vals['closed'],
+            })
+    df_monthly = pd.DataFrame(monthly_rows)
+
+    # --- Détail des tickets bruts (union créés/clôturés sur la période) ---
+    detail_tickets = Ticket.query.filter(
+        Ticket.target_service.in_(export_services),
+        db.or_(
+            Ticket.created_at.between(period_start, period_end),
+            db.and_(Ticket.status == TicketStatus.DONE, Ticket.closed_at.between(period_start, period_end)),
+        )
+    ).all()
+
+    detail_by_service = defaultdict(list)
+    for t in detail_tickets:
+        assign_delay = round((t.assigned_at - t.created_at).total_seconds() / 3600, 1) if t.assigned_at else None
+        close_delay = round((t.closed_at - t.created_at).total_seconds() / 3600, 1) if t.closed_at else None
+        detail_by_service[t.get_safe_target_service()].append({
+            'Reference': t.uid_public,
+            'Date_Creation': t.created_at.strftime('%Y-%m-%d %H:%M'),
+            'Date_Prise_en_charge': t.assigned_at.strftime('%Y-%m-%d %H:%M') if t.assigned_at else '',
+            'Delai_Assignation_h': assign_delay,
+            'Date_Cloture': t.closed_at.strftime('%Y-%m-%d %H:%M') if t.closed_at else '',
+            'Delai_Cloture_h': close_delay,
+            'Statut': t.get_safe_status(),
+            'Categorie': t.category_ticket,
+            'Titre': t.title,
+            'Demandeur': t.author.fullname if t.author else '',
+            'Resoluteur': t.solver.fullname if t.solver else '',
+        })
+
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df_summary.to_excel(writer, sheet_name='Résumé', index=False)
+        if not df_monthly.empty:
+            df_monthly.to_excel(writer, sheet_name='Evolution_Mensuelle', index=False)
+
+        used_names = {'Résumé', 'Evolution_Mensuelle'}
+        if len(export_services) > 15:
+            # Trop de services pour une feuille par service (cas "tous les
+            # services" côté Admin) : une seule feuille avec colonne Service.
+            all_detail = []
+            for svc in export_services:
+                for row in detail_by_service.get(svc, []):
+                    all_detail.append({'Service': svc, **row})
+            pd.DataFrame(all_detail).to_excel(writer, sheet_name='Détail_Tous', index=False)
+        else:
+            for svc in export_services:
+                rows = detail_by_service.get(svc, [])
+                sheet_name = _sanitize_sheet_name(f'Détail_{svc}', used_names)
+                pd.DataFrame(rows).to_excel(writer, sheet_name=sheet_name, index=False)
+
+    buffer.seek(0)
+    filename = f'Statistiques_Tickets_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
+    return send_file(
+        buffer,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=filename,
+    )
+
+
+def _can_validate_ticket(user, t):
+    """Réplique l'éligibilité utilisée pour peupler manager_dashboard()
+    (tickets_n1/tickets_n2) — qui jusqu'ici ne filtrait que l'AFFICHAGE, sans
+    équivalent côté serveur dans manager_action(). Un appel direct à l'URL
+    pouvait donc valider/refuser n'importe quel ticket sans aucun droit."""
+    role_str = safe_role_str(user)
+    if 'ADMIN' in role_str:
+        return True
+    if not ('MANAGER' in role_str or 'DIRECTEUR' in role_str):
+        return False
+
+    if t.status == TicketStatus.VALIDATION_N1:
+        return t.service_demandeur in user.get_origin_services() and t.author_id != user.id
+
+    if t.status in (TicketStatus.VALIDATION_N2, TicketStatus.VALIDATION_DAF_MANAGER):
+        raw_targets = user.get_allowed_services()
+        valid_names = [s.name for s in ServiceType]
+        valid_values = [s.value for s in ServiceType]
+        my_targets = []
+        for tk in (raw_targets or []):
+            if tk == 'GS-DRH':
+                my_targets.append('DRH')
+            elif tk in valid_names or tk in valid_values:
+                my_targets.append(tk)
+
+        target_val = t.target_service.value if hasattr(t.target_service, 'value') else str(t.target_service)
+        if target_val not in my_targets:
+            return False
+
+        if t.status == TicketStatus.VALIDATION_DAF_MANAGER:
+            # Même règle que manager_daf_validate() : réservé au Manager DAF.
+            return 'MANAGER' in role_str
+        return True
+
+    return False
+
+
 @tickets_bp.route('/manager/action/<int:ticket_id>/<action>', methods=['GET', 'POST'])
 @login_required
 def manager_action(ticket_id, action):
     try:
         t = Ticket.query.get_or_404(ticket_id)
-        
+
+        if not _can_validate_ticket(current_user, t):
+            flash("Droits insuffisants pour cette action.", "danger")
+            return redirect(url_for('tickets.manager_dashboard'))
+
         if action == 'validate':
             if t.status == TicketStatus.VALIDATION_N1:
                 if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
@@ -658,6 +1078,8 @@ def take_ticket(ticket_id):
 
         t.solver = current_user
         t.status = TicketStatus.IN_PROGRESS
+        if not t.assigned_at:
+            t.assigned_at = get_paris_time()
         create_notification(t.author, f"Pris en charge par {current_user.fullname}", 'success', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
         
         # --- EMAIL NOTIFICATION (AJOUTÉ) ---
@@ -676,6 +1098,13 @@ def take_ticket(ticket_id):
 def daf_solver_submit(ticket_id):
     try:
         t = Ticket.query.get_or_404(ticket_id)
+
+        # Même règle que l'affichage du bloc "Traitement DAF" dans
+        # tickets/detail.html (ticket.solver_id == current_user.id).
+        if t.solver_id != current_user.id and 'ADMIN' not in safe_role_str(current_user):
+            flash("Seul le technicien en charge du ticket peut soumettre le bon.", "danger")
+            return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
         if 'daf_prepared_file' in request.files:
             file = request.files['daf_prepared_file']
             if file and file.filename != '':
@@ -707,6 +1136,15 @@ def daf_solver_submit(ticket_id):
 def daf_director_sign(ticket_id):
     try:
         t = Ticket.query.get_or_404(ticket_id)
+
+        # Même règle que celle qui filtre les tickets DAF_SIGNATURE dans
+        # manager_dashboard() : réservée à un Directeur (ou Admin) du service DAF.
+        role_str = safe_role_str(current_user)
+        is_daf = 'DAF' in current_user.get_allowed_services()
+        if not (is_daf and ('DIRECTEUR' in role_str or 'ADMIN' in role_str)):
+            flash("Signature réservée au Directeur DAF.", "danger")
+            return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
         if 'daf_signed_file' in request.files:
             file = request.files['daf_signed_file']
             if file and file.filename != '':
@@ -745,6 +1183,15 @@ def daf_director_sign(ticket_id):
 def close_ticket(ticket_id):
     try:
         t = Ticket.query.get_or_404(ticket_id)
+
+        # Même règle que celle qui conditionne l'affichage du bouton "Clôturer"
+        # dans tickets/detail.html (ticket.solver_id == current_user.id) —
+        # jusqu'ici absente côté serveur, donc n'importe quel utilisateur
+        # connecté pouvait clôturer n'importe quel ticket par simple appel direct.
+        if t.solver_id != current_user.id and 'ADMIN' not in safe_role_str(current_user):
+            flash("Seul le technicien en charge du ticket peut le clôturer.", "danger")
+            return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
         t.status = TicketStatus.DONE
         t.closed_at = get_paris_time()
 
@@ -1054,7 +1501,9 @@ def assign_ticket(ticket_id):
 
             t.solver = current_user
             t.status = TicketStatus.IN_PROGRESS
-            
+            if not t.assigned_at:
+                t.assigned_at = get_paris_time()
+
             # --- EMAIL ASSIGNATION (AJOUTÉ) ---
             send_assignment_notification(t, current_user)
             send_message_notification(t, f"Votre ticket a été pris en charge par {current_user.fullname}", t.author)
@@ -1072,6 +1521,8 @@ def assign_ticket(ticket_id):
             if u:
                 t.solver = u
                 t.status = TicketStatus.IN_PROGRESS
+                if not t.assigned_at:
+                    t.assigned_at = get_paris_time()
                 create_notification(u, f"Ticket {t.uid_public} assigné par {current_user.fullname}.", 'info', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
                 
                 # --- EMAIL ASSIGNATION (AJOUTÉ) ---

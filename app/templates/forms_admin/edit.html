@@ -41,19 +41,21 @@
             </div>
 
             <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
-                <p class="label-tiny mb-2">Service destinataire — Espace Tech (optionnel)</p>
-                <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-3">
-                    Une fois toutes les étapes validées (ou immédiatement si le formulaire n'a aucune étape), un Ticket sera créé pour ce service et traité par un Solver dans l'Espace Tech. Laissez vide si ce formulaire ne débouche jamais sur un ticket (il se termine simplement, avec notification de l'auteur).
+                <label class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
+                    <input type="checkbox" name="manager_only" value="1" class="w-4 h-4" {% if form_def.manager_only %}checked{% endif %}>
+                    Réservé aux Manager/Directeur pour la soumission
+                </label>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    Comme "Demande Matériel" — le lien reste visible pour tout le monde sur le portail (avec un badge), mais seuls Manager/Directeur/Admin peuvent réellement soumettre.
                 </p>
-                <div>
-                    <label class="label-tiny">Service destinataire</label>
-                    <select name="target_service" class="input-field">
-                        <option value="">-- Aucun (pas de ticket) --</option>
-                        {% for s in services %}
-                        <option value="{{ s }}" {% if form_def.target_service and form_def.target_service.value == s %}selected{% endif %}>{{ s }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+                <label class="label-tiny">Colonnes Ticket calculées (avancé)</label>
+                <textarea name="structured_field_templates" class="input-field font-mono text-xs" rows="2">{{ form_def.structured_field_templates_json or '' }}</textarea>
+                <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+                    Pour combiner plusieurs champs dans une seule colonne du Ticket (ex: nom + prénom), quand la correspondance simple d'un champ ci-dessous ne suffit pas. Format JSON : <code>{"new_user_fullname": "$nom_agent $prenom_agent"}</code>. Appliqué à tous les tickets créés par ce formulaire. Laisser vide si non utilisé.
+                </p>
             </div>
 
             <button type="submit" class="bg-slate-800 dark:bg-slate-700 text-white font-black py-2 px-5 rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition text-xs uppercase tracking-widest">
@@ -96,6 +98,24 @@
             </button>
         </form>
     </div>
+
+    <!-- DESTINATAIRES -->
+    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Destinataires (Espace Tech)</h2>
+            <button type="button" onclick="addDispatchRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="plus" class="w-4 h-4"></i> Ajouter un destinataire
+            </button>
+        </div>
+        <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-4">Une fois toutes les étapes validées (ou immédiatement si le formulaire n'a aucune étape), un Ticket est créé pour chaque destinataire dont la condition est remplie, traité par un Solver dans l'Espace Tech. Aucun destinataire = pas de Ticket créé, la soumission se termine simplement avec notification de l'auteur.</p>
+        <div id="dispatchContainer" class="space-y-3"></div>
+        <form id="dispatchForm" method="POST" action="{{ url_for('forms_admin.save_dispatch_targets', id=form_def.id) }}">
+            <input type="hidden" name="dispatch_targets_payload" id="dispatchPayload">
+            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest" onclick="return prepareDispatchSubmit()">
+                Enregistrer les destinataires
+            </button>
+        </form>
+    </div>
 </div>
 
 <!-- Ligne de champ (template) -->
@@ -130,6 +150,29 @@
             <button type="button" onclick="moveRow(this, -1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
             <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
             <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+        <div class="col-span-12 grid grid-cols-12 gap-3 items-end pt-2 border-t border-slate-200 dark:border-slate-700">
+            <div class="col-span-5">
+                <label class="label-tiny">Afficher seulement si (optionnel)</label>
+                <select class="input-field f-condition-field">
+                    <option value="">-- Toujours visible --</option>
+                </select>
+            </div>
+            <div class="col-span-5 f-condition-value-wrap">
+                <label class="label-tiny">Valeur attendue (vide = case cochée)</label>
+                <input type="text" class="input-field f-condition-value" placeholder="Ex: Autre">
+            </div>
+            <div class="col-span-2 text-[10px] text-slate-400">Le champ référencé doit être <strong>avant</strong> celui-ci.</div>
+            <div class="col-span-6">
+                <label class="label-tiny">Correspond à la colonne Ticket (optionnel)</label>
+                <select class="input-field f-ticket-mapping">
+                    <option value="">-- Aucune --</option>
+                    {% for c in ticket_field_choices %}
+                    <option value="{{ c }}">{{ c }}</option>
+                    {% endfor %}
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1">La valeur de ce champ alimente aussi directement cette colonne du Ticket créé (en plus de la description).</p>
+            </div>
         </div>
     </div>
 </template>
@@ -171,6 +214,86 @@
             <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
             <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
+        <div class="col-span-12 flex items-center gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <span class="label-tiny mb-0">Ignorer cette étape si le demandeur est déjà :</span>
+            <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                <input type="checkbox" class="s-skip" value="MANAGER"> Manager
+            </label>
+            <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                <input type="checkbox" class="s-skip" value="DIRECTEUR"> Directeur
+            </label>
+            <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                <input type="checkbox" class="s-skip" value="ADMIN"> Admin
+            </label>
+        </div>
+    </div>
+</template>
+
+<!-- Ligne de destinataire (template) -->
+<template id="dispatchRowTemplate">
+    <div class="dispatch-row bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 grid grid-cols-12 gap-3 items-end">
+        <div class="col-span-3">
+            <label class="label-tiny">Libellé</label>
+            <input type="text" class="input-field d-label" placeholder="Ex: DRH">
+        </div>
+        <div class="col-span-3">
+            <label class="label-tiny">Service</label>
+            <select class="input-field d-service">
+                {% for s in services %}
+                <option value="{{ s }}">{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-span-4">
+            <label class="label-tiny">Condition</label>
+            <select class="input-field d-condition">
+                <option value="">Toujours</option>
+                {% for f in form_def.fields if f.field_type.value == 'CHECKBOX' %}
+                <option value="{{ f.name }}">Si « {{ f.label }} » est coché</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-span-2 flex justify-end gap-2">
+            <button type="button" onclick="moveRow(this, -1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
+            <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
+            <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+        </div>
+        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <label class="label-tiny mb-1 block">Fichiers transmis à ce destinataire</label>
+            <select class="input-field d-files-mode">
+                <option value="all">Tous les fichiers de la soumission</option>
+                <option value="selected">Fichiers sélectionnés ci-dessous</option>
+            </select>
+            <div class="d-files-checkboxes mt-2 hidden flex flex-wrap gap-3">
+                {% for f in form_def.fields if f.field_type.value in ['FILE', 'MULTI_FILE'] %}
+                <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    <input type="checkbox" class="d-file-checkbox" value="{{ f.name }}"> {{ f.label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-12 gap-3">
+            <div class="col-span-12">
+                <label class="label-tiny mb-1 block">Personnalisation du Ticket (optionnel — sinon valeurs génériques)</label>
+                <p class="text-[10px] text-slate-400 mb-2">Utilisez <code>$nom_du_champ</code> pour insérer la valeur d'un champ (ex: <code>$type_demande</code>, <code>$nom_agent</code>).</p>
+            </div>
+            <div class="col-span-4">
+                <label class="label-tiny">Catégorie du ticket</label>
+                <input type="text" class="input-field d-ticket-category" placeholder="Ex: Standard, $type_demande">
+            </div>
+            <div class="col-span-4">
+                <label class="label-tiny">Titre du ticket</label>
+                <input type="text" class="input-field d-ticket-title" placeholder="Ex: [FCPI] Dossier - $nom_agent $prenom_agent">
+            </div>
+            <div class="col-span-4">
+                <label class="label-tiny">Suffixe d'identifiant (court)</label>
+                <input type="text" class="input-field d-uid-suffix" maxlength="20" placeholder="Ex: DRH, INF">
+            </div>
+            <div class="col-span-12">
+                <label class="label-tiny">Description du ticket</label>
+                <textarea class="input-field d-ticket-description" rows="2" placeholder="Ex: Nouvelle arrivée.&#10;Service: $service_agent"></textarea>
+            </div>
+        </div>
     </div>
 </template>
 
@@ -184,7 +307,10 @@
             field_type: {{ f.field_type.value|tojson }},
             is_required: {{ f.is_required|tojson }},
             options: {{ (f.get_options()|join('\n'))|tojson }},
-            help_text: {{ (f.help_text or '')|tojson }}
+            help_text: {{ (f.help_text or '')|tojson }},
+            condition_field_name: {{ (f.condition_field.name if f.condition_field else '')|tojson }},
+            condition_value: {{ (f.condition_value or '')|tojson }},
+            maps_to_ticket_field: {{ (f.maps_to_ticket_field or '')|tojson }}
         },
         {% endfor %}
     ];
@@ -194,7 +320,22 @@
             label: {{ s.label|tojson }},
             validator_role: {{ (s.validator_role.value if s.validator_role else '')|tojson }},
             validator_service: {{ (s.validator_service.value if s.validator_service else '')|tojson }},
-            service_source: {{ s.service_source.value|tojson }}
+            service_source: {{ s.service_source.value|tojson }},
+            skip_for_author_roles: {{ s.get_skip_roles()|tojson }}
+        },
+        {% endfor %}
+    ];
+    const existingDispatchTargets = [
+        {% for t in form_def.dispatch_targets %}
+        {
+            label: {{ t.label|tojson }},
+            target_service: {{ t.target_service.value|tojson }},
+            condition_field_name: {{ (t.condition_field.name if t.condition_field else '')|tojson }},
+            included_file_fields: {{ t.get_included_file_fields()|tojson }},
+            ticket_category_template: {{ (t.ticket_category_template or '')|tojson }},
+            ticket_title_template: {{ (t.ticket_title_template or '')|tojson }},
+            ticket_description_template: {{ (t.ticket_description_template or '')|tojson }},
+            uid_suffix: {{ (t.uid_suffix or '')|tojson }}
         },
         {% endfor %}
     ];
@@ -209,17 +350,45 @@
             row.querySelector('.f-help').value = data.help_text || '';
             row.querySelector('.f-required').checked = !!data.is_required;
             row.querySelector('.f-options').value = data.options || '';
+            row.dataset.pendingConditionField = data.condition_field_name || '';
+            row.querySelector('.f-condition-value').value = data.condition_value || '';
+            row.querySelector('.f-ticket-mapping').value = data.maps_to_ticket_field || '';
         }
         toggleOptionsVisibility(row);
         row.querySelector('.f-type').addEventListener('change', () => toggleOptionsVisibility(row));
+        row.querySelector('.f-label').addEventListener('input', refreshConditionDropdowns);
         document.getElementById('fieldsContainer').appendChild(node);
         lucide.createIcons();
+        refreshConditionDropdowns();
     }
 
     function toggleOptionsVisibility(row) {
         const type = row.querySelector('.f-type').value;
         const wrap = row.querySelector('.f-options-wrap');
-        wrap.classList.toggle('hidden', type !== 'SELECT');
+        wrap.classList.toggle('hidden', type !== 'SELECT' && type !== 'MULTI_SELECT');
+    }
+
+    function refreshConditionDropdowns() {
+        const rows = Array.from(document.querySelectorAll('#fieldsContainer .field-row'));
+        const names = rows.map(r => slugifyName(r.querySelector('.f-label').value.trim() || ''));
+        rows.forEach((row, i) => {
+            const select = row.querySelector('.f-condition-field');
+            const current = select.value || row.dataset.pendingConditionField || '';
+            select.innerHTML = '<option value="">-- Toujours visible --</option>';
+            rows.forEach((otherRow, j) => {
+                if (i === j) return;
+                const label = otherRow.querySelector('.f-label').value.trim();
+                if (!label) return;
+                const opt = document.createElement('option');
+                opt.value = names[j];
+                opt.textContent = label;
+                select.appendChild(opt);
+            });
+            if (current && names.includes(current)) {
+                select.value = current;
+            }
+            delete row.dataset.pendingConditionField;
+        });
     }
 
     function addStepRow(data) {
@@ -231,6 +400,8 @@
             row.querySelector('.s-role').value = data.validator_role || '';
             row.querySelector('.s-source').value = data.service_source || 'FIXED';
             row.querySelector('.s-service').value = data.validator_service || '';
+            const skipRoles = data.skip_for_author_roles || [];
+            row.querySelectorAll('.s-skip').forEach(cb => { cb.checked = skipRoles.includes(cb.value); });
         }
         toggleServiceVisibility(row);
         row.querySelector('.s-source').addEventListener('change', () => toggleServiceVisibility(row));
@@ -243,8 +414,38 @@
         row.querySelector('.s-service-wrap').classList.toggle('hidden', isEmitter);
     }
 
+    function addDispatchRow(data) {
+        const tpl = document.getElementById('dispatchRowTemplate');
+        const node = tpl.content.cloneNode(true);
+        const row = node.querySelector('.dispatch-row');
+        if (data) {
+            row.querySelector('.d-label').value = data.label || '';
+            row.querySelector('.d-service').value = data.target_service || '';
+            row.querySelector('.d-condition').value = data.condition_field_name || '';
+            if (data.included_file_fields) {
+                row.querySelector('.d-files-mode').value = 'selected';
+                row.querySelectorAll('.d-file-checkbox').forEach(cb => {
+                    cb.checked = data.included_file_fields.includes(cb.value);
+                });
+            }
+            row.querySelector('.d-ticket-category').value = data.ticket_category_template || '';
+            row.querySelector('.d-ticket-title').value = data.ticket_title_template || '';
+            row.querySelector('.d-ticket-description').value = data.ticket_description_template || '';
+            row.querySelector('.d-uid-suffix').value = data.uid_suffix || '';
+        }
+        toggleFilesVisibility(row);
+        row.querySelector('.d-files-mode').addEventListener('change', () => toggleFilesVisibility(row));
+        document.getElementById('dispatchContainer').appendChild(node);
+        lucide.createIcons();
+    }
+
+    function toggleFilesVisibility(row) {
+        const mode = row.querySelector('.d-files-mode').value;
+        row.querySelector('.d-files-checkboxes').classList.toggle('hidden', mode !== 'selected');
+    }
+
     function moveRow(btn, dir) {
-        const row = btn.closest('.field-row, .step-row');
+        const row = btn.closest('.field-row, .step-row, .dispatch-row');
         const parent = row.parentElement;
         if (dir === -1 && row.previousElementSibling) {
             parent.insertBefore(row, row.previousElementSibling);
@@ -254,7 +455,8 @@
     }
 
     function removeRow(btn) {
-        btn.closest('.field-row, .step-row').remove();
+        btn.closest('.field-row, .step-row, .dispatch-row').remove();
+        refreshConditionDropdowns();
     }
 
     function slugifyName(label) {
@@ -275,7 +477,10 @@
                 field_type: row.querySelector('.f-type').value,
                 is_required: row.querySelector('.f-required').checked,
                 options: row.querySelector('.f-options').value,
-                help_text: row.querySelector('.f-help').value.trim()
+                help_text: row.querySelector('.f-help').value.trim(),
+                condition_field_name: row.querySelector('.f-condition-field').value,
+                condition_value: row.querySelector('.f-condition-value').value.trim(),
+                maps_to_ticket_field: row.querySelector('.f-ticket-mapping').value
             });
         });
         document.getElementById('fieldsPayload').value = JSON.stringify(payload);
@@ -289,19 +494,46 @@
             const label = row.querySelector('.s-label').value.trim();
             if (!label) return;
             const source = row.querySelector('.s-source').value;
+            const skipRoles = Array.from(row.querySelectorAll('.s-skip:checked')).map(cb => cb.value);
             payload.push({
                 label: label,
                 validator_role: row.querySelector('.s-role').value,
                 service_source: source,
-                validator_service: source === 'EMITTER' ? '' : row.querySelector('.s-service').value
+                validator_service: source === 'EMITTER' ? '' : row.querySelector('.s-service').value,
+                skip_for_author_roles: skipRoles
             });
         });
         document.getElementById('stepsPayload').value = JSON.stringify(payload);
         return true;
     }
 
+    function prepareDispatchSubmit() {
+        const rows = document.querySelectorAll('#dispatchContainer .dispatch-row');
+        const payload = [];
+        rows.forEach(row => {
+            const label = row.querySelector('.d-label').value.trim();
+            if (!label) return;
+            const item = {
+                label: label,
+                target_service: row.querySelector('.d-service').value,
+                condition_field_name: row.querySelector('.d-condition').value
+            };
+            if (row.querySelector('.d-files-mode').value === 'selected') {
+                item.included_file_fields = Array.from(row.querySelectorAll('.d-file-checkbox:checked')).map(cb => cb.value);
+            }
+            item.ticket_category_template = row.querySelector('.d-ticket-category').value.trim();
+            item.ticket_title_template = row.querySelector('.d-ticket-title').value.trim();
+            item.ticket_description_template = row.querySelector('.d-ticket-description').value.trim();
+            item.uid_suffix = row.querySelector('.d-uid-suffix').value.trim();
+            payload.push(item);
+        });
+        document.getElementById('dispatchPayload').value = JSON.stringify(payload);
+        return true;
+    }
+
     existingFieldsData.forEach(f => addFieldRow(f));
     existingSteps.forEach(s => addStepRow(s));
+    existingDispatchTargets.forEach(t => addDispatchRow(t));
     lucide.createIcons();
 </script>
 

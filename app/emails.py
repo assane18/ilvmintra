@@ -220,3 +220,56 @@ def send_closure_notification(ticket):
     
     full_html = get_outlook_friendly_html("Ticket Résolu", html_content, link, "Voir l'historique")
     send_email(f"[Résolu] {ticket.title}", [ticket.author.email], "Ticket terminé.", full_html)
+
+# --- 5. ALERTE ÉTAPE FORMULAIRE À VALIDER ---
+def send_form_step_alert(submission, step, recipients_emails):
+    base_url = current_app.config.get('BASE_URL', '')
+    link = f"{base_url}/forms/submission/{submission.id}"
+
+    html_content = f"""
+    <p>Bonjour,</p>
+    <p>Un formulaire est en attente de votre validation.</p>
+
+    <table border="0" cellpadding="8" cellspacing="0" width="100%" style="background-color: #f7fafc; border-left: 4px solid {STYLE_COLOR}; margin: 15px 0;">
+        <tr>
+            <td width="30%" style="font-weight: bold; color: #718096;">Formulaire :</td>
+            <td>{submission.form.name}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; color: #718096;">Demandeur :</td>
+            <td>{submission.author_name}</td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; color: #718096;">Étape :</td>
+            <td>{step.label}</td>
+        </tr>
+    </table>
+    """
+
+    full_html = get_outlook_friendly_html("Formulaire à valider", html_content, link, "Voir et valider")
+    send_email(f"[À valider] {submission.form.name} — {submission.uid_public}", recipients_emails,
+               f"Formulaire {submission.uid_public} en attente de validation ({step.label}).", full_html)
+
+# --- 6. NOTIFICATION REFUS FORMULAIRE ---
+def send_form_refused_notification(submission, recipient_email):
+    if not recipient_email:
+        return
+    base_url = current_app.config.get('BASE_URL', '')
+    link = f"{base_url}/forms/submission/{submission.id}"
+
+    html_content = f"""
+    <p>Bonjour {submission.author_name},</p>
+    <p>Votre formulaire <strong>{submission.form.name}</strong> (#{submission.uid_public}) a été refusé.</p>
+
+    <table border="0" cellpadding="15" cellspacing="0" width="100%" style="margin-top: 10px; border: 1px solid #fed7d7; background-color: #fff5f5; border-radius: 5px;">
+        <tr>
+            <td style="color: #c53030;">
+                {submission.refusal_reason or 'Aucun motif renseigné.'}
+            </td>
+        </tr>
+    </table>
+    """
+
+    full_html = get_outlook_friendly_html("Formulaire refusé", html_content, link, "Voir le formulaire")
+    send_email(f"[Refusé] {submission.form.name} — {submission.uid_public}", [recipient_email],
+               submission.refusal_reason or "Formulaire refusé.", full_html)
