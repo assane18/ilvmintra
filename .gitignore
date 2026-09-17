@@ -4,3 +4,5 @@ __pycache__/
 app/static/uploads/
 .pytest_cache/
 *.db
+backups/
+.env
