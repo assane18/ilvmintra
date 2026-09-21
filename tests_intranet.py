@@ -132,7 +132,6 @@ def make_user(role=UserRole.USER, username='testuser', password='Test1234!',
         email=f'{username}@test.lan',
         role=role,
     )
-    u.set_password(password)
     u.set_origin_services([service.value])
     if allowed_services:
         u.set_allowed_services([s.value for s in allowed_services])
@@ -746,16 +745,23 @@ class TestModulePublication:
     """Workflow de publication."""
 
     def _setup(self, app):
+        # NB: 'COMMUNICATION' n'a jamais existé comme valeur de ServiceType
+        # (confirmé lors de l'analyse du moteur de formulaires : en réalité,
+        # seul un ADMIN peut exécuter l'étape "Communication" en legacy,
+        # is_communication ne peut jamais être vrai). La création d'une
+        # publication ne vérifie de toute façon que le rôle (Manager/
+        # Directeur/Admin), pas un service précis — GEN sert juste de service
+        # valide quelconque pour ces comptes de test.
         with app.app_context():
             make_user(username='pub_mgr', password='Mgr1234!',
-                      role=UserRole.MANAGER, service=ServiceType.COMMUNICATION,
-                      allowed_services=[ServiceType.COMMUNICATION])
+                      role=UserRole.MANAGER, service=ServiceType.GEN,
+                      allowed_services=[ServiceType.GEN])
             make_user(username='pub_dir', password='Dir1234!',
-                      role=UserRole.DIRECTEUR, service=ServiceType.COMMUNICATION,
-                      allowed_services=[ServiceType.COMMUNICATION])
+                      role=UserRole.DIRECTEUR, service=ServiceType.GEN,
+                      allowed_services=[ServiceType.GEN])
             make_user(username='pub_com', password='Com1234!',
-                      role=UserRole.SOLVER, service=ServiceType.COMMUNICATION,
-                      allowed_services=[ServiceType.COMMUNICATION])
+                      role=UserRole.SOLVER, service=ServiceType.GEN,
+                      allowed_services=[ServiceType.GEN])
 
     def test_formulaire_publication_accessible(self, client, db_session, app):
         self._setup(app)
@@ -1121,13 +1127,11 @@ class TestModeles:
         with app.app_context():
             u = User(username='model_test', fullname='Model Test',
                      email='model@test.lan', role=UserRole.USER)
-            u.set_password('Secure1234!')
             db.session.add(u)
             db.session.commit()
             found = User.query.filter_by(username='model_test').first()
             assert found is not None
-            assert found.check_password('Secure1234!')
-            assert not found.check_password('WrongPass')
+            assert found.email == 'model@test.lan'
 
     def test_services_json_serialisation(self, db_session, app):
         with app.app_context():
@@ -1357,15 +1361,14 @@ def run_quick_check():
 
             u = User(username='_qc_test_', fullname='QC Test',
                      email='qc@test.lan', role=UserRole.ADMIN)
-            u.set_password('QC_Test1234!')
             u.set_origin_services([ServiceType.INFO.value])
             u.set_allowed_services([ServiceType.INFO.value])
             test_db.session.add(u)
             test_db.session.commit()
 
             found = User.query.filter_by(username='_qc_test_').first()
-            assert found and found.check_password('QC_Test1234!')
-            print("[OK] Modèle User : création + vérification mot de passe")
+            assert found and found.email == 'qc@test.lan'
+            print("[OK] Modèle User : création")
 
             n = Notification(user_id=found.id, message='QC notif',
                              category='info', link='/', is_read=False)

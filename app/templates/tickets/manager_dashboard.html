@@ -15,6 +15,23 @@
         </div>
     </div>
 
+    {% if stale_tickets %}
+    <div class="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-4 flex items-center gap-3">
+        <i data-lucide="alarm-clock" class="w-5 h-5 text-red-500 shrink-0"></i>
+        <div class="flex-1">
+            <p class="font-bold text-red-700 dark:text-red-300 text-sm">
+                {{ stale_tickets|length }} ticket{{ 's' if stale_tickets|length != 1 else '' }} en retard dans votre service{{ 's' if my_targets|length != 1 else '' }} (créé{{ 's' if stale_tickets|length != 1 else '' }} il y a plus de 24h, toujours pas traité{{ 's' if stale_tickets|length != 1 else '' }})
+            </p>
+            <p class="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
+                {% for t in stale_tickets[:5] %}
+                    <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="underline hover:no-underline">#{{ t.uid_public }}</a>{% if not loop.last %}, {% endif %}
+                {% endfor %}
+                {% if stale_tickets|length > 5 %} et {{ stale_tickets|length - 5 }} autre{{ 's' if stale_tickets|length - 5 != 1 else '' }}{% endif %}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+
     <!-- TABS -->
     <div x-data="{ activeTab: 'n1' }" class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden border border-slate-200 dark:border-slate-700 min-h-[600px]">
         

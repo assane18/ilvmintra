@@ -221,6 +221,53 @@ def send_closure_notification(ticket):
     full_html = get_outlook_friendly_html("Ticket Résolu", html_content, link, "Voir l'historique")
     send_email(f"[Résolu] {ticket.title}", [ticket.author.email], "Ticket terminé.", full_html)
 
+# --- RELANCE QUOTIDIENNE TICKETS EN RETARD (ajouté 2026-09-17) ---
+def send_stale_tickets_reminder(recipient_email, tickets, assigned_to_me):
+    """Un seul email groupé par destinataire (pas un par ticket) listant les
+    tickets PENDING/IN_PROGRESS créés il y a plus de 24h. `assigned_to_me`
+    distingue le message ("tes tickets" vs "tickets non pris en charge de ton
+    service") — voir scripts/relance_tickets.py, lancé une fois par jour."""
+    base_url = current_app.config.get('BASE_URL', '')
+
+    rows = ""
+    for t in tickets:
+        link = f"{base_url}/tickets/view/{t.uid_public}"
+        age_j = int(t.age_hours // 24)
+        rows += f"""
+        <tr>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;"><a href="{link}">#{t.uid_public}</a></td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">{t.title}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center;">{age_j} j</td>
+        </tr>"""
+
+    intro = (
+        "Les tickets suivants te sont assignés et sont toujours en cours depuis plus de 24h :"
+        if assigned_to_me else
+        "Les tickets suivants attendent d'être pris en charge dans votre service depuis plus de 24h :"
+    )
+
+    html_content = f"""
+    <p>Bonjour,</p>
+    <p>{intro}</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse; margin: 15px 0;">
+        <tr style="background-color:#f7fafc;">
+            <th style="padding:6px; text-align:left;">Ticket</th>
+            <th style="padding:6px; text-align:left;">Titre</th>
+            <th style="padding:6px; text-align:center;">Âge</th>
+        </tr>
+        {rows}
+    </table>
+    <p style="font-size:12px; color:#718096;">Ce rappel se répète chaque jour tant que le ticket reste ouvert.</p>
+    """
+
+    full_html = get_outlook_friendly_html("Tickets en retard", html_content)
+    send_email(
+        f"🔔 Rappel : {len(tickets)} ticket(s) en attente depuis plus de 24h",
+        [recipient_email],
+        f"{len(tickets)} ticket(s) en retard.",
+        full_html
+    )
+
 # --- 5. ALERTE ÉTAPE FORMULAIRE À VALIDER ---
 def send_form_step_alert(submission, step, recipients_emails):
     base_url = current_app.config.get('BASE_URL', '')

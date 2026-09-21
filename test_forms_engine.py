@@ -193,11 +193,13 @@ def make_simple_form(app, slug='test-form', manager_only=False, fields=None,
 
         for tdef in (dispatch_targets or []):
             included = tdef.get('included_file_fields')
+            included_mapped = tdef.get('included_mapped_fields')
             db.session.add(FormDispatchTarget(
                 form_definition_id=form_def.id, label=tdef.get('label', tdef['target_service'].value),
                 target_service=tdef['target_service'],
                 condition_field_id=field_objs[tdef['condition_on']].id if tdef.get('condition_on') else None,
                 included_file_fields_json=json.dumps(included) if included is not None else None,
+                included_mapped_fields_json=json.dumps(included_mapped) if included_mapped is not None else None,
                 uid_suffix=tdef.get('uid_suffix'),
                 ticket_category_template=tdef.get('ticket_category_template'),
                 ticket_title_template=tdef.get('ticket_title_template'),
@@ -667,6 +669,111 @@ class TestTicketParity:
             for ticket_ref in sub.get_tickets():
                 t = Ticket.query.get(ticket_ref.id)
                 assert t.new_user_fullname == 'Traoré Assane'
+
+    def test_mapped_field_applies_to_all_targets_when_not_scoped(self, app, client):
+        """Comportement par défaut inchangé : sans included_mapped_fields,
+        un champ mappé s'applique à tous les tickets de la soumission."""
+        form_id = make_simple_form(app, slug='mapping-unscoped-form',
+            fields=[
+                {'name': 'lieu', 'label': 'Lieu', 'field_type': FormFieldType.TEXT,
+                 'maps_to_ticket_field': 'lieu_installation'},
+            ],
+            dispatch_targets=[
+                {'label': 'DRH', 'target_service': ServiceType.DRH, 'uid_suffix': 'DRH'},
+                {'label': 'INFO', 'target_service': ServiceType.INFO, 'uid_suffix': 'INF'},
+            ],
+        )
+        uid = make_user(app, role=UserRole.USER)
+        login(client, uid)
+        client.post('/forms/mapping-unscoped-form/new', data={'lieu': 'Bureau 12'}, follow_redirects=True)
+        sub = latest_submission(app, form_id)
+        with app.app_context():
+            for ticket_ref in sub.get_tickets():
+                t = Ticket.query.get(ticket_ref.id)
+                assert t.lieu_installation == 'Bureau 12'
+
+    def test_mapped_field_scoped_to_one_dispatch_target(self, app, client):
+        """Reproduit le bug FCPI trouvé le 2026-09-16 : materiel_list/
+        lieu_installation ne doivent apparaître QUE sur le ticket INFO (+lieu
+        sur SECU), jamais sur DRH/IMAGO. Vérifie que included_mapped_fields
+        scope bien maps_to_ticket_field par destinataire."""
+        form_id = make_simple_form(app, slug='fcpi-scoping-form',
+            fields=[
+                {'name': 'materiel', 'label': 'Matériel', 'field_type': FormFieldType.MULTI_SELECT,
+                 'options': ['Fixe', 'Portable'], 'maps_to_ticket_field': 'materiel_list'},
+                {'name': 'lieu', 'label': 'Lieu', 'field_type': FormFieldType.TEXT,
+                 'maps_to_ticket_field': 'lieu_installation'},
+            ],
+            dispatch_targets=[
+                {'label': 'DRH', 'target_service': ServiceType.DRH, 'uid_suffix': 'DRH',
+                 'included_mapped_fields': []},
+                {'label': 'INFO', 'target_service': ServiceType.INFO, 'uid_suffix': 'INF',
+                 'included_mapped_fields': ['materiel', 'lieu']},
+                {'label': 'SECU', 'target_service': ServiceType.SECU, 'uid_suffix': 'SEC',
+                 'included_mapped_fields': ['lieu']},
+            ],
+        )
+        uid = make_user(app, role=UserRole.USER)
+        login(client, uid)
+        client.post('/forms/fcpi-scoping-form/new',
+                     data={'materiel': ['Fixe', 'Portable'], 'lieu': 'Bureau 12'},
+                     follow_redirects=True)
+        sub = latest_submission(app, form_id)
+        tickets = {t.target_service: t for t in sub.get_tickets()}
+
+        with app.app_context():
+            drh_ticket = Ticket.query.get(tickets[ServiceType.DRH].id)
+            info_ticket = Ticket.query.get(tickets[ServiceType.INFO].id)
+            secu_ticket = Ticket.query.get(tickets[ServiceType.SECU].id)
+
+            assert drh_ticket.materiel_list is None
+            assert drh_ticket.lieu_installation is None
+
+            assert info_ticket.materiel_list == 'Fixe,Portable'
+            assert info_ticket.lieu_installation == 'Bureau 12'
+
+            assert secu_ticket.materiel_list is None
+            assert secu_ticket.lieu_installation == 'Bureau 12'
+
+    def test_single_step_then_ticket_dispatch_to_new_service(self, app, client):
+        """Reproduit la config réelle de publication-v2 après correction du
+        2026-09-21 : une seule étape (Validation Directeur, n'importe quel
+        DIRECTEUR), puis un ticket dispatché vers le service COMMUNICATION —
+        remplace l'ancienne 2e étape validator_role=ADMIN qui ne correspondait
+        à aucun service COMMUNICATION réel (celui-ci n'existait pas encore)."""
+        form_id = make_simple_form(app, slug='publication-like-form',
+            fields=[{'name': 'titre', 'label': 'Titre', 'field_type': FormFieldType.TEXT}],
+            steps=[{'label': 'Validation Directeur', 'validator_role': UserRole.DIRECTEUR}],
+            dispatch_targets=[
+                {'label': 'Communication', 'target_service': ServiceType.COMMUNICATION,
+                 'uid_suffix': 'COM', 'ticket_title_template': '[Publication] $titre'},
+            ],
+        )
+        author_id = make_user(app, role=UserRole.MANAGER, username='auteur_pub')
+        director_id = make_user(app, role=UserRole.DIRECTEUR, username='directeur_pub')
+
+        login(client, author_id)
+        client.post('/forms/publication-like-form/new', data={'titre': 'Nouvelle offre de stage'},
+                     follow_redirects=True)
+        sub_id = latest_submission(app, form_id).id
+        assert get_submission(app, sub_id).status == FormSubmissionStatus.IN_PROGRESS
+
+        login(client, director_id)
+        client.post(f'/forms/submission/{sub_id}/validate/validate', follow_redirects=True)
+
+        with app.app_context():
+            sub = FormSubmission.query.get(sub_id)
+            assert sub.status == FormSubmissionStatus.DONE
+            tickets = sub.get_tickets()
+            assert len(tickets) == 1
+            t = Ticket.query.get(tickets[0].id)
+            assert t.target_service == ServiceType.COMMUNICATION
+            assert t.title == '[Publication] Nouvelle offre de stage'
+            assert t.status == TicketStatus.PENDING
+            assert t.solver_id is None
+            # category_ticket non configuré -> repli 'Standard' (pool_standard
+            # côté solver_dashboard, donc visible pour un solver COMMUNICATION).
+            assert t.category_ticket == 'Standard'
 
     def test_date_field_mapped_to_datetime_column_is_converted(self, app, client):
         form_id = make_simple_form(app, slug='date-mapping-form',

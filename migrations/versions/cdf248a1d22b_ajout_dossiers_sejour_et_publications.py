@@ -22,8 +22,12 @@ def upgrade():
         batch_op.drop_column('daf_denomination')
         batch_op.drop_column('daf_reference_devis')
 
-    with op.batch_alter_table('users', schema=None) as batch_op:
-        batch_op.drop_column('password_hash')
+    # IF EXISTS : `password_hash` n'a jamais existé dans la chaîne de
+    # migrations elle-même (colonne héritée d'un schéma créé via
+    # db.create_all() avant l'initialisation d'Alembic) — absente si cette
+    # migration est rejouée depuis une base totalement vierge (ex: base de
+    # dev), présente en prod. Rend la migration idempotente dans les deux cas.
+    op.execute('ALTER TABLE users DROP COLUMN IF EXISTS password_hash')
 
     # ### end Alembic commands ###
 

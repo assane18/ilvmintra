@@ -233,7 +233,23 @@ def new_ticket(service_name):
             status = TicketStatus.PENDING
 
         elif service_name.upper() == 'MATERIEL':
-            status = TicketStatus.VALIDATION_N2 
+            status = TicketStatus.VALIDATION_N2
+
+        elif service_name.upper() == 'DAF' and not is_delegation:
+            # DAF standard (bon de commande, pas délégation) : un Directeur
+            # d'un AUTRE service (ex: DRH) doit suivre exactement le même
+            # circuit DAF que tout le monde (préparation par un solver DAF,
+            # validation Manager DAF, signature Directeur DAF) — seule sa
+            # propre validation hiérarchique (N1, qui reviendrait à se
+            # valider lui-même) est inutile et donc sautée. Avant ce correctif,
+            # le code envoyait ces demandes en VALIDATION_N2 puis, une fois
+            # validées, sautait directement à DAF_SIGNATURE — court-circuitant
+            # entièrement la préparation par le solver et la validation
+            # Manager DAF (confirmé en recette le 2026-09-18).
+            if role in (UserRole.DIRECTEUR, UserRole.ADMIN):
+                status = TicketStatus.PENDING
+            else:
+                status = TicketStatus.VALIDATION_N1
 
         else:
             # Workflow Standard
@@ -337,11 +353,18 @@ def new_ticket(service_name):
                 if selected_origin in mgr.get_origin_services():
                     create_notification(mgr, f"Validation requise : {uid}", 'warning', url_for('tickets.manager_dashboard'))
                     
-        elif status == TicketStatus.VALIDATION_N2 and service_name.upper() == 'MATERIEL':
+        elif status == TicketStatus.VALIDATION_N2:
+             # Généralisé (2026-09-17) : seul MATERIEL était couvert avant,
+             # tout autre ticket créé directement en N2 (ex: un Directeur qui
+             # saute sa propre validation N1) ne notifiait personne en
+             # interne — trouvé lors de l'analyse fonctionnelle complète.
+             target_val = service_enum.value if hasattr(service_enum, 'value') else str(service_enum)
+             target_name = service_enum.name if hasattr(service_enum, 'name') else str(service_enum)
              targets = User.query.filter(User.role.in_([UserRole.MANAGER, UserRole.DIRECTEUR])).all()
              for u in targets:
-                 if 'INFORMATIQUE' in u.get_allowed_services() or 'INFO' in u.get_allowed_services():
-                     create_notification(u, f"Demande Matériel à valider : {uid}", 'warning', url_for('tickets.manager_dashboard'))
+                 allowed = u.get_allowed_services()
+                 if target_val in allowed or target_name in allowed:
+                     create_notification(u, f"Validation requise : {uid}", 'warning', url_for('tickets.manager_dashboard'))
 
         elif status == TicketStatus.PENDING:
             notify_solvers_new_ticket(t)
@@ -586,12 +609,26 @@ def manager_dashboard():
         form_submissions_n1.sort(key=lambda s: s.created_at, reverse=True)
         form_submissions_n2.sort(key=lambda s: s.created_at, reverse=True)
 
+        # Tickets qui traînent dans les services gérés par ce manager/directeur
+        # (PENDING/IN_PROGRESS créés il y a plus de 24h) — visibilité demandée
+        # explicitement pour qu'un manager voie si son équipe laisse traîner
+        # des tickets, sans avoir à aller consulter les stats.
+        stale_tickets = []
+        if my_targets:
+            candidates = Ticket.query.filter(
+                Ticket.target_service.in_(my_targets),
+                Ticket.status.in_([TicketStatus.PENDING, TicketStatus.IN_PROGRESS])
+            ).all()
+            stale_tickets = [t for t in candidates if t.is_stale]
+            stale_tickets.sort(key=lambda t: t.created_at)
+
         return render_template('tickets/manager_dashboard.html',
                             tickets_n1=tickets_n1,
                             tickets_n2=tickets_n2,
                             fcpi_requests=fcpi_requests,
                             form_submissions_n1=form_submissions_n1,
-                            form_submissions_n2=form_submissions_n2)
+                            form_submissions_n2=form_submissions_n2,
+                            stale_tickets=stale_tickets)
 
     except Exception as e:
         flash(f"Erreur Dashboard: {e}", "danger")
@@ -1014,8 +1051,12 @@ def manager_action(ticket_id, action):
                 else: t.status = TicketStatus.VALIDATION_N2
                 
             elif t.status == TicketStatus.VALIDATION_N2:
-                if t.target_service == ServiceType.DAF: t.status = TicketStatus.DAF_SIGNATURE
-                else: t.status = TicketStatus.PENDING
+                # DAF n'atteint plus jamais VALIDATION_N2 depuis le correctif
+                # du 2026-09-18 (voir new_ticket) — un ticket DAF y arrivant
+                # malgré tout (donnée historique, par ex.) suit désormais le
+                # même chemin que tout le reste : retour en file DAF normale,
+                # pas de raccourci vers la signature.
+                t.status = TicketStatus.PENDING
                 
             elif t.status == TicketStatus.VALIDATION_DAF_MANAGER:
                 t.status = TicketStatus.DAF_SIGNATURE
@@ -1544,4 +1585,35 @@ def assign_ticket(ticket_id):
 @tickets_bp.route('/solver/transfer/<int:ticket_id>', methods=['POST'])
 @login_required
 def transfer_ticket(ticket_id):
+    t = Ticket.query.get_or_404(ticket_id)
+
+    # Même règle que close_ticket : seul le technicien en charge ou un ADMIN.
+    if t.solver_id != current_user.id and 'ADMIN' not in safe_role_str(current_user):
+        flash("Seul le technicien en charge du ticket peut le transférer.", "danger")
+        return redirect(url_for('tickets.solver_dashboard'))
+
+    target_service_name = request.form.get('target_service')
+    if not target_service_name:
+        return redirect(url_for('tickets.solver_dashboard'))
+
+    try:
+        new_service = ServiceType[target_service_name]
+    except KeyError:
+        flash("Service cible invalide.", "danger")
+        return redirect(url_for('tickets.solver_dashboard'))
+
+    old_service_label = t.get_safe_target_service()
+    t.target_service = new_service
+    t.solver_id = None
+    t.status = TicketStatus.PENDING
+    db.session.commit()
+
+    # Notifie le nouveau service comme s'il s'agissait d'un nouveau ticket
+    # (même mécanisme que new_ticket : email + in-app aux solvers concernés).
+    recipients = get_service_emails(new_service)
+    if recipients:
+        send_service_alert(t, recipients)
+    notify_solvers_new_ticket(t)
+
+    flash(f"Ticket {t.uid_public} transféré de {old_service_label} vers {new_service.value}.", "success")
     return redirect(url_for('tickets.solver_dashboard'))

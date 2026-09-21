@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, send_file, current_app
 from flask_login import login_required, current_user
-from app.models import Materiel, Pret
+from app.models import Materiel, Pret, Ticket, TicketStatus
 from app import db
 import pandas as pd
 import os
@@ -8,9 +8,53 @@ from datetime import datetime
 
 prets_bp = Blueprint('prets', __name__)
 
+# Statuts considérés comme "terminés" — un ticket dans un autre statut est
+# encore actif et vaut la peine d'être signalé avant de prêter le matériel
+# qu'il concerne.
+TICKET_STATUTS_TERMINES = (TicketStatus.DONE, TicketStatus.REFUSED)
+
+
+def find_open_ticket_conflict(mat):
+    """Recherche heuristique (pas de lien structurel Ticket<->Materiel dans
+    le modèle actuel) : un ticket encore actif mentionnant le SN ou le
+    hostname de ce matériel dans son hostname/description/liste de matériel.
+    Ne bloque rien — sert juste à avertir le technicien avant qu'il ne prête
+    un matériel visiblement associé à un incident en cours (trou de contrôle
+    métier trouvé lors de la recette du 17/09/2026 : rien ne les relie
+    aujourd'hui)."""
+    needles = [v for v in (mat.sn, mat.hostname) if v]
+    if not needles:
+        return None
+    filters = []
+    for n in needles:
+        filters.append(Ticket.hostname.ilike(f'%{n}%'))
+        filters.append(Ticket.materiel_list.ilike(f'%{n}%'))
+        filters.append(Ticket.description.ilike(f'%{n}%'))
+    return Ticket.query.filter(
+        db.or_(*filters),
+        Ticket.status.notin_(TICKET_STATUTS_TERMINES)
+    ).first()
+
+
+def _is_tech_info(user):
+    """Même règle que app/routes/inventaire.py::_is_tech_info — le prêt de
+    matériel est une fonctionnalité du service Informatique au même titre
+    que l'inventaire dont il dépend."""
+    user_role = str(user.role.value).upper() if hasattr(user.role, 'value') else str(user.role).upper()
+    user_services = user.get_allowed_services()
+    is_admin = 'ADMIN' in user_role
+    is_allowed_role = 'SOLVER' in user_role or 'MANAGER' in user_role or 'DIRECTEUR' in user_role
+    is_tech_info = is_allowed_role and ('INFORMATIQUE' in user_services or 'INFO' in user_services)
+    return is_admin or is_tech_info
+
+
 @prets_bp.route('/prets', methods=['GET', 'POST'])
 @login_required
 def liste_prets():
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     if request.method == 'POST':
         materiel_id = request.form.get('materiel_id')
         nom         = request.form.get('nom', '').strip()
@@ -37,7 +81,17 @@ def liste_prets():
             mat.statut = 'En prêt'
             db.session.add(pret)
             db.session.commit()
-            flash(f'Prêt créé : {mat.modele} ({mat.sn}) → {nom} {prenom}.', 'success')
+
+            conflit = find_open_ticket_conflict(mat)
+            if conflit:
+                flash(
+                    f'Prêt créé : {mat.modele} ({mat.sn}) → {nom} {prenom}. '
+                    f'⚠️ Attention : ce matériel est référencé dans le ticket ouvert '
+                    f'{conflit.uid_public} ("{conflit.title}") — vérifie qu\'il est bien en état d\'être prêté.',
+                    'warning'
+                )
+            else:
+                flash(f'Prêt créé : {mat.modele} ({mat.sn}) → {nom} {prenom}.', 'success')
         return redirect(url_for('prets.liste_prets'))
 
     # Logique GET (Affichage + Recherche)
@@ -67,6 +121,10 @@ def liste_prets():
 @prets_bp.route('/pret/<int:id>/retour', methods=['POST'])
 @login_required
 def valider_retour(id):
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     pret = Pret.query.get_or_404(id)
     if pret.statut_dossier == 'En cours':
         try:
@@ -91,6 +149,10 @@ def valider_retour(id):
 @prets_bp.route('/pret/<int:id>/delete')
 @login_required
 def delete_pret(id):
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     pret = Pret.query.get_or_404(id)
     if pret.materiel and pret.statut_dossier == 'En cours':
         pret.materiel.statut = 'Disponible'
@@ -104,6 +166,10 @@ def delete_pret(id):
 @prets_bp.route('/export/prets')
 @login_required
 def export_prets():
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     prets = Pret.query.all()
     data = []
     for p in prets:
@@ -131,6 +197,10 @@ def export_prets():
 @prets_bp.route('/import/prets', methods=['POST'])
 @login_required
 def import_prets():
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     if 'file' not in request.files: return redirect(url_for('prets.liste_prets'))
     file = request.files['file']
     if file.filename == '': return redirect(url_for('prets.liste_prets'))

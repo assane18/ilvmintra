@@ -190,6 +190,11 @@
 
             <!-- Menu Utilisateur + Dark Mode Toggle -->
             <div class="flex items-center gap-4">
+                <!-- Menu mobile (hamburger) -->
+                <button id="mobile-menu-toggle" class="md:hidden p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition" title="Menu" aria-label="Ouvrir le menu" aria-expanded="false">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+
                 <!-- Toggle Dark Mode -->
                 <button id="theme-toggle-portal" class="p-2 text-slate-400 hover:text-yellow-500 hover:bg-slate-800 rounded-lg transition" title="Changer le thème">
                     <i data-lucide="sun" class="w-5 h-5 hidden dark:block"></i>
@@ -224,6 +229,35 @@
                 <a href="{{ url_for('auth.logout') }}" class="bg-red-600 hover:bg-red-700 p-2 rounded-lg transition" title="Déconnexion">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                 </a>
+            </div>
+        </div>
+
+        <!-- PANNEAU MENU MOBILE — imbriqué DANS nav (pas en sibling après
+             </nav>) pour hériter exactement le même contexte sticky que
+             l'en-tête, sans dépendre d'un calcul de décalage séparé qui
+             s'est révélé peu fiable (1er lien caché derrière le header,
+             constaté lors du test du 2026-09-18). -->
+        <div id="mobile-menu" class="hidden md:hidden bg-slate-900 text-white border-t border-slate-800">
+            <div class="flex flex-col p-3 gap-1">
+                <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-3">
+                    <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
+                </a>
+                <a href="{{ url_for('tickets.manager_dashboard') }}" class="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-3">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+                </a>
+                <a href="{{ url_for('main.help_center') }}" class="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-3">
+                    <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
+                </a>
+                {% if current_user.role.value in ['DIRECTEUR', 'ADMIN'] %}
+                <a href="{{ url_for('tickets.stats_dashboard') }}" class="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-3">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Statistiques
+                </a>
+                {% endif %}
+                {% if current_user.role.value == 'ADMIN' %}
+                <a href="{{ url_for('main.admin_dashboard') }}" class="px-3 py-2.5 rounded-lg text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 transition flex items-center gap-3">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> Administration
+                </a>
+                {% endif %}
             </div>
         </div>
     </nav>
@@ -478,22 +512,18 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100 dark:divide-slate-700">
-                        {% for ticket in tickets %}
+                        {% for item in items %}
                         <tr class="hover:bg-slate-50/50 dark:hover:bg-slate-700/30 transition">
-                            <td class="px-6 py-4"><span class="font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded">{{ ticket.target_service.value }}</span></td>
-                            <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ ticket.title }}</td>
+                            <td class="px-6 py-4"><span class="font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900 px-2 py-1 rounded">{{ item.service }}</span></td>
+                            <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ item.subject }}</td>
                             <td class="px-6 py-4">
-                                <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest 
-                                    {% if 'VALIDATION' in ticket.status.value %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300
-                                    {% elif 'COURS' in ticket.status.value %}bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300
-                                    {% elif 'TERMINE' in ticket.status.value %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300
-                                    {% else %}bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400{% endif %}">
-                                    {{ ticket.status.value }}
+                                <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest {{ item.status_class }}">
+                                    {{ item.status_label }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 font-mono text-xs">{{ ticket.created_at.strftime('%d/%m/%Y') }}</td>
+                            <td class="px-6 py-4 font-mono text-xs">{{ item.date.strftime('%d/%m/%Y') }}</td>
                             <td class="px-6 py-4 text-right">
-                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-bold text-xs uppercase">Voir</a>
+                                <a href="{{ item.view_url }}" class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-bold text-xs uppercase">Voir</a>
                             </td>
                         </tr>
                         {% else %}
@@ -512,6 +542,29 @@
 
     <script>
         lucide.createIcons();
+
+        // --- MENU MOBILE (hamburger) ---
+        const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+        const mobileMenu = document.getElementById('mobile-menu');
+        if (mobileMenuToggle && mobileMenu) {
+            mobileMenuToggle.addEventListener('click', function() {
+                const isOpen = !mobileMenu.classList.contains('hidden');
+                mobileMenu.classList.toggle('hidden');
+                mobileMenuToggle.setAttribute('aria-expanded', String(!isOpen));
+                mobileMenuToggle.innerHTML = !isOpen
+                    ? '<i data-lucide="x" class="w-5 h-5"></i>'
+                    : '<i data-lucide="menu" class="w-5 h-5"></i>';
+                lucide.createIcons();
+            });
+            window.addEventListener('resize', function() {
+                if (window.innerWidth >= 768 && !mobileMenu.classList.contains('hidden')) {
+                    mobileMenu.classList.add('hidden');
+                    mobileMenuToggle.setAttribute('aria-expanded', 'false');
+                    mobileMenuToggle.innerHTML = '<i data-lucide="menu" class="w-5 h-5"></i>';
+                    lucide.createIcons();
+                }
+            });
+        }
 
         // Script pour gérer le Dark Mode localement si non hérité de base.html
         const toggleBtn = document.getElementById('theme-toggle-portal');
@@ -592,7 +645,7 @@
                             <div class="w-2 h-2 mt-1.5 rounded-full ${colorClass}"></div>
                             <div class="flex-1">
                                 <p class="text-xs font-bold text-slate-700 leading-tight dark:text-slate-200">${n.message}</p>
-                                <p class="text-[10px] text-slate-400 mt-1">${new Date(n.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                                <p class="text-[10px] text-slate-400 mt-1">${new Date(n.timestamp).toLocaleDateString('fr-FR', {day: '2-digit', month: '2-digit'})} à ${new Date(n.timestamp).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</p>
                             </div>
                         </div>
                     `;

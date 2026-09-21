@@ -13,10 +13,10 @@ from . import tech
 # ==============================================================================
 FICHE_SAVE_DIR = '/mnt/ilvmfap1_info/INVENTAIRE DU PARC/Materiels/Historique des remises tel+pc/Fiche pret Generé'
 
-LDAP_SERVER   = 'ldap://192.168.1.9'
-LDAP_BASE_DN  = 'DC=ilvm,DC=lan'
-LDAP_USER     = 'CN=Admin Intra,CN=Users,DC=ilvm,DC=lan'
-LDAP_PASSWORD = 'gq!nsXPYsM!LmFh4'
+LDAP_SERVER   = 'ldap://' + os.environ.get('LDAP_HOST', '192.168.1.9')
+LDAP_BASE_DN  = os.environ.get('LDAP_BASE_DN', 'DC=ilvm,DC=lan')
+LDAP_USER     = os.environ.get('LDAP_USER_DN', 'CN=Admin Intra,CN=Users,DC=ilvm,DC=lan')
+LDAP_PASSWORD = os.environ.get('LDAP_USER_PASSWORD')
 
 # ==============================================================================
 # HELPERS
@@ -79,6 +79,7 @@ def generer_fiche():
             print(f"--- WARN réseau : {e}")
 
         # ── Enregistrement du prêt en base ──────────────────────────
+        ticket_conflict_warning = None
         try:
             materiel = Materiel.query.filter_by(sn=sn).first()
 
@@ -119,16 +120,29 @@ def generer_fiche():
             db.session.add(pret)
             db.session.commit()
             print(f"--- INFO: Prêt #{pret.id} créé pour {nom_complet} — {sn}")
+
+            from app.routes.prets import find_open_ticket_conflict
+            conflit = find_open_ticket_conflict(materiel)
+            if conflit:
+                ticket_conflict_warning = f"Attention : ce materiel est reference dans le ticket ouvert {conflit.uid_public} ({conflit.title})."
+                print(f"--- WARN: {ticket_conflict_warning}")
         except Exception as db_err:
             db.session.rollback()
             print(f"--- WARN DB prêt : {db_err}")
 
-        return send_file(
+        response = send_file(
             _io.BytesIO(pdf_bytes),
             as_attachment=True,
             download_name=filename,
             mimetype='application/pdf'
         )
+        if ticket_conflict_warning:
+            # En-tête ASCII (les en-têtes HTTP ne supportent pas fiablement
+            # l'UTF-8) lue par le JS du générateur pour afficher l'alerte —
+            # même vérification que app/routes/prets.py::liste_prets, cette
+            # route créant des prêts par un chemin totalement séparé.
+            response.headers['X-Ticket-Conflict-Warning'] = ticket_conflict_warning
+        return response
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -137,6 +151,9 @@ def generer_fiche():
 @login_required
 def get_inventory():
     """Retourne l'inventaire depuis la base de données (matériels disponibles)."""
+    if not _check_info_access():
+        return jsonify({'error': 'Accès refusé'}), 403
+
     from app.models import Materiel
     try:
         materiels = Materiel.query.order_by(Materiel.modele).all()
@@ -266,7 +283,14 @@ def download_template():
 
 
 @tech.route('/get_user/<username>')
+@login_required
 def get_user(username):
+    # Aucune authentification n'était requise ici — n'importe qui atteignant
+    # l'URL pouvait interroger l'annuaire LDAP (nom, email, service,
+    # téléphone) de n'importe quel compte AD, avec les identifiants LDAP en
+    # clair ci-dessus. Corrigé en alignant sur le reste du module.
+    if not _check_info_access():
+        return jsonify({'error': 'Accès refusé'}), 403
     try:
         l = ldap.initialize(LDAP_SERVER)
         l.protocol_version = ldap.VERSION3

@@ -10,20 +10,21 @@ from sqlalchemy.exc import IntegrityError
 inventaire_bp = Blueprint('inventaire', __name__)
 
 
-@inventaire_bp.route('/inventaire', methods=['GET', 'POST'])
-@login_required
-def liste():
-    # --- Ta sécurité existante ---
-    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
-    user_services = current_user.get_allowed_services()
+def _is_tech_info(user):
+    user_role = str(user.role.value).upper() if hasattr(user.role, 'value') else str(user.role).upper()
+    user_services = user.get_allowed_services()
     is_admin = 'ADMIN' in user_role
     is_allowed_role = 'SOLVER' in user_role or 'MANAGER' in user_role or 'DIRECTEUR' in user_role
     is_tech_info = is_allowed_role and ('INFORMATIQUE' in user_services or 'INFO' in user_services)
-    
-    if not (is_admin or is_tech_info):
+    return is_admin or is_tech_info
+
+
+@inventaire_bp.route('/inventaire', methods=['GET', 'POST'])
+@login_required
+def liste():
+    if not _is_tech_info(current_user):
         flash("Accès réservé au service Informatique.", "danger")
         return redirect(url_for('main.user_portal'))
-    # -----------------------------
 
     search_query = request.args.get('q', '')
     query = Materiel.query
@@ -44,15 +45,7 @@ def liste():
 @inventaire_bp.route('/inventaire/add', methods=['POST'])
 @login_required
 def ajouter():
-    # Vérification droits pour l'ajout
-    user_role = str(current_user.role.value).upper() if hasattr(current_user.role, 'value') else str(current_user.role).upper()
-    user_services = current_user.get_allowed_services()
-
-    is_admin = 'ADMIN' in user_role
-    is_allowed_role = 'SOLVER' in user_role or 'MANAGER' in user_role or 'DIRECTEUR' in user_role
-    is_tech_info = is_allowed_role and ('INFORMATIQUE' in user_services or 'INFO' in user_services)
-
-    if not (is_admin or is_tech_info):
+    if not _is_tech_info(current_user):
         return redirect(url_for('main.user_portal'))
 
     categorie = request.form.get('categorie')
@@ -74,6 +67,10 @@ def ajouter():
 @inventaire_bp.route('/inventaire/edit/<int:id>', methods=['POST'])
 @login_required
 def modifier(id):
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     mat = Materiel.query.get_or_404(id)
     mat.categorie = request.form.get('categorie')
     mat.modele = request.form.get('modele')
@@ -87,6 +84,10 @@ def modifier(id):
 @inventaire_bp.route('/inventaire/delete/<int:id>')
 @login_required
 def supprimer(id):
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     mat = Materiel.query.get_or_404(id)
     db.session.delete(mat)
     db.session.commit()
@@ -96,6 +97,10 @@ def supprimer(id):
 @inventaire_bp.route('/export/stock')
 @login_required
 def export_stock():
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     materiels = Materiel.query.all()
     data = []
     for m in materiels:
@@ -120,6 +125,10 @@ def export_stock():
 @inventaire_bp.route('/import/stock', methods=['POST'])
 @login_required
 def import_stock():
+    if not _is_tech_info(current_user):
+        flash("Accès réservé au service Informatique.", "danger")
+        return redirect(url_for('main.user_portal'))
+
     if 'file' not in request.files: return redirect(url_for('inventaire.liste'))
     file = request.files['file']
     if file.filename == '': return redirect(url_for('inventaire.liste'))

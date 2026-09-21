@@ -147,8 +147,15 @@ def _create_one_ticket(submission, target):
 
     # Champs mappés vers des colonnes structurées du Ticket (ex: FCPI ->
     # materiel_list, new_user_acces...), en plus de la description générique.
+    # Scopés par destinataire via target.get_included_mapped_fields() (None =
+    # tous, comportement par défaut ; liste = seulement ces champs) — sinon un
+    # champ mappé s'appliquerait à TOUS les tickets de la soumission, y compris
+    # des destinataires qui ne doivent pas le recevoir (ex: FCPI).
+    included_mapped = target.get_included_mapped_fields()
     for field in form_def.fields:
         if field.maps_to_ticket_field:
+            if included_mapped is not None and field.name not in included_mapped:
+                continue
             value = flat_data.get(field.name) or None
             # new_user_date est un DateTime côté Ticket (comme
             # Recruitment.date_entree dans l'ancien FCPI) — un champ DATE du

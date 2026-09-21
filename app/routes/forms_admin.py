@@ -251,6 +251,7 @@ def save_dispatch_targets(id):
     service_values = [s.value for s in ServiceType]
     checkbox_fields_by_name = {f.name: f for f in form_def.fields if f.field_type == FormFieldType.CHECKBOX}
     file_field_names = {f.name for f in form_def.fields if f.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE)}
+    mapped_field_names = {f.name for f in form_def.fields if f.maps_to_ticket_field}
 
     new_targets = []
     for item in payload:
@@ -271,12 +272,21 @@ def save_dispatch_targets(id):
             selected = [n for n in (item.get('included_file_fields') or []) if n in file_field_names]
             included_files_json = json.dumps(selected)
 
+        # Même principe que included_file_fields : absent du payload = "tous
+        # les champs mappés" (None, comportement par défaut) ; présent (même
+        # vide) = scoping explicite par destinataire.
+        included_mapped_json = None
+        if 'included_mapped_fields' in item:
+            selected = [n for n in (item.get('included_mapped_fields') or []) if n in mapped_field_names]
+            included_mapped_json = json.dumps(selected)
+
         new_targets.append(FormDispatchTarget(
             form_definition_id=form_def.id,
             label=label,
             target_service=ServiceType(service_value),
             condition_field_id=condition_field.id if condition_field else None,
             included_file_fields_json=included_files_json,
+            included_mapped_fields_json=included_mapped_json,
             ticket_category_template=(item.get('ticket_category_template') or '').strip() or None,
             ticket_title_template=(item.get('ticket_title_template') or '').strip() or None,
             ticket_description_template=(item.get('ticket_description_template') or '').strip() or None,
@@ -361,6 +371,7 @@ def duplicate_form(id):
             form_definition_id=copy.id, label=t.label, target_service=t.target_service,
             condition_field_id=field_id_map.get(t.condition_field_id),
             included_file_fields_json=t.included_file_fields_json,
+            included_mapped_fields_json=t.included_mapped_fields_json,
             ticket_category_template=t.ticket_category_template,
             ticket_title_template=t.ticket_title_template,
             ticket_description_template=t.ticket_description_template,

@@ -52,28 +52,33 @@ def mark_all_read():
 @login_required
 def get_team_messages():
     try:
-        # CORRECTION : Utilisation de get_allowed_services() au lieu de service_department
         my_services = current_user.get_allowed_services()
-        
+
         if not my_services:
-            return jsonify([]) # Pas de service technique = Pas de chat
-            
-        main_service_name = my_services[0]
-        
+            return jsonify({'messages': [], 'services': []}) # Pas de service technique = Pas de chat
+
+        # Service choisi explicitement (sélecteur côté client pour les
+        # utilisateurs gérant plusieurs services — avant cette correction,
+        # seul le 1er service de la liste était jamais consultable). Retombe
+        # sur le 1er par défaut si absent/invalide, pour ne rien casser côté
+        # appelants existants qui ne passent pas ce paramètre.
+        requested = request.args.get('service')
+        main_service_name = requested if requested in my_services else my_services[0]
+
         # Recherche de l'Enum
         svc_enum = None
         for s in ServiceType:
             if s.value == main_service_name or s.name == main_service_name:
                 svc_enum = s
                 break
-        
-        if not svc_enum: 
-            return jsonify([])
+
+        if not svc_enum:
+            return jsonify({'messages': [], 'services': my_services})
 
         messages = TeamMessage.query.filter_by(service=svc_enum)\
             .order_by(TeamMessage.timestamp.desc())\
             .limit(50).all()
-        
+
         msgs_data = []
         for m in reversed(messages):
             d = {
@@ -84,12 +89,12 @@ def get_team_messages():
                 'time': m.timestamp.strftime('%H:%M')
             }
             msgs_data.append(d)
-            
-        return jsonify(msgs_data)
+
+        return jsonify({'messages': msgs_data, 'services': my_services, 'current_service': main_service_name})
 
     except Exception as e:
         print(f"CHAT ERROR (GET): {e}")
-        return jsonify([])
+        return jsonify({'messages': [], 'services': []})
 
 @api_bp.route('/api/team_chat', methods=['POST'])
 @login_required
@@ -98,9 +103,10 @@ def post_team_message():
         my_services = current_user.get_allowed_services()
         if not my_services:
             return jsonify({'error': 'No service'}), 403
-            
-        main_service_name = my_services[0]
+
         data = request.get_json()
+        requested = data.get('service')
+        main_service_name = requested if requested in my_services else my_services[0]
         content = data.get('content')
         
         if not content:

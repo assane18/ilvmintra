@@ -31,7 +31,8 @@ class ServiceType(str, enum.Enum):
     DRH = "DRH"
     SECU = "SECU"
     AUTRE = "AUTRE"
-    IMAGO = "IMAGO"  
+    IMAGO = "IMAGO"
+    COMMUNICATION = "COMMUNICATION"
 
     # Tous les Services Établissements
     ACCUEIL = "Accueil"
@@ -223,6 +224,23 @@ class Ticket(db.Model):
     def author_name(self):
         """Retourne le nom de l'auteur ou 'Inconnu' si supprimé."""
         return self.author.username if self.author else "Utilisateur supprimé"
+
+    @property
+    def age_hours(self):
+        """Âge du ticket en heures depuis sa création (horloge serveur,
+        Europe/Paris — cohérent avec get_paris_time() côté création)."""
+        if not self.created_at:
+            return 0
+        return (datetime.now() - self.created_at).total_seconds() / 3600
+
+    @property
+    def is_stale(self):
+        """Ticket réellement 'en retard' : encore à traiter par un
+        technicien (PENDING/IN_PROGRESS — pas en attente de validation N1/N2,
+        qui dépend d'un manager, pas d'un solver) et créé il y a plus de 24h.
+        Trouvé comme angle mort lors de l'analyse fonctionnelle complète :
+        rien ne signalait avant un ticket qui traîne."""
+        return self.status in (TicketStatus.PENDING, TicketStatus.IN_PROGRESS) and self.age_hours > 24
 
     def __repr__(self):
         # IMPORTANT: Ne pas inclure de relations (author, solver) ici pour éviter la récursion
@@ -568,6 +586,16 @@ class FormDispatchTarget(db.Model):
     # l'ancien FCPI (CV+fiche de poste -> DRH, photo -> SECU, rien -> INFO/IMAGO).
     included_file_fields_json = db.Column(db.Text, nullable=True)
 
+    # Liste JSON des noms de champs FormField (avec maps_to_ticket_field défini)
+    # à appliquer sur le Ticket créé pour ce destinataire. None = tous les champs
+    # mappés (comportement par défaut, inchangé) ; liste (même vide) = scoping
+    # explicite par destinataire — même principe que included_file_fields_json,
+    # pour reproduire l'ancien FCPI (materiel_list/new_user_acces/
+    # lieu_installation/destinataire_materiel seulement sur INFO, lieu_installation
+    # seul sur SECU, rien sur DRH/IMAGO). Sans ce scoping, un champ mappé
+    # s'appliquait à TOUS les tickets d'une soumission multi-destinataires.
+    included_mapped_fields_json = db.Column(db.Text, nullable=True)
+
     # Personnalisation du Ticket créé pour ce destinataire — pour reproduire
     # fidèlement les anciens modules (ex: FCPI met "Nouvel Utilisateur" en
     # catégorie, un titre et une description sur mesure par service). Chaîne
@@ -592,6 +620,17 @@ class FormDispatchTarget(db.Model):
             return None
         try:
             return json.loads(self.included_file_fields_json)
+        except Exception:
+            return None
+
+    def get_included_mapped_fields(self):
+        """None = non configuré -> tous les champs mappés (défaut). Une liste
+        (même vide) = sélection explicite de champs (par nom) à appliquer sur
+        le Ticket de ce destinataire."""
+        if self.included_mapped_fields_json is None:
+            return None
+        try:
+            return json.loads(self.included_mapped_fields_json)
         except Exception:
             return None
 
@@ -702,5 +741,5 @@ class Notification(db.Model):
             'category': self.category,
             'link': self.link,
             'is_read': self.is_read,
-            'timestamp': self.timestamp.isoformat()
+            'timestamp': self.timestamp.isoformat() + 'Z'
         }

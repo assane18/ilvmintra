@@ -241,8 +241,8 @@
                     {% endif %}
                     {% if ticket.hostname %}
                     <div class="flex justify-between text-xs">
-                        <span class="text-slate-400">PC/Host</span>
-                        <span class="font-mono bg-slate-100 dark:bg-slate-700 px-1 rounded">{{ ticket.hostname }}</span>
+                        <span class="text-slate-400">Service/Bureau</span>
+                        <span class="font-bold dark:text-white">{{ ticket.hostname }}</span>
                     </div>
                     {% endif %}
                 </div>
@@ -258,7 +258,7 @@
                     {% endif %}
                 </h3>
                 
-                {% if not ticket.solver %}
+                {% if not ticket.solver and ticket.status.value not in ['TERMINE', 'REFUSE'] %}
                     <div class="bg-slate-800 p-4 rounded-xl border border-slate-700 space-y-3">
                         <p class="text-sm text-slate-300 text-center">Ticket en attente d'attribution.</p>
                         
@@ -290,8 +290,8 @@
                         {% endif %}
                     </div>
 
-                {% else %}
-                    
+                {% elif ticket.solver %}
+
                     <div class="bg-slate-800/50 p-3 rounded-xl mb-4 space-y-3">
                         <div class="flex items-center gap-3">
                             <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-xs">{{ ticket.solver.fullname[0] }}</div>
@@ -392,6 +392,8 @@
 
                     {% endif %}
 
+                {% else %}
+                    <p class="text-sm text-slate-400 text-center py-4">Ticket clôturé sans prise en charge.</p>
                 {% endif %}
             </div>
             {% endif %}

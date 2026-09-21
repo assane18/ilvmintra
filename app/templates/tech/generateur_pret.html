@@ -59,6 +59,7 @@
         .msg { font-size: 0.82rem; padding: 7px 10px; border-radius: 4px; margin-top: 6px; display: none; }
         .msg.ok  { background: #d1e7dd; color: #0a3622; border: 1px solid #a3cfbb; display: block; }
         .msg.err { background: #f8d7da; color: #58151c; border: 1px solid #f1aeb5; display: block; }
+        .msg.warn { background: #fff3cd; color: #664d03; border: 1px solid #ffe69c; display: block; }
 
         .hw-result { font-size: 0.83rem; margin-top: 5px; min-height: 18px; }
         .chk-row { display: flex; gap: 12px; flex-wrap: wrap; background: #f8f9fa;
@@ -624,6 +625,7 @@ function genererPDF() {
     btn.textContent = '⏳ Génération en cours…';
     msg.className = 'msg';
 
+    var conflictWarning = null;
     fetch("{{ url_for('tech.generer_fiche') }}", {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -631,6 +633,7 @@ function genererPDF() {
     })
     .then(function(r) {
         if (!r.ok) return r.json().then(function(e){ throw new Error(e.error || 'Erreur serveur'); });
+        conflictWarning = r.headers.get('X-Ticket-Conflict-Warning');
         return r.blob();
     })
     .then(function(blob) {
@@ -642,8 +645,13 @@ function genererPDF() {
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        msg.textContent = '✅ Fiche générée et téléchargée !';
-        msg.className = 'msg ok';
+        if (conflictWarning) {
+            msg.textContent = '⚠️ Fiche générée, mais ' + conflictWarning;
+            msg.className = 'msg warn';
+        } else {
+            msg.textContent = '✅ Fiche générée et téléchargée !';
+            msg.className = 'msg ok';
+        }
     })
     .catch(function(e) {
         msg.textContent = '❌ Erreur : ' + e.message;
