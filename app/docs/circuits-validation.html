@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuits de validation</title>
+<meta charset="UTF-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f3f4f8;
+    --bg-panel:#ffffff;
+    --bg-raised:#fbfbfd;
+    --ink:#161a23;
+    --ink-soft:#585f72;
+    --ink-faint:#828899;
+    --line:#dcdfe8;
+    --line-soft:#e9ebf1;
+    --accent:#24406b;
+    --accent-ink:#1a2f52;
+    --accent-soft:#e6ecf6;
+    --amber:#96650f;
+    --amber-soft:#f7ecd6;
+    --amber-line:#e3cd9b;
+    --green:#276b4d;
+    --green-soft:#e2f0e8;
+    --green-line:#b9dbc7;
+    --red:#a23b3b;
+    --red-soft:#f8e8e8;
+    --red-line:#e3bcbc;
+    --code-bg:#eceef4;
+    --shadow:0 1px 2px rgba(20,24,34,.04), 0 8px 24px -12px rgba(20,24,34,.12);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#11141c;
+      --bg-panel:#171b26;
+      --bg-raised:#1c2130;
+      --ink:#e7e9f0;
+      --ink-soft:#a3a9bd;
+      --ink-faint:#767d92;
+      --line:#2b3142;
+      --line-soft:#232838;
+      --accent:#7fa2d6;
+      --accent-ink:#cfe0f7;
+      --accent-soft:#1c2a42;
+      --amber:#e0ad5c;
+      --amber-soft:#33280f;
+      --amber-line:#4d3c17;
+      --green:#7ecba0;
+      --green-soft:#132921;
+      --green-line:#204634;
+      --red:#e28e8e;
+      --red-soft:#2c1717;
+      --red-line:#4a2323;
+      --code-bg:#1e2330;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#11141c;
+    --bg-panel:#171b26;
+    --bg-raised:#1c2130;
+    --ink:#e7e9f0;
+    --ink-soft:#a3a9bd;
+    --ink-faint:#767d92;
+    --line:#2b3142;
+    --line-soft:#232838;
+    --accent:#7fa2d6;
+    --accent-ink:#cfe0f7;
+    --accent-soft:#1c2a42;
+    --amber:#e0ad5c;
+    --amber-soft:#33280f;
+    --amber-line:#4d3c17;
+    --green:#7ecba0;
+    --green-soft:#132921;
+    --green-line:#204634;
+    --red:#e28e8e;
+    --red-soft:#2c1717;
+    --red-line:#4a2323;
+    --code-bg:#1e2330;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+    padding-inline:0;
+    -webkit-font-smoothing:antialiased;
+  }
+  code,.mono{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;}
+  h1,h2,h3{text-wrap:balance; margin:0;}
+  a{color:inherit;}
+  ::selection{background:var(--accent-soft);}
+
+  /* ---------- Top banner ---------- */
+  .masthead{
+    padding:40px 24px 32px;
+    border-bottom:1px solid var(--line);
+    background:
+      linear-gradient(180deg, var(--bg-panel), var(--bg));
+    position:relative;
+    overflow:hidden;
+  }
+  .masthead::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size:28px 28px;
+    mask-image:linear-gradient(180deg, black, transparent 85%);
+    opacity:.7;
+    pointer-events:none;
+  }
+  .masthead-inner{max-width:1180px; margin:0 auto; position:relative;}
+  .kicker{
+    font-family:"IBM Plex Mono";
+    font-size:11.5px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:14px;
+  }
+  .kicker .dot{width:6px;height:6px;border-radius:50%;background:var(--accent);}
+  .masthead h1{
+    font-size:clamp(28px,4vw,42px);
+    font-weight:700;
+    letter-spacing:-.01em;
+    line-height:1.08;
+    max-width:16ch;
+  }
+  .masthead p.lede{
+    margin-top:14px;
+    font-size:15.5px;
+    line-height:1.6;
+    color:var(--ink-soft);
+    max-width:62ch;
+  }
+  .masthead .stats{
+    display:flex; gap:28px; margin-top:26px; flex-wrap:wrap;
+  }
+  .stat{display:flex; flex-direction:column; gap:2px;}
+  .stat b{font-size:22px; font-family:"IBM Plex Mono"; font-variant-numeric:tabular-nums; font-weight:600;}
+  .stat span{font-size:11.5px; color:var(--ink-faint); letter-spacing:.03em; text-transform:uppercase;}
+
+  .theme-toggle{
+    position:absolute; top:0; right:0;
+    display:flex; gap:2px;
+    background:var(--bg-raised);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:2px;
+  }
+  .theme-toggle button{
+    appearance:none; border:0; background:transparent; color:var(--ink-soft);
+    font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.04em;
+    padding:6px 10px; border-radius:6px; cursor:pointer;
+  }
+  .theme-toggle button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent-ink);}
+  .theme-toggle button:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    max-width:1180px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:230px 1fr;
+    gap:0;
+    align-items:start;
+  }
+  nav.toc{
+    position:sticky; top:0;
+    padding:28px 16px 40px 24px;
+    max-height:100vh;
+    overflow-y:auto;
+    border-right:1px solid var(--line);
+  }
+  nav.toc h4{
+    font-family:"IBM Plex Mono"; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    color:var(--ink-faint); margin:20px 0 8px; font-weight:600;
+  }
+  nav.toc h4:first-child{margin-top:0;}
+  nav.toc ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:1px;}
+  nav.toc a{
+    display:flex; align-items:baseline; gap:8px;
+    text-decoration:none; color:var(--ink-soft);
+    font-size:13px; padding:7px 8px; border-radius:6px;
+    transition:background .12s ease, color .12s ease;
+  }
+  nav.toc a:hover{background:var(--bg-raised); color:var(--ink);}
+  nav.toc a.active{background:var(--accent-soft); color:var(--accent-ink); font-weight:600;}
+  nav.toc a .n{font-family:"IBM Plex Mono"; font-size:10.5px; color:var(--ink-faint); width:16px; flex-shrink:0;}
+  nav.toc a.active .n{color:var(--accent);}
+
+  main{padding:8px 28px 100px; min-width:0;}
+
+  /* ---------- Section ---------- */
+  section.wf{
+    padding:56px 0 44px;
+    border-bottom:1px solid var(--line);
+    scroll-margin-top:16px;
+  }
+  section.wf:last-child{border-bottom:none;}
+  .wf-head{margin-bottom:26px;}
+  .eyebrow{
+    display:flex; align-items:center; gap:10px;
+    font-family:"IBM Plex Mono"; font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--ink-faint); margin-bottom:10px;
+  }
+  .eyebrow .num{color:var(--accent); font-weight:600;}
+  .badge{
+    font-family:"IBM Plex Mono"; font-size:10.5px; letter-spacing:.04em;
+    padding:2.5px 8px; border-radius:20px; border:1px solid;
+  }
+  .badge.nocode{color:var(--green); background:var(--green-soft); border-color:var(--green-line);}
+  .badge.legacy{color:var(--amber); background:var(--amber-soft); border-color:var(--amber-line);}
+  .wf-head h2{font-size:26px; font-weight:700; letter-spacing:-.01em;}
+  .wf-head p.summary{margin-top:10px; font-size:14.5px; line-height:1.65; color:var(--ink-soft); max-width:70ch;}
+
+  figure.diagram{
+    margin:26px 0 30px;
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:8px;
+    box-shadow:var(--shadow);
+    overflow-x:auto;
+  }
+  figure.diagram svg{display:block; max-width:100%; height:auto;}
+  figcaption{
+    font-size:12px; color:var(--ink-faint); padding:10px 14px 4px; font-family:"IBM Plex Mono";
+  }
+
+  .detail-grid{
+    display:grid; grid-template-columns:1.3fr 1fr; gap:20px; align-items:start;
+  }
+  @media (max-width:760px){ .detail-grid{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--bg-panel); border:1px solid var(--line); border-radius:12px;
+    padding:18px 20px;
+  }
+  .panel h3{
+    font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint);
+    margin-bottom:14px; font-weight:600;
+  }
+  .fgroup{margin-bottom:14px;}
+  .fgroup:last-child{margin-bottom:0;}
+  .fgroup .glabel{
+    font-size:11px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:.06em;
+    margin-bottom:6px;
+  }
+  ul.flist{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px;}
+  ul.flist li{
+    font-size:13.5px; line-height:1.5; color:var(--ink);
+    padding-left:14px; position:relative;
+  }
+  ul.flist li::before{
+    content:""; position:absolute; left:0; top:.62em; width:5px; height:5px; border-radius:50%;
+    background:var(--line); border:1px solid var(--ink-faint);
+  }
+  ul.flist li .map{
+    display:block; font-size:11px; color:var(--ink-faint); font-family:"IBM Plex Mono"; margin-top:1px;
+  }
+  ul.flist li .map b{color:var(--accent); font-weight:500;}
+  ul.flist li .cond{color:var(--ink-faint); font-style:italic;}
+
+  .notes{display:flex; flex-direction:column; gap:10px;}
+  .note{
+    border-radius:10px; padding:12px 14px; font-size:13px; line-height:1.55;
+    border:1px solid; display:flex; gap:10px;
+  }
+  .note .ico{font-family:"IBM Plex Mono"; font-weight:700; flex-shrink:0; width:18px; text-align:center;}
+  .note.info{background:var(--accent-soft); border-color:var(--accent-soft); color:var(--ink);}
+  .note.info .ico{color:var(--accent);}
+  .note.warn{background:var(--amber-soft); border-color:var(--amber-line); color:var(--ink);}
+  .note.warn .ico{color:var(--amber);}
+  .note.fixed{background:var(--green-soft); border-color:var(--green-line); color:var(--ink);}
+  .note.fixed .ico{color:var(--green);}
+
+  /* ---------- Footer ---------- */
+  footer{
+    max-width:1180px; margin:0 auto; padding:34px 28px 60px 258px;
+    color:var(--ink-faint); font-size:12px; border-top:1px solid var(--line);
+  }
+  @media (max-width:860px){ footer{padding-left:28px;} }
+
+  /* ---------- Mobile ---------- */
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr;}
+    nav.toc{
+      position:sticky; top:0; z-index:5;
+      max-height:none; border-right:none; border-bottom:1px solid var(--line);
+      background:var(--bg);
+      padding:12px 16px;
+      display:block;
+    }
+    nav.toc .toc-inner{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px;}
+    nav.toc h4{display:none;}
+    nav.toc ol{flex-direction:row; flex-wrap:nowrap;}
+    nav.toc a{white-space:nowrap; border:1px solid var(--line);}
+    main{padding:8px 16px 80px;}
+    .masthead{padding:28px 16px 26px;}
+    .theme-toggle{position:static; margin-top:18px; width:fit-content;}
+  }
+
+  @media (prefers-reduced-motion:no-preference){
+    section.wf{animation:rise .5s ease both;}
+  }
+  @keyframes rise{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+</style>
+</head>
+<body>
+<div class="masthead">
+  <div class="masthead-inner">
+    <div class="theme-toggle" role="group" aria-label="Thème">
+      <button type="button" data-theme-btn="light" aria-pressed="false">Clair</button>
+      <button type="button" data-theme-btn="dark" aria-pressed="false">Sombre</button>
+      <button type="button" data-theme-btn="system" aria-pressed="true">Système</button>
+    </div>
+    <p class="kicker"><span class="dot"></span> Intranet ILVM — Documentation interne</p>
+    <h1>Circuits de validation</h1>
+    <p class="lede">Les 10 circuits de demande de l'intranet : qui dépose, qui valide, qui reçoit. Huit passent par le moteur de formulaires no-code, deux (FCPI et DAF) restent volontairement codés en dur. Document généré à partir de l'état réel du code et de la configuration en base au 21/09/2026 — pas de la spécification d'origine.</p>
+    <div class="stats">
+      <div class="stat"><b>10</b><span>Circuits</span></div>
+      <div class="stat"><b>08</b><span>No-code</span></div>
+      <div class="stat"><b>02</b><span>Historiques</span></div>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="toc" aria-label="Sommaire">
+    <div class="toc-inner">
+      <div>
+        <h4>Moteur no-code</h4>
+        <ol id="toc-nocode"></ol>
+      </div>
+      <div>
+        <h4>Modules historiques</h4>
+        <ol id="toc-legacy"></ol>
+      </div>
+    </div>
+  </nav>
+
+  <main id="main"></main>
+</div>
+
+<footer>
+  Institut Le Val Mandé — intranet interne (ilvmintra1). Document de référence technique, pas destiné à être diffusé en dehors de l'équipe informatique.
+</footer>
+
+<script>
+/* =========================================================================
+   DONNÉES — état réel du code / de la base au 21/09/2026
+   ========================================================================= */
+const WORKFLOWS = [
+  // ---------------------------------------------------------------- 1
+  {
+    id:'info', group:'nocode', badge:'No-code · Sans étape',
+    title:'Informatique', slug:'info-v2',
+    summary:'Le formulaire le plus simple du moteur : aucune étape de validation configurée. Toute demande part directement en file de traitement du service Informatique.',
+    steps:[
+      {role:'Utilisateur', label:'Dépôt de la demande', kind:'start'},
+    ],
+    dispatch:[{label:'Informatique', service:'INFORMATIQUE', note:'catégorie forcée « Incident Standard »'}],
+    fields:[
+      {group:'Demande', items:[
+        {t:'Titre de la demande'},
+        {t:'Description détaillée'},
+        {t:'Service / Bureau', map:'hostname', c:'texte libre — où êtes-vous situé au sein de l’institut'},
+        {t:'Téléphone de contact', map:'tel_demandeur'},
+        {t:'Capture d’écran / photo', c:'fichier'},
+      ]}
+    ],
+    notes:[
+      {type:'fixed', text:'Corrigé le 21/09/2026 : l’affichage ticket labellait ce champ « PC/Host » avec une icône moniteur, laissant croire à un nom de machine auto-détecté. C’est en réalité un texte libre saisi par l’utilisateur (aucune détection automatique côté moteur no-code) — libellé et description alignés sur « Service / Bureau » partout (formulaire, vue ticket, tableau de bord solver).'}
+    ]
+  },
+  // ---------------------------------------------------------------- 2
+  {
+    id:'imago', group:'nocode', badge:'No-code · Sans étape',
+    title:'Dépannage Imago', slug:'imago-v2',
+    summary:'Même structure que Informatique : aucune validation, dispatch immédiat vers le service Imago avec une catégorie de ticket forcée côté serveur.',
+    steps:[
+      {role:'Utilisateur', label:'Dépôt de la demande', kind:'start'},
+    ],
+    dispatch:[{label:'Imago', service:'IMAGO', note:'catégorie forcée « Dépannage Imago »'}],
+    fields:[
+      {group:'Demande', items:[
+        {t:'Titre de la demande'},
+        {t:'Description détaillée'},
+        {t:'Téléphone de contact', map:'tel_demandeur'},
+        {t:'Capture d’écran / photo', c:'fichier'},
+      ]}
+    ],
+    notes:[
+      {type:'fixed', text:'Corrigé le 21/09/2026 : le champ « Service / Bureau » (hostname) a été retiré du formulaire — jugé redondant sur ce circuit. Les anciens tickets Imago qui portaient déjà une valeur continuent de l’afficher normalement.'}
+    ]
+  },
+  // ---------------------------------------------------------------- 3
+  {
+    id:'drh', group:'nocode', badge:'No-code · Sans étape',
+    title:'DRH', slug:'drh-v2',
+    summary:'Aucune validation hiérarchique — le titre et la catégorie du ticket créé sont pilotés directement par le type de demande choisi dans le formulaire.',
+    steps:[
+      {role:'Utilisateur', label:'Dépôt de la demande', kind:'start'},
+    ],
+    dispatch:[{label:'DRH', service:'DRH', note:'titre « [DRH] {type de demande} »'}],
+    fields:[
+      {group:'Demande', items:[
+        {t:'Type de demande', c:'Changement de RIB / Contrat / Modification d’information / Autre'},
+        {t:'Précision (si « Autre »)', c:'visible seulement si Autre est choisi'},
+        {t:'Description détaillée'},
+        {t:'Téléphone de contact', map:'tel_demandeur'},
+        {t:'Capture d’écran / photo', c:'fichier'},
+      ]}
+    ],
+    notes:[
+      {type:'fixed', text:'Corrigé le 21/09/2026 : le champ « Service / Bureau » (hostname) a été retiré du formulaire — jugé redondant sur ce circuit. Les anciens tickets DRH qui portaient déjà une valeur continuent de l’afficher normalement.'}
+    ]
+  },
+  // ---------------------------------------------------------------- 4
+  {
+    id:'materiel', group:'nocode', badge:'No-code · 1 étape',
+    title:'Demande Matériel', slug:'materiel-v2',
+    summary:'Réservé aux Manager et Directeur. Une seule étape de validation, rattachée au service Informatique — le titre et la catégorie du ticket sont fixes, non modifiables par le demandeur.',
+    restricted:'Manager / Directeur uniquement',
+    steps:[
+      {role:'Manager ou Directeur', label:'Dépôt de la demande', kind:'start'},
+      {role:'Manager ou Directeur — Informatique', label:'Validation Informatique', kind:'validate'},
+    ],
+    dispatch:[{label:'Informatique', service:'INFORMATIQUE', note:'titre et catégorie fixes : « Demande de Matériel »'}],
+    fields:[
+      {group:'Demande', items:[
+        {t:'Description détaillée'},
+        {t:'Service / Bureau', map:'hostname', c:'texte libre — où êtes-vous situé au sein de l’institut'},
+        {t:'Téléphone de contact', map:'tel_demandeur'},
+        {t:'Capture d’écran / photo', c:'fichier'},
+      ]}
+    ],
+    notes:[]
+  },
+  // ---------------------------------------------------------------- 5
+  {
+    id:'technique', group:'nocode', badge:'No-code · 2 étapes',
+    title:'Technique', slug:'tech-v2',
+    summary:'Circuit hiérarchique classique en deux temps : d’abord l’équipe d’origine du demandeur, puis le service Technique — chaque étape peut être sautée automatiquement selon le rôle de l’auteur.',
+    steps:[
+      {role:'Utilisateur', label:'Dépôt de la demande', kind:'start'},
+      {role:'Manager/Directeur — service du demandeur', label:'Validation Équipe (N1)', kind:'validate', skip:'sautée si l’auteur est déjà Directeur ou Admin'},
+      {role:'Manager/Directeur — Technique', label:'Validation Service (N2)', kind:'validate', skip:'sautée si l’auteur est déjà Admin'},
+    ],
+    dispatch:[{label:'Technique', service:'TECHNIQUE', note:'catégorie « Standard »'}],
+    fields:[
+      {group:'Demande', items:[
+        {t:'Titre de la demande'},
+        {t:'Description détaillée'},
+        {t:'Service / Bureau', map:'hostname', c:'texte libre — où êtes-vous situé au sein de l’institut'},
+        {t:'Téléphone de contact', map:'tel_demandeur'},
+        {t:'Capture d’écran / photo', c:'fichier'},
+      ]}
+    ],
+    notes:[]
+  },
+  // ---------------------------------------------------------------- 6
+  {
+    id:'generaux', group:'nocode', badge:'No-code · 2 étapes',
+    title:'Généraux', slug:'generaux-v2',
+    summary:'Structure rigoureusement identique au circuit Technique — même logique de saut de validation selon le rôle de l’auteur, seul le service cible change.',
+    steps:[
+      {role:'Utilisateur', label:'Dépôt de la demande', kind:'start'},
+      {role:'Manager/Directeur — service du demandeur', label:'Validation Équipe (N1)', kind:'validate', skip:'sautée si l’auteur est déjà Directeur ou Admin'},
+      {role:'Manager/Directeur — Généraux', label:'Validation Service (N2)', kind:'validate', skip:'sautée si l’auteur est déjà Admin'},
+    ],
+    dispatch:[{label:'Généraux', service:'GENERAUX', note:'catégorie « Standard »'}],
+    fields:[
+      {group:'Demande', items:[
+        {t:'Titre de la demande'},
+        {t:'Description détaillée'},
+        {t:'Service / Bureau', map:'hostname', c:'texte libre — où êtes-vous situé au sein de l’institut'},
+        {t:'Téléphone de contact', map:'tel_demandeur'},
+        {t:'Capture d’écran / photo', c:'fichier'},
+      ]}
+    ],
+    notes:[]
+  },
+  // ---------------------------------------------------------------- 7
+  {
+    id:'sejour', group:'nocode', badge:'No-code · 1 étape · 3 destinataires',
+    title:'Dossier de séjour', slug:'sejour-v2',
+    summary:'Une seule validation, mais trois destinataires simultanés à la fin — chacun ne reçoit que les pièces jointes qui le concernent, pas l’intégralité du dossier.',
+    steps:[
+      {role:'Utilisateur', label:'Dépôt du dossier', kind:'start'},
+      {role:'Manager/Directeur — service du demandeur', label:'Validation du dossier', kind:'validate'},
+    ],
+    dispatch:[
+      {label:'DRH', service:'DRH', note:'reçoit : dossier de séjour'},
+      {label:'DAF', service:'DAF', note:'reçoit : dossier + devis'},
+      {label:'Secrétariat Général', service:'SG', note:'reçoit : dossier + devis + PV sécurité'},
+    ],
+    fields:[
+      {group:'Séjour', items:[
+        {t:'Intitulé du séjour'},
+        {t:'Date du séjour'},
+        {t:'Service demandeur'},
+        {t:'Description / contexte'},
+      ]},
+      {group:'Pièces jointes', items:[
+        {t:'Dossier de séjour', c:'Word ou PDF'},
+        {t:'PV de sécurité', c:'PDF'},
+        {t:'Devis', c:'PDF'},
+      ]},
+    ],
+    notes:[
+      {type:'warn', text:'Limite acceptée : le moteur ne permet pas d’uploader une version signée du dossier au moment de la validation. Les trois destinataires reçoivent systématiquement le fichier original, jamais une version signée par le validateur.'}
+    ]
+  },
+  // ---------------------------------------------------------------- 8
+  {
+    id:'publication', group:'nocode', badge:'No-code · 2 étapes · Aucun ticket',
+    title:'Publication', slug:'publication-v2',
+    summary:'Le seul circuit du moteur qui ne crée jamais de ticket : c’est un circuit de validation de contenu pur, réservé à l’encadrement.',
+    restricted:'Manager / Directeur uniquement',
+    steps:[
+      {role:'Manager ou Directeur', label:'Dépôt de la publication', kind:'start'},
+      {role:'Directeur — service du demandeur', label:'Validation Directeur', kind:'validate', refus:'Refusée, retour à l’auteur'},
+      {role:'Admin (rôle « Communication »)', label:'Mise en ligne', kind:'validate', refus:'Refusée, retour à l’auteur'},
+    ],
+    dispatch:[],
+    terminal:'Publiée — aucun ticket créé, l’auteur est simplement notifié',
+    fields:[
+      {group:'Publication', items:[
+        {t:'Titre'},
+        {t:'Contenu'},
+        {t:'Visuels', c:'plusieurs fichiers'},
+      ]}
+    ],
+    notes:[
+      {type:'info', text:'L’étape « Mise en ligne » exige le rôle Admin, pas un vrai service Communication — celui-ci n’a jamais existé comme valeur du système : c’est un reflet fidèle de la réalité, pas un bug du formulaire.'}
+    ]
+  },
+  // ---------------------------------------------------------------- 9 (legacy)
+  {
+    id:'fcpi', group:'legacy', badge:'Legacy · 2 étapes · 4 destinataires',
+    title:'FCPI — Agent recruté', slug:null,
+    summary:'Volontairement laissé hors du moteur no-code : le mapping de champs vers colonnes structurées du ticket ne peut pas encore être limité à un seul destinataire, alors que FCPI a besoin de champs différents par service receveur.',
+    steps:[
+      {role:'Manager ou Directeur', label:'Dépôt de la demande', kind:'start'},
+      {role:'Manager RH', label:'Validation Manager RH', kind:'validate', refus:'Refusée, motif renseigné'},
+      {role:'Directeur RH', label:'Validation Directeur RH', kind:'validate', refus:'Refusée, motif renseigné'},
+    ],
+    dispatch:[
+      {label:'DRH', service:'DRH', note:'dossier administratif'},
+      {label:'Informatique', service:'INFORMATIQUE', note:'matériel, accès, localisation'},
+      {label:'Sécurité', service:'SECU', note:'badge, localisation du poste'},
+      {label:'Imago', service:'IMAGO', note:'seulement si la case Imago est cochée', conditional:true},
+    ],
+    fields:[
+      {group:'Agent recruté', items:[
+        {t:'Date d’entrée'}, {t:'Nom'}, {t:'Prénom'}, {t:'Fonction'}, {t:'Service'}, {t:'UF'},
+      ]},
+      {group:'DRH', items:[
+        {t:'Contractuel', c:'oui/non — si non, dates de début/fin de contrat'},
+        {t:'Condition de recrutement', c:'jour / nuit / week-end'},
+        {t:'Temps de travail', c:'plein / partiel / non complet — % si partiel ou non complet'},
+        {t:'Motif de recrutement', c:'poste vacant / remplacement / surcroît d’activité'},
+        {t:'CV', c:'fichier'},
+        {t:'Fiche de poste', c:'fichier'},
+        {t:'Simulation salaire', c:'oui/non'},
+      ]},
+      {group:'Badge et clefs', items:[
+        {t:'Photo du professionnel', c:'fichier, non bloquant'},
+        {t:'Localisation du poste de travail'},
+        {t:'Commentaire'},
+      ]},
+      {group:'Imago', items:[
+        {t:'Activer Imago', c:'case à cocher'},
+        {t:'Mobilité / sites d’intervention', c:'si mobilité'},
+      ]},
+      {group:'Informatique', items:[
+        {t:'Type de matériel demandé', c:'téléphone fixe, portable, PC, ordinateur portable — plusieurs choix'},
+        {t:'Accès informatique demandés'},
+      ]},
+    ],
+    notes:[
+      {type:'warn', text:'C’est précisément cette différence de champs par destinataire qui bloque la migration : le moteur applique aujourd’hui un mapping de champs identique à TOUS les tickets d’une soumission, sans pouvoir le restreindre à un seul destinataire.'}
+    ]
+  },
+  // ---------------------------------------------------------------- 10 (legacy)
+  {
+    id:'daf', group:'legacy', badge:'Legacy · circuit à 4 étapes',
+    title:'DAF — Bon de commande', slug:null,
+    summary:'Le circuit le plus long de l’intranet : validation hiérarchique, préparation du bon par un gestionnaire, validation budgétaire, puis signature. Une variante « délégation » existe pour les petits montants.',
+    steps:[
+      {role:'Utilisateur ou Manager', label:'Dépôt du bon de commande', kind:'start'},
+      {role:'Manager — service du demandeur', label:'Validation N1', kind:'validate', skip:'sautée pour un Directeur, qui rejoint directement l’étape suivante'},
+      {role:'Gestionnaire / solveur DAF', label:'Prise en charge et préparation du bon', kind:'process'},
+      {role:'Manager DAF', label:'Validation Manager DAF', kind:'validate', refus:'Retour au gestionnaire — pas un refus définitif, le bon peut être corrigé et retransmis'},
+      {role:'Directeur DAF', label:'Signature du bon', kind:'process'},
+    ],
+    dispatch:[],
+    terminal:'Clôturé — bon signé transmis au gestionnaire',
+    fields:[
+      {group:'Émetteur & livraison', items:[
+        {t:'Service émetteur'}, {t:'UF'}, {t:'Lieu de livraison'},
+      ]},
+      {group:'Fournisseur', items:[
+        {t:'Fournisseur déjà existant', c:'oui/non'},
+        {t:'Si oui', c:'nom + email'},
+        {t:'Si non', c:'nom, email, SIRET, téléphone, RIB (fichier)'},
+      ]},
+      {group:'Bon de commande', items:[
+        {t:'Devis', c:'fichier PDF'},
+        {t:'Dénomination du bon'},
+        {t:'Référence du devis'},
+        {t:'Lignes d’articles', c:'désignation, référence, quantité, PU, total — jusqu’à 50 lignes'},
+        {t:'Type de prix', c:'HT ou TTC'},
+        {t:'Budget affecté'},
+        {t:'Commentaire'},
+      ]},
+    ],
+    notes:[
+      {type:'fixed', text:'Corrigé le 18/09/2026 : un Directeur d’un AUTRE service que DAF sautait auparavant tout le circuit (préparation + validation Manager DAF comprises) pour atterrir directement à la signature. Il ne saute désormais que sa propre validation N1 — le reste du circuit est identique à toute autre demande.'},
+      {type:'info', text:'Variante Délégation (réservée Manager/Directeur) : plafonnée à 380 € HT / 400 € TTC, elle saute l’intégralité du circuit et part directement en file de traitement DAF.'}
+    ]
+  },
+];
+
+/* =========================================================================
+   RENDU — sommaire + sections + diagrammes SVG
+   ========================================================================= */
+const GROUP_LABEL = {nocode:'Moteur no-code', legacy:'Modules historiques'};
+
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function buildToc(){
+  const nocode = document.getElementById('toc-nocode');
+  const legacy = document.getElementById('toc-legacy');
+  WORKFLOWS.forEach((wf,i)=>{
+    const li = document.createElement('li');
+    const a = document.createElement('a');
+    a.href = '#'+wf.id;
+    a.dataset.target = wf.id;
+    a.innerHTML = `<span class="n">${String(i+1).padStart(2,'0')}</span><span>${esc(wf.title)}</span>`;
+    li.appendChild(a);
+    (wf.group==='nocode'?nocode:legacy).appendChild(li);
+  });
+}
+
+function fieldRow(item){
+  const mapHtml = item.map ? `<span class="map">→ colonne <b>${esc(item.map)}</b></span>` : '';
+  const condHtml = item.c ? `<span class="map cond">${esc(item.c)}</span>` : '';
+  return `<li>${esc(item.t)}${mapHtml}${condHtml}</li>`;
+}
+
+function buildFieldsPanel(wf){
+  const groups = wf.fields.map(g => `
+    <div class="fgroup">
+      ${wf.fields.length>1 ? `<div class="glabel">${esc(g.group)}</div>` : ''}
+      <ul class="flist">${g.items.map(fieldRow).join('')}</ul>
+    </div>
+  `).join('');
+  return `<div class="panel"><h3>Champs du formulaire de dépôt</h3>${groups}</div>`;
+}
+
+const NOTE_ICON = {info:'i', warn:'!', fixed:'✓'};
+function buildNotesPanel(wf){
+  if(!wf.notes.length) return '';
+  const rows = wf.notes.map(n => `
+    <div class="note ${n.type}"><span class="ico">${NOTE_ICON[n.type]}</span><span>${esc(n.text)}</span></div>
+  `).join('');
+  return `<div class="panel"><h3>Points d’attention</h3><div class="notes">${rows}</div></div>`;
+}
+
+function buildSection(wf, i){
+  const restrictedNote = wf.restricted ? `<div class="note warn" style="margin-top:14px;"><span class="ico">!</span><span>Accès restreint : ${esc(wf.restricted)}.</span></div>` : '';
+  return `
+    <section class="wf" id="${wf.id}">
+      <div class="wf-head">
+        <div class="eyebrow"><span class="num">${String(i+1).padStart(2,'0')}</span> · <span class="badge ${wf.group==='nocode'?'nocode':'legacy'}">${esc(wf.badge)}</span></div>
+        <h2>${esc(wf.title)}</h2>
+        <p class="summary">${esc(wf.summary)}</p>
+        ${restrictedNote}
+      </div>
+      <figure class="diagram">
+        <div class="svg-host" data-id="${wf.id}"></div>
+        <figcaption>Flux du dépôt jusqu’au traitement final — ${wf.dispatch.length ? wf.dispatch.length+' destinataire'+(wf.dispatch.length>1?'s':'') : 'aucun ticket créé'}.</figcaption>
+      </figure>
+      <div class="detail-grid">
+        ${buildFieldsPanel(wf)}
+        <div style="display:flex; flex-direction:column; gap:20px;">
+          ${buildNotesPanel(wf)}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function buildMain(){
+  document.getElementById('main').innerHTML = WORKFLOWS.map(buildSection).join('');
+}
+
+/* ---------- Diagram drawing (hand-computed layout, no libs) ---------- */
+function wrapLines(text, maxChars, maxLines){
+  const words = text.split(' ');
+  const lines = [];
+  let cur = '';
+  for(const w of words){
+    const trial = cur ? cur+' '+w : w;
+    if(trial.length > maxChars && cur){ lines.push(cur); cur = w; }
+    else cur = trial;
+    if(lines.length === maxLines) break;
+  }
+  if(cur && lines.length < maxLines) lines.push(cur);
+  if(lines.length === maxLines){
+    const last = lines[lines.length-1];
+    if(last.length >= maxChars-1) lines[lines.length-1] = last.slice(0, maxChars-1).trimEnd()+'…';
+  }
+  return lines;
+}
+
+function svgText(x,y,lines,opts={}){
+  const {size=12, weight=500, anchor='middle', color='var(--ink)', lh=15} = opts;
+  const tspans = lines.map((l,idx)=>`<tspan x="${x}" dy="${idx===0?0:lh}">${esc(l)}</tspan>`).join('');
+  return `<text x="${x}" y="${y}" font-size="${size}" font-weight="${weight}" text-anchor="${anchor}" fill="${color}" font-family="IBM Plex Sans, sans-serif">${tspans}</text>`;
+}
+
+function drawWorkflow(host, wf){
+  const NODE_W = 176, NODE_H = 78, GAP_X = 58, PAD = 44, TOP_ROLE_H = 30, MIN_W = 480;
+  const steps = wf.steps;
+  const n = steps.length;
+  const rowY = 54;
+  const nodeTop = rowY + TOP_ROLE_H;
+
+  // natural (unpadded) content widths
+  const chainW = n*NODE_W + (n-1)*GAP_X;
+
+  // refus branch bookkeeping
+  const hasRefus = steps.some(s=>s.refus);
+  const refusY = nodeTop + NODE_H + 58;
+
+  // dispatch row
+  const dispatchGapY = hasRefus ? 150 : 96;
+  const dispatchTop = nodeTop + NODE_H + dispatchGapY;
+  const targets = wf.dispatch && wf.dispatch.length ? wf.dispatch : null;
+  const dCount = targets ? targets.length : 1;
+  const D_W = 168, D_GAP = 34;
+  const dispatchTotalW = dCount*D_W + (dCount-1)*D_GAP;
+
+  // guaranteed canvas width, then center chain and dispatch rows within it
+  const contentW = Math.max(chainW, dispatchTotalW);
+  const width = Math.max(contentW + PAD*2, MIN_W);
+  const chainStartX = PAD + (width - PAD*2 - chainW)/2;
+  const xs = steps.map((_,i)=> chainStartX + i*(NODE_W+GAP_X));
+  const chainRight = xs[n-1] + NODE_W;
+  const chainCenter = chainStartX + chainW/2;
+  const dispatchStartX = PAD + (width - PAD*2 - dispatchTotalW)/2;
+
+  const height = dispatchTop + (D_H_of(wf)) + 30;
+
+  function D_H_of(){ return 84; }
+  const D_H = 84;
+
+  const uid = wf.id;
+  const vbH = height+30;
+  let svg = `<svg viewBox="0 0 ${width} ${vbH}" width="${width}" height="${vbH}" role="img" aria-label="Diagramme du circuit ${esc(wf.title)}" xmlns="http://www.w3.org/2000/svg">`;
+  svg += `<defs>
+    <marker id="arrow-${uid}" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="currentColor"></path>
+    </marker>
+  </defs>`;
+  svg += `<g style="color:var(--ink-faint)">`;
+
+  // connectors between chain nodes
+  for(let i=0;i<n-1;i++){
+    const x1 = xs[i]+NODE_W, x2 = xs[i+1];
+    const y = nodeTop + NODE_H/2;
+    svg += `<line x1="${x1}" y1="${y}" x2="${x2-6}" y2="${y}" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-${uid})"></line>`;
+  }
+
+  // final connector(s) to dispatch / terminal
+  const lastCx = xs[n-1] + NODE_W/2;
+  const lastBottom = nodeTop + NODE_H;
+  if(targets){
+    targets.forEach((t,i)=>{
+      const dx = dispatchStartX + i*(D_W+D_GAP) + D_W/2;
+      const dy = dispatchTop;
+      const midY = lastBottom + (dy-lastBottom)*0.55;
+      svg += `<path d="M${lastCx},${lastBottom} L${lastCx},${midY} L${dx},${midY} L${dx},${dy-6}" fill="none" stroke="currentColor" stroke-width="1.4" marker-end="url(#arrow-${uid})"></path>`;
+    });
+  } else {
+    const dx = chainCenter, dy = dispatchTop;
+    svg += `<line x1="${lastCx}" y1="${lastBottom}" x2="${dx}" y2="${dy-6}" stroke="currentColor" stroke-width="1.6" marker-end="url(#arrow-${uid})"></line>`;
+  }
+
+  svg += `</g>`;
+
+  // chain nodes
+  steps.forEach((s,i)=>{
+    const x = xs[i], y = nodeTop;
+    const isStart = s.kind==='start';
+    const isProcess = s.kind==='process';
+    const fill = isStart ? 'var(--accent-soft)' : isProcess ? 'var(--bg-raised)' : 'var(--accent-soft)';
+    const stroke = isStart ? 'var(--accent)' : isProcess ? 'var(--line)' : 'var(--accent)';
+    const strokeW = isProcess ? 1.2 : 1.6;
+    const roleLines = wrapLines(s.role, 28, 2);
+    const labelLines = wrapLines(s.label, 20, 3);
+
+    svg += svgText(x+NODE_W/2, rowY, roleLines, {size:10.5, weight:600, color:'var(--ink-faint)', lh:12});
+    svg += `<rect x="${x}" y="${y}" width="${NODE_W}" height="${NODE_H}" rx="12" fill="${fill}" stroke="${stroke}" stroke-width="${strokeW}"></rect>`;
+    if(isProcess){
+      svg += `<circle cx="${x+18}" cy="${y+18}" r="4" fill="var(--ink-faint)"></circle>`;
+    }
+    svg += svgText(x+NODE_W/2, y+NODE_H/2 - ((labelLines.length-1)*7), labelLines, {size:12.5, weight:600, color:'var(--ink)', lh:15});
+
+    if(s.skip){
+      const skipLines = wrapLines(s.skip, 34, 2);
+      svg += svgText(x+NODE_W/2, y+NODE_H+16, skipLines, {size:10, weight:400, color:'var(--ink-faint)', lh:12});
+    }
+
+    if(s.refus){
+      const ry = refusY;
+      const rx = x+NODE_W/2;
+      svg += `<path d="M${rx},${y+NODE_H} L${rx},${ry-30}" fill="none" stroke="var(--red)" stroke-width="1.3" stroke-dasharray="3,4" marker-end="url(#arrow-${uid})" style="color:var(--red)"></path>`;
+      const refusLines = wrapLines(s.refus, 26, 2);
+      const rh = 24 + refusLines.length*13;
+      svg += `<rect x="${rx-90}" y="${ry-6}" width="180" height="${rh}" rx="9" fill="var(--red-soft)" stroke="var(--red-line)" stroke-width="1.2"></rect>`;
+      svg += svgText(rx, ry+13, refusLines, {size:10.5, weight:500, color:'var(--red)', lh:13});
+    }
+  });
+
+  // dispatch / terminal nodes
+  if(targets){
+    targets.forEach((t,i)=>{
+      const x = dispatchStartX + i*(D_W+D_GAP), y = dispatchTop;
+      const dashed = t.conditional;
+      svg += `<rect x="${x}" y="${y}" width="${D_W}" height="${D_H}" rx="12" fill="var(--green-soft)" stroke="var(--green-line)" stroke-width="1.6" ${dashed?'stroke-dasharray="5,4"':''}></rect>`;
+      const lab = wrapLines(t.label,20,2);
+      svg += svgText(x+D_W/2, y+22, lab, {size:12.5, weight:700, color:'var(--green)', lh:15});
+      const noteLines = wrapLines(t.note, 24, 3);
+      svg += svgText(x+D_W/2, y+22+lab.length*15+6, noteLines, {size:10, weight:400, color:'var(--ink-soft)', lh:12});
+    });
+  } else if(wf.terminal){
+    const x = chainCenter - 150, y = dispatchTop, w = 300;
+    svg += `<rect x="${x}" y="${y}" width="${w}" height="${D_H}" rx="12" fill="var(--green-soft)" stroke="var(--green-line)" stroke-width="1.6"></rect>`;
+    const lines = wrapLines(wf.terminal, 42, 3);
+    svg += svgText(x+w/2, y+D_H/2-((lines.length-1)*7), lines, {size:12, weight:600, color:'var(--green)', lh:15});
+  }
+
+  svg += `</svg>`;
+  host.innerHTML = svg;
+}
+
+function drawAll(){
+  document.querySelectorAll('.svg-host').forEach(host=>{
+    const wf = WORKFLOWS.find(w=>w.id===host.dataset.id);
+    if(wf) drawWorkflow(host, wf);
+  });
+}
+
+/* ---------- Scrollspy ---------- */
+function initScrollspy(){
+  const links = [...document.querySelectorAll('nav.toc a')];
+  const sections = WORKFLOWS.map(w=>document.getElementById(w.id));
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        links.forEach(l=>l.classList.toggle('active', l.dataset.target===e.target.id));
+      }
+    });
+  }, {rootMargin:'-10% 0px -75% 0px', threshold:0});
+  sections.forEach(s=> s && io.observe(s));
+}
+
+/* ---------- Theme toggle ---------- */
+function initTheme(){
+  const root = document.documentElement;
+  const buttons = [...document.querySelectorAll('[data-theme-btn]')];
+  function apply(mode){
+    if(mode==='system') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', mode);
+    buttons.forEach(b=> b.setAttribute('aria-pressed', String(b.dataset.themeBtn===mode)));
+    try{ localStorage.setItem('wf-theme', mode); }catch(e){}
+  }
+  let saved = 'system';
+  try{ saved = localStorage.getItem('wf-theme') || 'system'; }catch(e){}
+  apply(saved);
+  buttons.forEach(b=> b.addEventListener('click', ()=>apply(b.dataset.themeBtn)));
+}
+
+buildToc();
+buildMain();
+drawAll();
+initScrollspy();
+initTheme();
+</script>
+</body>
+</html>

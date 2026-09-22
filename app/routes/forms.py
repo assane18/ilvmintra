@@ -73,11 +73,18 @@ def _first_eligible_step_index(form_def, author, start=0):
     return len(steps)
 
 
-def _render_submission_text(submission):
+def _render_submission_text(submission, included_fields=None):
+    """Description générique listant les champs de la soumission. Scopée par
+    destinataire via `included_fields` (target.get_included_description_fields()
+    — None = tous les champs, comportement par défaut ; liste = seulement ces
+    champs) pour éviter qu'une donnée sensible d'une section (ex: DRH) fuite
+    dans le texte libre d'un ticket destiné à un autre service."""
     lines = []
     data = submission.get_data()
     for field in submission.form.fields:
         if field.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE):
+            continue
+        if included_fields is not None and field.name not in included_fields:
             continue
         lines.append(f"{field.label} : {data.get(field.name) or '-'}")
     return "\n".join(lines)
@@ -124,7 +131,7 @@ def _create_one_ticket(submission, target):
         return existing
 
     default_title = f"[{form_def.name}] {submission.uid_public} — {target.label}"
-    default_description = _render_submission_text(submission)
+    default_description = _render_submission_text(submission, target.get_included_description_fields())
     # 'Standard' par défaut (et non un libellé personnalisé) pour que le
     # ticket tombe dans pool_standard côté solver_dashboard si aucune
     # catégorie n'est configurée — les catégories libres non reconnues y

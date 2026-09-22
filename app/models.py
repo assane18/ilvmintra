@@ -33,6 +33,7 @@ class ServiceType(str, enum.Enum):
     AUTRE = "AUTRE"
     IMAGO = "IMAGO"
     COMMUNICATION = "COMMUNICATION"
+    MEDIATEAM = "MEDIATEAM"
 
     # Tous les Services Établissements
     ACCUEIL = "Accueil"
@@ -493,12 +494,23 @@ class FormField(db.Model):
 
     # Visibilité conditionnelle : ce champ n'apparaît que si condition_field a
     # une certaine valeur. Pour un condition_field de type CHECKBOX,
-    # condition_value est ignoré (visible si coché). Pour SELECT/MULTI_SELECT,
-    # visible si la valeur soumise correspond à condition_value.
-    # None = toujours visible (comportement par défaut, inchangé).
+    # condition_values_json est ignoré (visible si coché). Pour SELECT, visible
+    # si la valeur soumise fait partie de condition_values_json (liste JSON —
+    # plusieurs valeurs déclenchantes possibles, ex: CDI/Mutation/Détachement
+    # déclenchent tous "date de prise de poste"). Pour MULTI_SELECT, visible si
+    # au moins une valeur soumise fait partie de la liste. None/vide =
+    # toujours visible (comportement par défaut, inchangé).
     condition_field_id = db.Column(db.Integer, db.ForeignKey('form_fields.id'), nullable=True)
-    condition_value = db.Column(db.String(255), nullable=True)
+    condition_values_json = db.Column(db.Text, nullable=True)
     condition_field = db.relationship('FormField', remote_side=[id])
+
+    def get_condition_values(self):
+        if not self.condition_values_json:
+            return []
+        try:
+            return json.loads(self.condition_values_json) or []
+        except Exception:
+            return []
 
     # Si renseigné, la valeur soumise pour ce champ est copiée directement dans
     # la colonne correspondante du Ticket créé (en plus d'apparaître dans la
@@ -523,7 +535,11 @@ class FormField(db.Model):
         ref = self.condition_field
         if ref.field_type == FormFieldType.CHECKBOX:
             return bool(data.get(ref.name))
-        return data.get(ref.name) == self.condition_value
+        values = self.get_condition_values()
+        submitted = data.get(ref.name)
+        if isinstance(submitted, list):
+            return bool(set(submitted) & set(values))
+        return submitted in values
 
     def __repr__(self):
         return f'<FormField {self.name}>'
@@ -596,6 +612,15 @@ class FormDispatchTarget(db.Model):
     # s'appliquait à TOUS les tickets d'une soumission multi-destinataires.
     included_mapped_fields_json = db.Column(db.Text, nullable=True)
 
+    # Liste JSON des noms de champs à inclure dans la description générique
+    # auto-générée du Ticket (celle utilisée quand ticket_description_template
+    # n'est pas configuré) pour ce destinataire. None = tous les champs
+    # (comportement par défaut, inchangé) ; liste (même vide) = scoping
+    # explicite — même principe que les deux scopings ci-dessus, pour éviter
+    # qu'une donnée sensible d'une section (ex: DRH) apparaisse dans le texte
+    # libre d'un ticket destiné à un autre service (ex: Sécurité).
+    included_description_fields_json = db.Column(db.Text, nullable=True)
+
     # Personnalisation du Ticket créé pour ce destinataire — pour reproduire
     # fidèlement les anciens modules (ex: FCPI met "Nouvel Utilisateur" en
     # catégorie, un titre et une description sur mesure par service). Chaîne
@@ -631,6 +656,17 @@ class FormDispatchTarget(db.Model):
             return None
         try:
             return json.loads(self.included_mapped_fields_json)
+        except Exception:
+            return None
+
+    def get_included_description_fields(self):
+        """None = non configuré -> tous les champs (défaut). Une liste (même
+        vide) = sélection explicite de champs à inclure dans la description
+        générique auto-générée pour ce destinataire."""
+        if self.included_description_fields_json is None:
+            return None
+        try:
+            return json.loads(self.included_description_fields_json)
         except Exception:
             return None
 

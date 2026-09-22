@@ -108,7 +108,7 @@ def export_stock():
             'Categorie': m.categorie,
             'Modele': m.modele,
             'SN': m.sn,
-            'Hostname': m.hostname,
+            'Service/Bureau': m.hostname,
             'IMEI': m.imei,
             'Statut': m.statut
         })
@@ -155,7 +155,7 @@ def import_stock():
                     categorie = get_col(row, 'Categorie', 'Type') or 'Autre',
                     modele    = get_col(row, 'Modele', 'Marque') or 'Inconnu',
                     sn        = sn_val,
-                    hostname  = get_col(row, 'Hostname'),
+                    hostname  = get_col(row, 'Service/Bureau', 'Service / Bureau', 'Hostname'),
                     imei      = get_col(row, 'IMEI'),
                     statut    = 'Disponible'
                 ))

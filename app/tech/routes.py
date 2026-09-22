@@ -204,7 +204,7 @@ def upload_inventory():
         idx_sn       = find_col(['SERIE', 'SERIAL', 'S/N', 'SN'])
         idx_cat      = find_col(['TYPE', 'CATEGORIE', 'CATEG'])
         idx_modele   = find_col(['MODEL', 'MODELE', 'MARQUE'])
-        idx_hostname = find_col(['HOST', 'NOM'])
+        idx_hostname = find_col(['SERVICE', 'BUREAU', 'HOST', 'NOM'])
         idx_imei     = find_col(['IMEI'])
 
         if idx_sn is None:
@@ -252,7 +252,7 @@ def download_template():
     ws = wb.active
     ws.title = "Inventaire"
 
-    headers     = ['Type', 'Modele', 'SN', 'Hostname', 'IMEI']
+    headers     = ['Type', 'Modele', 'SN', 'Service/Bureau', 'IMEI']
     header_fill = PatternFill(start_color="0056B3", end_color="0056B3", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
 
@@ -263,7 +263,7 @@ def download_template():
         cell.alignment = Alignment(horizontal='center')
 
     examples = [
-        ['Ordinateur portable', 'Dell Latitude 5540',  'SN-EXEMPLE-001', 'PC-EXEMPLE-01', ''],
+        ['Ordinateur portable', 'Dell Latitude 5540',  'SN-EXEMPLE-001', 'Direction Informatique', ''],
         ['Tablette',            'Samsung Galaxy Tab A8','SN-EXEMPLE-002', '',              '351234567890123'],
         ['Téléphone portable',  'Apple iPhone 13',      'SN-EXEMPLE-003', '',              '352345678901234'],
     ]

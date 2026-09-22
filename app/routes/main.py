@@ -1,4 +1,5 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory
+import os
 from flask_login import login_required, current_user
 from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus
 from app import db
@@ -136,6 +137,15 @@ def dashboard():
 @login_required
 def help_center():
     return render_template('help.html')
+
+@main_bp.route('/docs/circuits-validation')
+@login_required
+def doc_circuits_validation():
+    # Fichier HTML autonome (pas un template Jinja) — servi directement,
+    # protégé par @login_required contrairement à /static qui est exposé
+    # sans authentification par nginx (alias direct, hors Flask).
+    docs_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'docs')
+    return send_from_directory(docs_dir, 'circuits-validation.html')
 
 @main_bp.route('/health')
 def health():

@@ -121,7 +121,7 @@ def save_fields(id):
 
     seen_names = set()
     new_fields = []
-    pending_conditions = []  # (field, condition_field_name, condition_value)
+    pending_conditions = []  # (field, condition_field_name, condition_values_list)
     for index, item in enumerate(payload):
         label = (item.get('label') or '').strip()
         field_type_value = item.get('field_type')
@@ -157,7 +157,8 @@ def save_fields(id):
         new_fields.append(field)
         condition_field_name = item.get('condition_field_name') or None
         if condition_field_name:
-            pending_conditions.append((field, condition_field_name, item.get('condition_value') or None))
+            condition_values = [v for v in (item.get('condition_values') or []) if v]
+            pending_conditions.append((field, condition_field_name, condition_values))
 
     FormField.query.filter_by(form_definition_id=form_def.id).delete()
     for f in new_fields:
@@ -167,11 +168,11 @@ def save_fields(id):
     # Résolution des conditions d'affichage : le champ référencé doit exister
     # dans ce même lot et précéder le champ dépendant (ordre = déclaration).
     names_to_fields = {f.name: f for f in new_fields}
-    for field, condition_field_name, condition_value in pending_conditions:
+    for field, condition_field_name, condition_values in pending_conditions:
         ref = names_to_fields.get(condition_field_name)
         if ref and ref.order_index < field.order_index:
             field.condition_field_id = ref.id
-            field.condition_value = condition_value
+            field.condition_values_json = json.dumps(condition_values) if condition_values else None
 
     db.session.commit()
     flash("Champs du formulaire enregistrés.", "success")
@@ -252,6 +253,7 @@ def save_dispatch_targets(id):
     checkbox_fields_by_name = {f.name: f for f in form_def.fields if f.field_type == FormFieldType.CHECKBOX}
     file_field_names = {f.name for f in form_def.fields if f.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE)}
     mapped_field_names = {f.name for f in form_def.fields if f.maps_to_ticket_field}
+    describable_field_names = {f.name for f in form_def.fields if f.field_type not in (FormFieldType.FILE, FormFieldType.MULTI_FILE)}
 
     new_targets = []
     for item in payload:
@@ -280,6 +282,14 @@ def save_dispatch_targets(id):
             selected = [n for n in (item.get('included_mapped_fields') or []) if n in mapped_field_names]
             included_mapped_json = json.dumps(selected)
 
+        # Même principe : absent du payload = description générique complète
+        # (None, comportement par défaut) ; présent (même vide) = scoping
+        # explicite des champs listés dans le texte auto-généré du ticket.
+        included_description_json = None
+        if 'included_description_fields' in item:
+            selected = [n for n in (item.get('included_description_fields') or []) if n in describable_field_names]
+            included_description_json = json.dumps(selected)
+
         new_targets.append(FormDispatchTarget(
             form_definition_id=form_def.id,
             label=label,
@@ -287,6 +297,7 @@ def save_dispatch_targets(id):
             condition_field_id=condition_field.id if condition_field else None,
             included_file_fields_json=included_files_json,
             included_mapped_fields_json=included_mapped_json,
+            included_description_fields_json=included_description_json,
             ticket_category_template=(item.get('ticket_category_template') or '').strip() or None,
             ticket_title_template=(item.get('ticket_title_template') or '').strip() or None,
             ticket_description_template=(item.get('ticket_description_template') or '').strip() or None,
@@ -358,7 +369,7 @@ def duplicate_form(id):
         if f.condition_field_id:
             new_field = FormField.query.filter_by(form_definition_id=copy.id, name=f.name).first()
             new_field.condition_field_id = field_id_map.get(f.condition_field_id)
-            new_field.condition_value = f.condition_value
+            new_field.condition_values_json = f.condition_values_json
 
     for s in original.steps:
         db.session.add(FormWorkflowStep(
@@ -372,6 +383,7 @@ def duplicate_form(id):
             condition_field_id=field_id_map.get(t.condition_field_id),
             included_file_fields_json=t.included_file_fields_json,
             included_mapped_fields_json=t.included_mapped_fields_json,
+            included_description_fields_json=t.included_description_fields_json,
             ticket_category_template=t.ticket_category_template,
             ticket_title_template=t.ticket_title_template,
             ticket_description_template=t.ticket_description_template,

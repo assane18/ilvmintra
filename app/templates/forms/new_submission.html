@@ -21,7 +21,7 @@
                 {% if field.condition_field %}
                 data-condition-on="{{ field.condition_field.name }}"
                 data-condition-type="{{ field.condition_field.field_type.value }}"
-                data-condition-value="{{ field.condition_value or '' }}"
+                data-condition-values='{{ field.get_condition_values()|tojson }}'
                 {% endif %}>
                 {% if field.field_type.value != 'CHECKBOX' %}
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
@@ -119,14 +119,17 @@
         document.querySelectorAll('.form-field-wrapper[data-condition-on]').forEach(wrapper => {
             const refName = wrapper.dataset.conditionOn;
             const refType = wrapper.dataset.conditionType;
-            const condValue = wrapper.dataset.conditionValue;
+            let condValues = [];
+            try { condValues = JSON.parse(wrapper.dataset.conditionValues || '[]'); } catch (e) { condValues = []; }
             const refInputs = document.getElementsByName(refName);
             let visible = false;
             if (refInputs.length) {
                 if (refType === 'CHECKBOX') {
                     visible = refInputs[0].checked;
+                } else if (refType === 'MULTI_SELECT') {
+                    visible = Array.from(refInputs).some(inp => inp.checked && condValues.includes(inp.value));
                 } else {
-                    visible = Array.from(refInputs).some(inp => inp.value === condValue && (inp.type !== 'radio' || inp.checked));
+                    visible = Array.from(refInputs).some(inp => condValues.includes(inp.value) && (inp.type !== 'radio' || inp.checked));
                 }
             }
             wrapper.classList.toggle('hidden', !visible);

@@ -159,8 +159,8 @@
                 </select>
             </div>
             <div class="col-span-5 f-condition-value-wrap">
-                <label class="label-tiny">Valeur attendue (vide = case cochée)</label>
-                <input type="text" class="input-field f-condition-value" placeholder="Ex: Autre">
+                <label class="label-tiny">Valeur(s) attendue(s), séparées par des virgules (vide = case cochée)</label>
+                <input type="text" class="input-field f-condition-value" placeholder="Ex: CDI, Mutation, Détachement">
             </div>
             <div class="col-span-2 text-[10px] text-slate-400">Le champ référencé doit être <strong>avant</strong> celui-ci.</div>
             <div class="col-span-6">
@@ -286,6 +286,20 @@
                 {% endfor %}
             </div>
         </div>
+        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700">
+            <label class="label-tiny mb-1 block">Champs listés dans la description générique du ticket</label>
+            <select class="input-field d-description-mode">
+                <option value="all">Tous les champs (hors fichiers)</option>
+                <option value="selected">Champs sélectionnés ci-dessous</option>
+            </select>
+            <div class="d-description-checkboxes mt-2 hidden flex flex-wrap gap-3">
+                {% for f in form_def.fields if f.field_type.value not in ['FILE', 'MULTI_FILE'] %}
+                <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
+                    <input type="checkbox" class="d-description-checkbox" value="{{ f.name }}"> {{ f.label }}
+                </label>
+                {% endfor %}
+            </div>
+        </div>
         <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-12 gap-3">
             <div class="col-span-12">
                 <label class="label-tiny mb-1 block">Personnalisation du Ticket (optionnel — sinon valeurs génériques)</label>
@@ -323,7 +337,7 @@
             options: {{ (f.get_options()|join('\n'))|tojson }},
             help_text: {{ (f.help_text or '')|tojson }},
             condition_field_name: {{ (f.condition_field.name if f.condition_field else '')|tojson }},
-            condition_value: {{ (f.condition_value or '')|tojson }},
+            condition_values: {{ f.get_condition_values()|tojson }},
             maps_to_ticket_field: {{ (f.maps_to_ticket_field or '')|tojson }}
         },
         {% endfor %}
@@ -347,6 +361,7 @@
             condition_field_name: {{ (t.condition_field.name if t.condition_field else '')|tojson }},
             included_file_fields: {{ t.get_included_file_fields()|tojson }},
             included_mapped_fields: {{ t.get_included_mapped_fields()|tojson }},
+            included_description_fields: {{ t.get_included_description_fields()|tojson }},
             ticket_category_template: {{ (t.ticket_category_template or '')|tojson }},
             ticket_title_template: {{ (t.ticket_title_template or '')|tojson }},
             ticket_description_template: {{ (t.ticket_description_template or '')|tojson }},
@@ -366,7 +381,7 @@
             row.querySelector('.f-required').checked = !!data.is_required;
             row.querySelector('.f-options').value = data.options || '';
             row.dataset.pendingConditionField = data.condition_field_name || '';
-            row.querySelector('.f-condition-value').value = data.condition_value || '';
+            row.querySelector('.f-condition-value').value = (data.condition_values || []).join(', ');
             row.querySelector('.f-ticket-mapping').value = data.maps_to_ticket_field || '';
         }
         toggleOptionsVisibility(row);
@@ -449,6 +464,12 @@
                     cb.checked = data.included_mapped_fields.includes(cb.value);
                 });
             }
+            if (data.included_description_fields) {
+                row.querySelector('.d-description-mode').value = 'selected';
+                row.querySelectorAll('.d-description-checkbox').forEach(cb => {
+                    cb.checked = data.included_description_fields.includes(cb.value);
+                });
+            }
             row.querySelector('.d-ticket-category').value = data.ticket_category_template || '';
             row.querySelector('.d-ticket-title').value = data.ticket_title_template || '';
             row.querySelector('.d-ticket-description').value = data.ticket_description_template || '';
@@ -456,8 +477,10 @@
         }
         toggleFilesVisibility(row);
         toggleMappedVisibility(row);
+        toggleDescriptionVisibility(row);
         row.querySelector('.d-files-mode').addEventListener('change', () => toggleFilesVisibility(row));
         row.querySelector('.d-mapped-mode').addEventListener('change', () => toggleMappedVisibility(row));
+        row.querySelector('.d-description-mode').addEventListener('change', () => toggleDescriptionVisibility(row));
         document.getElementById('dispatchContainer').appendChild(node);
         lucide.createIcons();
     }
@@ -470,6 +493,11 @@
     function toggleMappedVisibility(row) {
         const mode = row.querySelector('.d-mapped-mode').value;
         row.querySelector('.d-mapped-checkboxes').classList.toggle('hidden', mode !== 'selected');
+    }
+
+    function toggleDescriptionVisibility(row) {
+        const mode = row.querySelector('.d-description-mode').value;
+        row.querySelector('.d-description-checkboxes').classList.toggle('hidden', mode !== 'selected');
     }
 
     function moveRow(btn, dir) {
@@ -507,7 +535,7 @@
                 options: row.querySelector('.f-options').value,
                 help_text: row.querySelector('.f-help').value.trim(),
                 condition_field_name: row.querySelector('.f-condition-field').value,
-                condition_value: row.querySelector('.f-condition-value').value.trim(),
+                condition_values: row.querySelector('.f-condition-value').value.split(',').map(v => v.trim()).filter(v => v),
                 maps_to_ticket_field: row.querySelector('.f-ticket-mapping').value
             });
         });
@@ -551,6 +579,9 @@
             }
             if (row.querySelector('.d-mapped-mode').value === 'selected') {
                 item.included_mapped_fields = Array.from(row.querySelectorAll('.d-mapped-checkbox:checked')).map(cb => cb.value);
+            }
+            if (row.querySelector('.d-description-mode').value === 'selected') {
+                item.included_description_fields = Array.from(row.querySelectorAll('.d-description-checkbox:checked')).map(cb => cb.value);
             }
             item.ticket_category_template = row.querySelector('.d-ticket-category').value.trim();
             item.ticket_title_template = row.querySelector('.d-ticket-title').value.trim();

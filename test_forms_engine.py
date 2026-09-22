@@ -180,7 +180,10 @@ def make_simple_form(app, slug='test-form', manager_only=False, fields=None,
         for fdef in (fields or []):
             if fdef.get('condition_on'):
                 field_objs[fdef['name']].condition_field_id = field_objs[fdef['condition_on']].id
-                field_objs[fdef['name']].condition_value = fdef.get('condition_value')
+                values = fdef.get('condition_values')
+                if values is None and fdef.get('condition_value') is not None:
+                    values = [fdef['condition_value']]
+                field_objs[fdef['name']].condition_values_json = json.dumps(values) if values else None
 
         for i, sdef in enumerate(steps or []):
             db.session.add(FormWorkflowStep(
@@ -194,12 +197,14 @@ def make_simple_form(app, slug='test-form', manager_only=False, fields=None,
         for tdef in (dispatch_targets or []):
             included = tdef.get('included_file_fields')
             included_mapped = tdef.get('included_mapped_fields')
+            included_description = tdef.get('included_description_fields')
             db.session.add(FormDispatchTarget(
                 form_definition_id=form_def.id, label=tdef.get('label', tdef['target_service'].value),
                 target_service=tdef['target_service'],
                 condition_field_id=field_objs[tdef['condition_on']].id if tdef.get('condition_on') else None,
                 included_file_fields_json=json.dumps(included) if included is not None else None,
                 included_mapped_fields_json=json.dumps(included_mapped) if included_mapped is not None else None,
+                included_description_fields_json=json.dumps(included_description) if included_description is not None else None,
                 uid_suffix=tdef.get('uid_suffix'),
                 ticket_category_template=tdef.get('ticket_category_template'),
                 ticket_title_template=tdef.get('ticket_title_template'),
@@ -266,6 +271,29 @@ class TestConditionalFields:
                          follow_redirects=True)
         sub = latest_submission(app, form_id)
         assert sub.get_data()['precision'] == 'gardé'
+
+    def test_select_condition_with_multiple_trigger_values(self, app, client):
+        """condition_values_json permet plusieurs valeurs déclenchantes (ex:
+        CDI/Mutation/Détachement déclenchent tous "date de prise de poste"),
+        contrairement à l'ancien condition_value qui n'en acceptait qu'une."""
+        form_id = make_simple_form(app, slug='cond-form4', fields=[
+            {'name': 'statut', 'label': 'Statut', 'field_type': FormFieldType.SELECT,
+             'options': ['CDI', 'CDD', 'Mutation', 'Détachement']},
+            {'name': 'date_prise_poste', 'label': 'Date de prise de poste', 'field_type': FormFieldType.TEXT,
+             'condition_on': 'statut', 'condition_values': ['CDI', 'Mutation', 'Détachement']},
+        ])
+        uid = make_user(app, role=UserRole.USER)
+        login(client, uid)
+
+        client.post('/forms/cond-form4/new', data={'statut': 'CDD', 'date_prise_poste': 'ignoré'},
+                     follow_redirects=True)
+        assert get_submission(app, latest_submission(app, form_id).id).get_data()['date_prise_poste'] == ''
+
+        for statut in ['CDI', 'Mutation', 'Détachement']:
+            client.post('/forms/cond-form4/new', data={'statut': statut, 'date_prise_poste': '01/01/2026'},
+                         follow_redirects=True)
+            sub = latest_submission(app, form_id)
+            assert sub.get_data()['date_prise_poste'] == '01/01/2026', f"échoue pour statut={statut}"
 
     def test_multi_select_field_stores_list(self, app, client):
         form_id = make_simple_form(app, slug='multisel-form', fields=[
@@ -454,6 +482,33 @@ class TestMultiDispatch:
             assert drh_ticket.get_daf_files() == ['a.pdf']
             assert secu_ticket.get_daf_files() == ['b.pdf']
             assert set(info_ticket.get_daf_files()) == {'a.pdf', 'b.pdf'}
+
+    def test_selective_description_scoping(self, app, client):
+        """Une donnée sensible (ex: DRH) ne doit pas fuiter dans la
+        description générique d'un ticket destiné à un autre service."""
+        form_id = make_simple_form(app, slug='descscope-form',
+            fields=[
+                {'name': 'nom_agent', 'label': 'Nom', 'field_type': FormFieldType.TEXT},
+                {'name': 'salaire', 'label': 'Simulation salaire', 'field_type': FormFieldType.TEXT},
+            ],
+            dispatch_targets=[
+                {'label': 'SECU', 'target_service': ServiceType.SECU, 'included_description_fields': ['nom_agent']},
+                {'label': 'DRH', 'target_service': ServiceType.DRH},  # None = description complète
+            ],
+        )
+        uid = make_user(app, role=UserRole.USER)
+        login(client, uid)
+        client.post('/forms/descscope-form/new', data={'nom_agent': 'Traoré', 'salaire': '2500€ confidentiel'},
+                     follow_redirects=True)
+        sub = latest_submission(app, form_id)
+        tickets = {t.target_service: t for t in sub.get_tickets()}
+
+        with app.app_context():
+            secu_ticket = Ticket.query.get(tickets[ServiceType.SECU].id)
+            drh_ticket = Ticket.query.get(tickets[ServiceType.DRH].id)
+            assert 'Traoré' in secu_ticket.description
+            assert 'confidentiel' not in secu_ticket.description
+            assert 'confidentiel' in drh_ticket.description
 
 
 # ===========================================================================
