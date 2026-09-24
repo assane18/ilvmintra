@@ -1,32 +1,12 @@
-<!DOCTYPE html>
-<html lang="fr" class="scroll-smooth">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Centre d'Aide - Intranet ILVM</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        ilvm: {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            800: '#075985',
-                            900: '#0c4a6e',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
     <style>
+        /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+        .flat, .flat * { border-radius: 0 !important; }
+
         /* Style pour les placeholders d'images dans les tutos */
         .tuto-image-placeholder {
             background-color: #f8fafc;
@@ -111,163 +91,128 @@
             100% { opacity: 1; transform: translateY(0); }
         }
     </style>
-</head>
-<body class="bg-slate-50 text-slate-800 font-sans transition-colors duration-300 dark:bg-slate-900 dark:text-slate-100">
 
-    <!-- NAVIGATION -->
-    <nav class="bg-white dark:bg-slate-800 shadow-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <div class="flex items-center">
+    <div class="max-w-7xl mx-auto px-6 py-6">
 
-                    <span class="font-black text-xl tracking-tighter italic flex items-center gap-2">
-                        <i data-lucide="message-circle-question-mark" class="text-orange-700"></i>
-                        <span class="text-blue-500">ILVM</span>
-                        <span class="!text-orange-500"> HELP</span>
-                    </span>
+        <!-- EN-TÊTE + RECHERCHE -->
+        <div class="mb-8 text-center">
+            <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200">Besoin d'aide ?</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm mt-1 mb-6">Tutoriels, FAQ et Contact Support.</p>
 
-                    <span class="ml-4 px-3 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-semibold">Centre d'Aide</span>
-                </div>
-                <div class="flex items-center space-x-4">
-                    <button onclick="document.documentElement.classList.toggle('dark')" class="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition">
-                        <i class="fa-solid fa-moon dark:hidden"></i>
-                        <i class="fa-solid fa-sun hidden dark:inline"></i>
-                    </button>
-                    <a href="https://ilvmintra1/intranet/portal" class="text-sm font-medium hover:text-ilvm-600 dark:hover:text-ilvm-400">Retour au Portail</a>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- HERO SECTION -->
-    <div class="bg-gradient-to-r from-ilvm-900 to-ilvm-700 text-white py-16 px-4 sm:px-6 lg:px-8 text-center relative overflow-hidden">
-        <div class="absolute top-0 left-0 w-full h-full opacity-10">
-            <i class="fa-solid fa-circle-question absolute -top-10 -left-10 text-9xl"></i>
-            <i class="fa-solid fa-lightbulb absolute bottom-10 right-10 text-9xl"></i>
-        </div>
-
-        <div class="relative z-10">
-            <h1 class="text-4xl font-extrabold sm:text-5xl mb-6 tracking-tight">Besoin d'aide ?</h1>
-            <p class="text-ilvm-100 mb-10 text-xl max-w-2xl mx-auto">Tutoriels, FAQ et Contact Support.</p>
-            
-            <div class="max-w-2xl mx-auto relative group">
+            <div class="max-w-2xl mx-auto relative">
                 <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <i class="fa-solid fa-search text-gray-400 group-focus-within:text-ilvm-500 transition-colors"></i>
+                    <i class="fa-solid fa-search text-slate-400"></i>
                 </div>
-                <input type="text" id="searchInput" onkeyup="filterContent()" 
-                    class="block w-full pl-12 pr-4 py-4 border-none rounded-2xl leading-5 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-ilvm-500/30 shadow-2xl transition-shadow text-lg" 
+                <input type="text" id="searchInput" onkeyup="filterContent()"
+                    class="block w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 shadow-sm text-sm"
                     placeholder="Rechercher (ex: mot de passe, délégation, wifi...)">
             </div>
         </div>
-    </div>
-
-    <!-- MAIN CONTENT -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
 
         <!-- FILTRES -->
         <div class="flex flex-wrap justify-center gap-3 mb-12" id="filterButtons">
-            <button onclick="filterCategory('all')" class="filter-btn active px-5 py-2.5 rounded-full bg-ilvm-600 text-white font-medium shadow-md hover:bg-ilvm-700 transition hover:-translate-y-0.5 transform">Tout voir</button>
-            <button onclick="filterCategory('user')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user mr-2 text-ilvm-500"></i>Utilisateurs</button>
-            <button onclick="filterCategory('daf')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-file-invoice-dollar mr-2 text-orange-500"></i>Achats / DAF</button>
-            <button onclick="filterCategory('responsable')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user-tie mr-2 text-red-500"></i>Responsables</button>
-            <button onclick="filterCategory('tech')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-toolbox mr-2 text-gray-500"></i>Espace Tech</button>
+            <button onclick="filterCategory('all')" class="filter-btn active px-5 py-2.5 rounded-full bg-accent-600 text-white font-medium shadow-md hover:bg-accent-700 transition hover:-translate-y-0.5 transform">Tout voir</button>
+            <button onclick="filterCategory('user')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user mr-2 text-accent-500"></i>Utilisateurs</button>
+            <button onclick="filterCategory('daf')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-file-invoice-dollar mr-2 text-orange-500"></i>Achats / DAF</button>
+            <button onclick="filterCategory('responsable')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-user-tie mr-2 text-red-500"></i>Responsables</button>
+            <button onclick="filterCategory('tech')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-toolbox mr-2 text-gray-500"></i>Espace Tech</button>
         </div>
 
         <!-- GRID DES CARTES TUTOS -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-20" id="tutoContainer">
 
             <!-- 1. CONNEXION -->
-            <div onclick="openModal('modal-connexion')" class="tuto-card user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-connexion')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-blue-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-key"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-slate-800 text-blue-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-key"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Première Connexion</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Accès via Active Directory, gestion des mots de passe et lien Windows.</p>
                 </div>
             </div>
 
             <!-- 2. PORTAIL -->
-            <div onclick="openModal('modal-portail')" class="tuto-card user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-portail')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-purple-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-desktop"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-slate-800 text-purple-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-desktop"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Découverte du Portail</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Dashboard, notifications, suivi des demandes et menu latéral.</p>
                 </div>
             </div>
 
             <!-- 3. CRÉATION TICKET -->
-            <div onclick="openModal('modal-ticket')" class="tuto-card user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-ticket')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-green-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-plus-circle"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-green-100 dark:bg-slate-800 text-green-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-plus-circle"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">Support & Demandes</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Créer un ticket pour l'informatique, les RH ou Imago.</p>
                 </div>
             </div>
 
             <!-- 3. Guide des Statuts   -->
-            <div onclick="openModal('modal-status')" class="tuto-card user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-status')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-pink-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-plus-circle"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-slate-800 text-pink-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-plus-circle"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">Guide des Statuts</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Guide des statuts de validation dans le système.</p>
                 </div>
             </div>
 
             <!-- 4. DAF STANDARD -->
-            <div onclick="openModal('modal-daf-standard')" class="tuto-card daf user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-daf-standard')" class="tuto-card daf user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-orange-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-file-invoice"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-slate-800 text-orange-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-file-invoice"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">DAF : Bon de Commande</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Comprendre l'avancement de vos demandes (En attente, Validé, Terminé...).</p>
                 </div>
             </div>
 
             <!-- 5. DAF DÉLÉGATION -->
-            <div onclick="openModal('modal-daf-delegation')" class="tuto-card daf user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-daf-delegation')" class="tuto-card daf user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-yellow-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-signature"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-yellow-100 dark:bg-slate-800 text-yellow-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-signature"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">DAF : Délégation (< 400€)</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Procédure accélérée sans validation hiérarchique.</p>
                 </div>
             </div>
 
             <!-- 6. RESPONSABLE VALIDATION -->
-            <div onclick="openModal('modal-validation')" class="tuto-card responsable group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-validation')" class="tuto-card responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-red-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-check-double"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-slate-800 text-red-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-check-double"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Responsable : Validation</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Valider ou refuser les demandes des équipes (N1).</p>
                 </div>
             </div>
 
             <!-- 7. RESPONSABLE FCPI -->
-            <div onclick="openModal('modal-fcpi')" class="tuto-card responsable group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-fcpi')" class="tuto-card responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-indigo-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-plus"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-slate-800 text-indigo-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-plus"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Responsable : Recrutement</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Formulaire FCPI pour gérer une arrivée de A à Z.</p>
                 </div>
             </div>
 
             <!-- 8. SUIVI & CHAT -->
-            <div onclick="openModal('modal-chat')" class="tuto-card user group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-chat')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-teal-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-teal-100 dark:bg-teal-900/30 text-teal-600 dark:text-teal-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-comments"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-teal-100 dark:bg-slate-800 text-teal-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-comments"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">Suivi & Discussion</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Historique des demandes et chat en direct avec les techniciens.</p>
                 </div>
             </div>
 
             <!-- 9. ESPACE TECH -->
-            <div onclick="openModal('modal-tech')" class="tuto-card tech group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+            <div onclick="openModal('modal-tech')" class="tuto-card tech group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-gray-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-toolbox"></i></div>
@@ -277,10 +222,10 @@
             </div>
 
             <!-- 10. CIRCUITS DE VALIDATION -->
-            <a href="{{ url_for('main.doc_circuits_validation') }}" target="_blank" rel="noopener" class="tuto-card user tech group bg-white dark:bg-slate-800 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-100 dark:border-slate-700 cursor-pointer overflow-hidden transform hover:-translate-y-1 block">
+            <a href="{{ url_for('main.doc_circuits_validation') }}" target="_blank" rel="noopener" class="tuto-card user tech group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1 block">
                 <div class="h-2 bg-cyan-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-diagram-project"></i></div>
+                    <div class="w-14 h-14 rounded-2xl bg-cyan-100 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-diagram-project"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Circuits de validation</h3>
                     <p class="text-slate-500 dark:text-slate-400 text-sm">Qui dépose, qui valide, qui reçoit — le circuit complet des 10 demandes de l'intranet.</p>
                 </div>
@@ -290,211 +235,211 @@
         <!-- ================= FAQ SECTION (HIDDEN BY DEFAULT) ================= -->
         <div id="faq-section" class="max-w-4xl mx-auto mb-20 hidden">
             <h2 class="text-3xl font-bold text-center mb-8 text-slate-800 dark:text-white">
-                <i class="fa-solid fa-circle-question mr-3 text-ilvm-600"></i>Résultats FAQ
+                <i class="fa-solid fa-circle-question mr-3 text-accent-600"></i>Résultats FAQ
             </h2>
             <div class="space-y-4" id="faq-list">
 
                 <!-- FAQ 1-5 : Accès & Compte -->
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Mon mot de passe ne fonctionne pas</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Votre mot de passe est <strong>synchronisé avec Windows</strong>. Si vous l'avez changé pour ouvrir votre session ce matin, c'est le nouveau qu'il faut utiliser. En cas de blocage, contactez le Service Informatique.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Erreur "Catdance" ou 403 Forbidden</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Cette erreur signifie que votre compte Active Directory n'a pas les droits nécessaires pour accéder à cette page (ex: un utilisateur qui tente d'accéder au menu Validation Responsable).
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment trouver le nom de mon PC (Hostname) ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Le formulaire de ticket tente de le détecter automatiquement. (ex: <code>PORTABLE-042</code>).
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Je ne reçois pas les notifications mail</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Vérifiez votre dossier "Indésirables" (Spam) dans Outlook. Si le problème persiste, contactez le Service Informatique.
                     </div>
                 </details>
 
                 <!-- FAQ 6-10 : Tickets -->
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Puis-je modifier un ticket après envoi ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Non, le ticket est verrouillé pour garantir la traçabilité. Cependant, vous pouvez ajouter des informations ou des fichiers supplémentaires via la zone de <strong>Chat</strong> en bas du ticket.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment annuler une demande ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Vous ne pouvez pas supprimer un ticket vous-même. Demandez l'annulation au technicien via le chat, ou demandez à votre Responsable de le "Refuser" lors de la validation.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Quelle est la taille maximale des fichiers ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         La limite est fixée à <strong>20 Mo</strong> par fichier. Si vous devez envoyer une vidéo ou un gros fichier, utilisez un lien OneDrive/Sharepoint dans la description.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Quel est le délai de réponse moyen ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Il n'y a pas de délai fixe de réponse. Les tickets sont traités dans l'ordre d'arrivée, selon la disponibilité des techniciens.
                         En général, vous pouvez vous attendre à une première réponse dans les <strong>24 à 48 heures</strong> ouvrées. Les demandes urgentes (ex: panne complète) sont prioritaires.
                     </div>
                 </details>
 
                 <!-- FAQ 11-15 : DAF & RH -->
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">C'est quoi la "Délégation" DAF ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         C'est une procédure simplifiée pour les achats inférieurs à <strong>400€</strong>. En accédan a ce formulaire, votre demande contourne la validation hiérarchique pour être traitée plus vite par la DAF.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">J'ai oublié de joindre le devis</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Pas de panique. Ouvrez votre ticket dans l'historique et ajoutez le fichier PDF via la zone de discussion en bas de page. (A venir)
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Qui valide mes congés ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         L'intranet gère les demandes techniques et administratives. Pour les congés, veuillez vous rapprocher de votre Responsable.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment recruter un stagiaire ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Utilisez le formulaire <strong>FCPI (Fiche Création Poste)</strong> exactement comme pour un salarié classique. Précisez "Stagiaire" dans le type de contrat.
                     </div>
                 </details>
 
                 <!-- FAQ 16-20 : Divers -->
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Je suis Responsable mais je ne vois pas le menu Validation</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Il vous manque probablement le groupe de sécurité <code>RESPONSABLE</code> dans le serveur. Ouvrez un ticket support pour régulariser vos droits.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Mon collaborateur n'apparait pas dans ma liste</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Cela signifie que son affectation "Service" dans l'AD est différente de la vôtre. Contactez le <strong>Service informatique</strong> pour corriger le probléme.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">L'intranet est-il accessible sur mobile ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Oui, si votre téléphone est connecté au Wi-Fi de l'entreprise. L'interface est "responsive" et s'adapte aux petits écrans.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Le mode sombre ne reste pas activé</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Le choix du thème est enregistré dans votre navigateur. Si vous changez de PC ou effacez vos cookies, il se réinitialise.
                     </div>
                 </details>
 
-                <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-red-600">Urgence vitale (Feu, Accident)</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         <strong>N'OUVREZ PAS DE TICKET !</strong> Appelez immédiatement les secours (18 ou 112) et le PC Sécurité.
                     </div>
                 </details>
 
-                 <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Puis-je avoir un Mac au lieu d'un PC ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                         Toute demande de matériel hors catalogue standard doit être dûment justifiée dans le ticket "Demande Matériel" et est soumise à validation budgétaire stricte.
                     </div>
                 </details>
                 
-                 <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment exporter mes tickets ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                        Il n'y a pas d'export Excel côté utilisateur pour le moment. Si vous avez besoin d'un rapport annuel, faites une demande au service Informatique.
                     </div>
                 </details>
                 
-                 <details class="faq-item group bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
                         <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Où sont stockées mes données ?</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-slate-100 dark:border-slate-700">
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
                        L'intranet est hébergé sur des serveurs internes sécurisés dans nos locaux (On-Premise), garantissant la confidentialité et le respect du RGPD.
                     </div>
                 </details>
@@ -508,7 +453,7 @@
                 <h2 class="text-3xl font-bold text-slate-800 dark:text-white mb-4">L'Équipe Informatique (DSI)</h2>
                 <p class="text-slate-600 dark:text-slate-400 text-lg">Nos experts sont disponibles pour vous accompagner.</p>
                 
-                <div class="mt-6 inline-flex items-center px-6 py-3 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-full font-semibold border border-blue-100 dark:border-blue-800">
+                <div class="mt-6 inline-flex items-center px-6 py-3 bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-300 rounded-full font-semibold border border-blue-100 dark:border-blue-800">
                     <i class="fa-solid fa-envelope mr-3 text-xl"></i>
                     Mail Direction : <a href="mailto:dsi@ilvm.fr" class="ml-2 hover:underline font-bold">dsi@ilvm.fr</a>
                 </div>
@@ -516,12 +461,12 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <!-- XAVIER RICHARD -->
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 text-center hover:shadow-lg transition group">
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md border border-gray-200 dark:border-slate-800 text-center hover:shadow-lg transition group">
                     <div class="w-20 h-20 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
                         <i class="fa-solid fa-user-tie text-3xl text-slate-500 dark:text-slate-400 group-hover:text-blue-600"></i>
                     </div>
                     <h3 class="font-bold text-lg">Xavier RICHARD</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">RSI<br>Responsable Sécurité Informatique</p>
+                    <p class="text-sm text-accent-600 dark:text-accent-400 font-medium mb-4">RSI<br>Responsable Sécurité Informatique</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:xrichar@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> xrichar@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 7521</p>
@@ -529,12 +474,12 @@
                 </div>
 
                 <!-- CHRISTEN RENAULT -->
-               <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 text-center hover:shadow-lg transition group">
+               <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md border border-gray-200 dark:border-slate-800 text-center hover:shadow-lg transition group">
                     <div class="w-20 h-20 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
                         <i class="fa-solid fa-headset text-3xl text-slate-500 dark:text-slate-400 group-hover:text-green-600"></i>
                     </div>
                     <h3 class="font-bold text-lg">Edwyn MEVREL</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Technicien Support <br>Référent 91</p>
+                    <p class="text-sm text-accent-600 dark:text-accent-400 font-medium mb-4">Technicien Support <br>Référent 91</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:emevrel@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> emevrel@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 9696</p>
@@ -542,12 +487,12 @@
                 </div>
 
                 <!-- EDWYN MEVREL -->
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 text-center hover:shadow-lg transition group">
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md border border-gray-200 dark:border-slate-800 text-center hover:shadow-lg transition group">
                     <div class="w-20 h-20 mx-auto bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center mb-4 group-hover:bg-green-100 transition-colors">
                         <i class="fa-solid fa-headset text-3xl text-slate-500 dark:text-slate-400 group-hover:text-green-600"></i>
                     </div>
                     <h3 class="font-bold text-lg">Christen RENAULT</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Technicien Support <br>Référent 94/93</p>
+                    <p class="text-sm text-accent-600 dark:text-accent-400 font-medium mb-4">Technicien Support <br>Référent 94/93</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:crenault@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> crenault@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 7545</p>
@@ -555,7 +500,7 @@
                 </div>
 
                 <!-- ASSANE TRAORE -->
-                <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-md border border-slate-100 dark:border-slate-700 text-center hover:shadow-lg transition group">
+                <div class="bg-white dark:bg-slate-900 p-6 rounded-xl shadow-md border border-gray-200 dark:border-slate-800 text-center hover:shadow-lg transition group">
                     <div class="flex justify-center gap-4 mb-4">
                         <div class="w-20 h-20 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center group-hover:bg-orange-100 transition-colors">
                             <i class="fa-solid fa-user-graduate text-3xl text-slate-500 dark:text-slate-400 group-hover:text-orange-600"></i>
@@ -566,7 +511,7 @@
                         </div>
                     </div>
                     <h3 class="font-bold text-lg">Assane TRAORE</h3>
-                    <p class="text-sm text-ilvm-600 dark:text-ilvm-400 font-medium mb-4">Apprenti Technicien<br>Support</p>
+                    <p class="text-sm text-accent-600 dark:text-accent-400 font-medium mb-4">Apprenti Technicien<br>Support</p>
                     <div class="text-sm space-y-2 text-slate-500 dark:text-slate-400">
                         <p><a href="mailto:astraore@ilvm.fr" class="hover:text-blue-500"><i class="fa-solid fa-envelope mr-2"></i> astraore@ilvm.fr</a></p>
                         <p><i class="fa-solid fa-phone mr-2"></i> Poste 6700</p>
@@ -575,12 +520,12 @@
             </div>
             
             <div class="mt-12 text-center">
-                <a href="/" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl shadow-lg text-white bg-gradient-to-r from-ilvm-600 to-ilvm-500 hover:from-ilvm-700 hover:to-ilvm-600 transform hover:scale-105 transition-all">
+                <a href="/" class="inline-flex items-center px-8 py-4 border border-transparent text-lg font-bold rounded-xl shadow-lg text-white bg-gradient-to-r from-accent-600 to-accent-500 hover:from-accent-700 hover:to-accent-600 transform hover:scale-105 transition-all">
                     <i class="fa-solid fa-paper-plane mr-3"></i> Ouvrir un Ticket Maintenant
                 </a>
             </div>
         </div>
-    </main>
+    </div>
 
     <!-- ================= MODALES (POPUPS) DÉTAILLÉES ================= -->
 
@@ -588,7 +533,7 @@
     <div id="modal-connexion" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-connexion')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-key mr-2"></i> Guide de Connexion</h3>
                     <button onclick="closeModal('modal-connexion')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -613,7 +558,7 @@
                             </div>
                         <h4 class="text-2xl font-bold text-blue-600 mb-4">2. Gestion du Mot de Passe</h4>
                         <p>Si vous changez votre mot de passe Windows, il est <strong>immédiatement</strong> mis à jour sur l'intranet. Inutile d'appeler le support.</p>
-                        <div class="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 p-4 my-4">
+                        <div class="bg-blue-50 dark:bg-slate-800 border-l-4 border-blue-500 p-4 my-4">
                             <p class="font-bold">Problème de connexion ?</p>
                             <p>Si votre mot de passe fonctionne sur Windows mais pas sur l'Intranet, vérifiez que votre compte n'est pas verrouillé ou contactez le Service Informatique.</p>
                         </div>
@@ -627,7 +572,7 @@
     <div id="modal-portail" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-portail')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-purple-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-desktop mr-2"></i> Le Portail Utilisateur</h3>
                     <button onclick="closeModal('modal-portail')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -678,7 +623,7 @@
     <div id="modal-ticket" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-ticket')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-plus-circle mr-2"></i> Créer une Demande</h3>
                     <button onclick="closeModal('modal-ticket')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -730,7 +675,7 @@
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-status')"></div>
             
             <!-- Modal panel -->
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 
                 <!-- Header (Vert comme demandé) -->
                 <div class="bg-pink-600 px-6 py-4 flex justify-between items-center">
@@ -828,7 +773,7 @@
     <div id="modal-daf-standard" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-daf-standard')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-orange-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-file-invoice mr-2"></i> DAF : Bon de Commande Standard</h3>
                     <button onclick="closeModal('modal-daf-standard')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -901,7 +846,7 @@
     <div id="modal-daf-delegation" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-daf-delegation')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-yellow-500 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-signature mr-2"></i> DAF : Délégation (< 400€)</h3>
                     <button onclick="closeModal('modal-daf-delegation')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -953,7 +898,7 @@
     <div id="modal-validation" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-validation')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-red-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-check-double mr-2"></i> Responsable : Valider une demande</h3>
                     <button onclick="closeModal('modal-validation')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -1001,7 +946,7 @@
     <div id="modal-fcpi" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-fcpi')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-user-plus mr-2"></i> Responsable : Fiche Création de Poste</h3>
                     <button onclick="closeModal('modal-fcpi')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -1077,7 +1022,7 @@
     <div id="modal-chat" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-chat')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-teal-600 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-comments mr-2"></i> Suivi & Chat</h3>
                     <button onclick="closeModal('modal-chat')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -1129,7 +1074,7 @@
     <div id="modal-tech" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-tech')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-800 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
                 <div class="bg-gray-700 px-6 py-4 flex justify-between items-center">
                     <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-toolbox mr-2"></i> Espace Technique</h3>
                     <button onclick="closeModal('modal-tech')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
@@ -1260,10 +1205,10 @@
 
             buttons.forEach(btn => {
                 if (btn.getAttribute('onclick').includes(category)) {
-                    btn.classList.add('bg-ilvm-600', 'text-white', 'shadow-md');
+                    btn.classList.add('bg-accent-600', 'text-white', 'shadow-md');
                     btn.classList.remove('bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-200');
                 } else {
-                    btn.classList.remove('bg-ilvm-600', 'text-white', 'shadow-md');
+                    btn.classList.remove('bg-accent-600', 'text-white', 'shadow-md');
                     btn.classList.add('bg-white', 'dark:bg-slate-800', 'text-slate-600', 'dark:text-slate-200');
                 }
             });
@@ -1337,10 +1282,5 @@
             });
         }
     </script>
-
-    <script>
-        lucide.createIcons();
-    </script>
-
-</body>
-</html>
+</div>
+{% endblock %}

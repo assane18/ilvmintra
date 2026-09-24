@@ -1,25 +1,35 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 dark:bg-slate-950 min-h-screen transition-colors duration-300">
-    
-    <!-- En-tête -->
-    <div class="flex justify-between items-center mb-8">
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; outline: none; transition: all 0.2s; color: #1e293b; }
+    .input-field:focus { border-color: #14b8a6; background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #2dd4bf; background-color: #020617; }
+</style>
+
+<div class="p-6">
+
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Administration Utilisateurs</h1>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Administration Utilisateurs</h1>
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Gestion des accès et rôles</p>
         </div>
-        <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
-            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
+        <a href="{{ url_for('main.admin_dashboard') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Administration
         </a>
     </div>
 
-    <!-- Tableau Utilisateurs -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-                <thead class="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider">
-                    <tr>
+                <thead>
+                    <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 uppercase font-black text-[10px] tracking-wider">
                         <th class="px-6 py-4">Utilisateur</th>
                         <th class="px-6 py-4">Email / Login</th>
                         <th class="px-6 py-4">Rôle Actuel</th>
@@ -27,9 +37,9 @@
                         <th class="px-6 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
+                <tbody>
                     {% for user in users %}
-                    <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition group">
+                    <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
                         <td class="px-6 py-4">
                             <div class="font-bold text-slate-900 dark:text-white">{{ user.fullname }}</div>
                             <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">ID: {{ user.id }}</div>
@@ -39,22 +49,21 @@
                             <div class="text-[10px] text-slate-400 dark:text-slate-500 font-mono">{{ user.username }}</div>
                         </td>
                         <td class="px-6 py-4">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wide
-                                {% if user.role.value == 'ADMIN' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400
-                                {% elif user.role.value == 'DIRECTEUR' %}bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400
-                                {% elif user.role.value == 'MANAGER' %}bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400
-                                {% elif user.role.value == 'SOLVER' %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400
-                                {% else %}bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-400{% endif %}">
+                            <span class="inline-flex items-center px-2.5 py-1 text-[10px] font-black uppercase tracking-wide
+                                {% if user.role.value == 'ADMIN' %}bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400
+                                {% elif user.role.value == 'DIRECTEUR' %}bg-violet-100 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400
+                                {% elif user.role.value == 'MANAGER' %}bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400
+                                {% elif user.role.value == 'SOLVER' %}bg-accent-100 dark:bg-accent-500/10 text-accent-700 dark:text-accent-400
+                                {% else %}bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400{% endif %}">
                                 {{ user.role.value }}
                             </span>
                         </td>
                         <td class="px-6 py-4">
-                            <!-- Affichage de la liste des services autorisés -->
                             {% set services_list = user.get_allowed_services() %}
                             {% if services_list %}
                                 <div class="flex flex-wrap gap-1">
                                     {% for s in services_list %}
-                                    <span class="bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded text-[10px] font-mono text-slate-600 dark:text-slate-300">
+                                    <span class="bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] font-mono text-slate-600 dark:text-slate-300">
                                         {{ s }}
                                     </span>
                                     {% endfor %}
@@ -64,12 +73,12 @@
                             {% endif %}
                         </td>
                         <td class="px-6 py-4 text-right">
-                            <button onclick="openEditModal('{{ user.id }}', '{{ user.fullname }}', '{{ user.role.value }}', '{{ services_list[0] if services_list else '' }}')" 
-                                class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 font-bold text-xs uppercase hover:underline mr-3">
+                            <button onclick="openEditModal('{{ user.id }}', '{{ user.fullname }}', '{{ user.role.value }}', '{{ services_list[0] if services_list else '' }}')"
+                                class="text-accent-600 hover:text-accent-700 dark:text-accent-400 font-bold text-xs uppercase hover:underline mr-3">
                                 Modifier
                             </button>
                             {% if user.id != current_user.id %}
-                            <a href="{{ url_for('users.delete_user', id=user.id) }}" onclick="return confirm('Supprimer cet utilisateur ?')" class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-bold text-xs uppercase hover:underline">
+                            <a href="{{ url_for('users.delete_user', id=user.id) }}" onclick="return confirm('Supprimer cet utilisateur ?')" class="text-red-500 hover:text-red-700 dark:text-red-400 font-bold text-xs uppercase hover:underline">
                                 Supprimer
                             </a>
                             {% endif %}
@@ -84,19 +93,19 @@
 
 <!-- MODAL EDIT USER -->
 <div id="editUserModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity">
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md m-4 shadow-2xl relative border border-slate-100 dark:border-slate-700">
+    <div class="bg-white dark:bg-slate-900 p-8 w-full max-w-md m-4 shadow-2xl relative border border-gray-200 dark:border-slate-800">
         <button onclick="document.getElementById('editUserModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
             <i data-lucide="x" class="w-6 h-6"></i>
         </button>
-        
+
         <h3 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">Modifier Utilisateur</h3>
-        
+
         <form id="editUserForm" method="POST" class="space-y-4">
             <div>
                 <label class="label-tiny">Nom Complet</label>
                 <input type="text" name="fullname" id="editFullname" class="input-field" required>
             </div>
-            
+
             <div>
                 <label class="label-tiny">Rôle</label>
                 <select name="role" id="editRole" class="input-field">
@@ -105,7 +114,7 @@
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div>
                 <label class="label-tiny">Service Principal (Technique)</label>
                 <select name="service" id="editService" class="input-field">
@@ -117,7 +126,7 @@
                 <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 italic">Note: Définit le service géré (GS) et d'origine (GU) pour simplifier.</p>
             </div>
 
-            <button type="submit" class="w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">
+            <button type="submit" class="w-full bg-accent-600 text-white font-black py-3 hover:bg-accent-700 transition shadow-sm text-xs uppercase tracking-widest mt-2">
                 Enregistrer
             </button>
         </form>
@@ -125,43 +134,21 @@
 </div>
 
 <script>
-    lucide.createIcons();
-
     function openEditModal(id, fullname, role, service) {
         const modal = document.getElementById('editUserModal');
-        const form = document.getElementById('editUserForm');
-        
-        // Pré-remplissage
         document.getElementById('editFullname').value = fullname;
         document.getElementById('editRole').value = role;
-        
-        // Sélection du service (si présent)
+
         const serviceSelect = document.getElementById('editService');
         if (service && service !== 'None') {
             serviceSelect.value = service;
         } else {
             serviceSelect.value = 'None';
         }
-        
-        // CORRECTION IMPORTANTE DE L'URL
-        // On utilise la base de l'URL admin pour construire le chemin correct
-        // Cela évite l'erreur 404 si l'app est dans un sous-dossier (/intranet)
-        // flask génère /admin/users, on ajoute /edit/ID
-        form.action = `{{ url_for('users.list_users') }}/edit/${id}`;
-        
+
+        document.getElementById('editUserForm').action = `{{ url_for('users.list_users') }}/edit/${id}`;
         modal.classList.remove('hidden');
     }
 </script>
-
-<style>
-    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; } 
-    .dark .label-tiny { color: #94a3b8; }
-
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; } 
-    .input-field:focus { border-color: #3b82f6; background-color: white; }
-
-    /* Dark Mode Inputs */
-    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
-    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; }
-</style>
+</div>
 {% endblock %}

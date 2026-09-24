@@ -1,20 +1,32 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 dark:bg-slate-950 min-h-screen transition-colors duration-300 max-w-4xl">
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; outline: none; transition: all 0.2s; color: #1e293b; font-size: 0.85rem; }
+    .input-field:focus { border-color: #14b8a6; background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #2dd4bf; background-color: #020617; }
+</style>
 
-    <div class="flex justify-between items-center mb-8">
+<div class="p-6 max-w-4xl mx-auto">
+
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{{ form_def.name }}</h1>
+            <h1 class="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{{ form_def.name }}</h1>
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide font-mono">/{{ form_def.slug }}</p>
         </div>
         <div class="flex gap-3">
-            <a href="{{ url_for('forms_admin.list_forms') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <a href="{{ url_for('forms_admin.list_forms') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
             </a>
             <form action="{{ url_for('forms_admin.toggle_active', id=form_def.id) }}" method="POST">
-                <button type="submit" class="px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition
-                    {% if form_def.is_active %}bg-orange-100 text-orange-700 hover:bg-orange-200{% else %}bg-emerald-600 text-white hover:bg-emerald-500{% endif %}">
+                <button type="submit" class="px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition
+                    {% if form_def.is_active %}bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-500/20{% else %}bg-emerald-600 text-white hover:bg-emerald-700{% endif %}">
                     {{ 'Désactiver' if form_def.is_active else 'Activer' }}
                 </button>
             </form>
@@ -22,14 +34,14 @@
     </div>
 
     {% if not form_def.is_active %}
-    <div class="mb-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 rounded-2xl px-5 py-3 text-xs font-bold uppercase tracking-wide">
+    <div class="mb-6 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 px-5 py-3 text-xs font-bold uppercase tracking-wide">
         Formulaire en brouillon — invisible des utilisateurs tant qu'il n'est pas activé.
     </div>
     {% endif %}
 
     <!-- INFOS -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
-        <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">Informations</h2>
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 p-8 mb-6">
+        <h2 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight mb-4">Informations</h2>
         <form method="POST" action="{{ url_for('forms_admin.update_form', id=form_def.id) }}" class="space-y-4">
             <div>
                 <label class="label-tiny">Nom</label>
@@ -40,7 +52,7 @@
                 <textarea name="description" class="input-field" rows="2">{{ form_def.description or '' }}</textarea>
             </div>
 
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+            <div class="pt-2 border-t border-gray-200 dark:border-slate-800">
                 <label class="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-200">
                     <input type="checkbox" name="manager_only" value="1" class="w-4 h-4" {% if form_def.manager_only %}checked{% endif %}>
                     Réservé aux Manager/Directeur pour la soumission
@@ -50,7 +62,7 @@
                 </p>
             </div>
 
-            <div class="pt-2 border-t border-slate-100 dark:border-slate-700">
+            <div class="pt-2 border-t border-gray-200 dark:border-slate-800">
                 <label class="label-tiny">Colonnes Ticket calculées (avancé)</label>
                 <textarea name="structured_field_templates" class="input-field font-mono text-xs" rows="2">{{ form_def.structured_field_templates_json or '' }}</textarea>
                 <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
@@ -58,34 +70,34 @@
                 </p>
             </div>
 
-            <button type="submit" class="bg-slate-800 dark:bg-slate-700 text-white font-black py-2 px-5 rounded-xl hover:bg-slate-700 dark:hover:bg-slate-600 transition text-xs uppercase tracking-widest">
+            <button type="submit" class="bg-slate-800 dark:bg-slate-700 text-white font-black py-2.5 px-5 hover:bg-slate-700 dark:hover:bg-slate-600 transition text-xs uppercase tracking-widest">
                 Enregistrer
             </button>
         </form>
     </div>
 
     <!-- CHAMPS -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 p-8 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Champs du formulaire</h2>
-            <button type="button" onclick="addFieldRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <h2 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Champs du formulaire</h2>
+            <button type="button" onclick="addFieldRow()" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="plus" class="w-4 h-4"></i> Ajouter un champ
             </button>
         </div>
         <div id="fieldsContainer" class="space-y-3"></div>
         <form id="fieldsForm" method="POST" action="{{ url_for('forms_admin.save_fields', id=form_def.id) }}">
             <input type="hidden" name="fields_payload" id="fieldsPayload">
-            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest" onclick="return prepareFieldsSubmit()">
+            <button type="submit" class="mt-4 w-full bg-accent-600 text-white font-black py-3 hover:bg-accent-700 transition shadow-sm text-xs uppercase tracking-widest" onclick="return prepareFieldsSubmit()">
                 Enregistrer les champs
             </button>
         </form>
     </div>
 
     <!-- ETAPES -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 p-8 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Étapes de validation</h2>
-            <button type="button" onclick="addStepRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <h2 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Étapes de validation</h2>
+            <button type="button" onclick="addStepRow()" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="plus" class="w-4 h-4"></i> Ajouter une étape
             </button>
         </div>
@@ -93,17 +105,17 @@
         <div id="stepsContainer" class="space-y-3"></div>
         <form id="stepsForm" method="POST" action="{{ url_for('forms_admin.save_steps', id=form_def.id) }}">
             <input type="hidden" name="steps_payload" id="stepsPayload">
-            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest" onclick="return prepareStepsSubmit()">
+            <button type="submit" class="mt-4 w-full bg-accent-600 text-white font-black py-3 hover:bg-accent-700 transition shadow-sm text-xs uppercase tracking-widest" onclick="return prepareStepsSubmit()">
                 Enregistrer les étapes
             </button>
         </form>
     </div>
 
     <!-- DESTINATAIRES -->
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 p-8 mb-8">
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 p-8 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Destinataires (Espace Tech)</h2>
-            <button type="button" onclick="addDispatchRow()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <h2 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Destinataires (Espace Tech)</h2>
+            <button type="button" onclick="addDispatchRow()" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="plus" class="w-4 h-4"></i> Ajouter un destinataire
             </button>
         </div>
@@ -111,7 +123,7 @@
         <div id="dispatchContainer" class="space-y-3"></div>
         <form id="dispatchForm" method="POST" action="{{ url_for('forms_admin.save_dispatch_targets', id=form_def.id) }}">
             <input type="hidden" name="dispatch_targets_payload" id="dispatchPayload">
-            <button type="submit" class="mt-4 w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest" onclick="return prepareDispatchSubmit()">
+            <button type="submit" class="mt-4 w-full bg-accent-600 text-white font-black py-3 hover:bg-accent-700 transition shadow-sm text-xs uppercase tracking-widest" onclick="return prepareDispatchSubmit()">
                 Enregistrer les destinataires
             </button>
         </form>
@@ -120,7 +132,7 @@
 
 <!-- Ligne de champ (template) -->
 <template id="fieldRowTemplate">
-    <div class="field-row bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 grid grid-cols-12 gap-3 items-start">
+    <div class="field-row bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 grid grid-cols-12 gap-3 items-start">
         <div class="col-span-4">
             <label class="label-tiny">Libellé</label>
             <input type="text" class="input-field f-label" placeholder="Ex: Titre">
@@ -151,7 +163,7 @@
             <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
             <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
-        <div class="col-span-12 grid grid-cols-12 gap-3 items-end pt-2 border-t border-slate-200 dark:border-slate-700">
+        <div class="col-span-12 grid grid-cols-12 gap-3 items-end pt-2 border-t border-gray-200 dark:border-slate-800">
             <div class="col-span-5">
                 <label class="label-tiny">Afficher seulement si (optionnel)</label>
                 <select class="input-field f-condition-field">
@@ -179,7 +191,7 @@
 
 <!-- Ligne d'étape (template) -->
 <template id="stepRowTemplate">
-    <div class="step-row bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 grid grid-cols-12 gap-3 items-end">
+    <div class="step-row bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 grid grid-cols-12 gap-3 items-end">
         <div class="col-span-3">
             <label class="label-tiny">Libellé de l'étape</label>
             <input type="text" class="input-field s-label" placeholder="Ex: Validation Manager">
@@ -214,7 +226,7 @@
             <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
             <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
-        <div class="col-span-12 flex items-center gap-4 pt-2 border-t border-slate-200 dark:border-slate-700">
+        <div class="col-span-12 flex items-center gap-4 pt-2 border-t border-gray-200 dark:border-slate-800">
             <span class="label-tiny mb-0">Ignorer cette étape si le demandeur est déjà :</span>
             <label class="flex items-center gap-1 text-[11px] font-bold text-slate-600 dark:text-slate-300">
                 <input type="checkbox" class="s-skip" value="MANAGER"> Manager
@@ -231,7 +243,7 @@
 
 <!-- Ligne de destinataire (template) -->
 <template id="dispatchRowTemplate">
-    <div class="dispatch-row bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 grid grid-cols-12 gap-3 items-end">
+    <div class="dispatch-row bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 grid grid-cols-12 gap-3 items-end">
         <div class="col-span-3">
             <label class="label-tiny">Libellé</label>
             <input type="text" class="input-field d-label" placeholder="Ex: DRH">
@@ -249,16 +261,23 @@
             <select class="input-field d-condition">
                 <option value="">Toujours</option>
                 {% for f in form_def.fields if f.field_type.value == 'CHECKBOX' %}
-                <option value="{{ f.name }}">Si « {{ f.label }} » est coché</option>
+                <option value="{{ f.name }}" data-field-type="CHECKBOX">Si « {{ f.label }} » est coché</option>
+                {% endfor %}
+                {% for f in form_def.fields if f.field_type.value in ['SELECT', 'MULTI_SELECT'] %}
+                <option value="{{ f.name }}" data-field-type="{{ f.field_type.value }}">Si « {{ f.label }} » vaut...</option>
                 {% endfor %}
             </select>
+            <div class="d-condition-values-wrap hidden mt-2">
+                <label class="label-tiny">Valeur(s) déclenchante(s), séparées par des virgules</label>
+                <input type="text" class="input-field d-condition-values" placeholder="Ex: Contrat, Avenant, Décision">
+            </div>
         </div>
         <div class="col-span-2 flex justify-end gap-2">
             <button type="button" onclick="moveRow(this, -1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-up" class="w-4 h-4"></i></button>
             <button type="button" onclick="moveRow(this, 1)" class="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"><i data-lucide="chevron-down" class="w-4 h-4"></i></button>
             <button type="button" onclick="removeRow(this)" class="text-red-500 hover:text-red-700"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
         </div>
-        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700">
+        <div class="col-span-12 pt-2 border-t border-gray-200 dark:border-slate-800">
             <label class="label-tiny mb-1 block">Fichiers transmis à ce destinataire</label>
             <select class="input-field d-files-mode">
                 <option value="all">Tous les fichiers de la soumission</option>
@@ -272,7 +291,7 @@
                 {% endfor %}
             </div>
         </div>
-        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700">
+        <div class="col-span-12 pt-2 border-t border-gray-200 dark:border-slate-800">
             <label class="label-tiny mb-1 block">Champs mappés appliqués à ce destinataire</label>
             <select class="input-field d-mapped-mode">
                 <option value="all">Tous les champs mappés</option>
@@ -286,7 +305,7 @@
                 {% endfor %}
             </div>
         </div>
-        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700">
+        <div class="col-span-12 pt-2 border-t border-gray-200 dark:border-slate-800">
             <label class="label-tiny mb-1 block">Champs listés dans la description générique du ticket</label>
             <select class="input-field d-description-mode">
                 <option value="all">Tous les champs (hors fichiers)</option>
@@ -300,7 +319,7 @@
                 {% endfor %}
             </div>
         </div>
-        <div class="col-span-12 pt-2 border-t border-slate-200 dark:border-slate-700 grid grid-cols-12 gap-3">
+        <div class="col-span-12 pt-2 border-t border-gray-200 dark:border-slate-800 grid grid-cols-12 gap-3">
             <div class="col-span-12">
                 <label class="label-tiny mb-1 block">Personnalisation du Ticket (optionnel — sinon valeurs génériques)</label>
                 <p class="text-[10px] text-slate-400 mb-2">Utilisez <code>$nom_du_champ</code> pour insérer la valeur d'un champ (ex: <code>$type_demande</code>, <code>$nom_agent</code>).</p>
@@ -359,6 +378,7 @@
             label: {{ t.label|tojson }},
             target_service: {{ t.target_service.value|tojson }},
             condition_field_name: {{ (t.condition_field.name if t.condition_field else '')|tojson }},
+            condition_values: {{ t.get_condition_values()|tojson }},
             included_file_fields: {{ t.get_included_file_fields()|tojson }},
             included_mapped_fields: {{ t.get_included_mapped_fields()|tojson }},
             included_description_fields: {{ t.get_included_description_fields()|tojson }},
@@ -452,6 +472,7 @@
             row.querySelector('.d-label').value = data.label || '';
             row.querySelector('.d-service').value = data.target_service || '';
             row.querySelector('.d-condition').value = data.condition_field_name || '';
+            row.querySelector('.d-condition-values').value = (data.condition_values || []).join(', ');
             if (data.included_file_fields) {
                 row.querySelector('.d-files-mode').value = 'selected';
                 row.querySelectorAll('.d-file-checkbox').forEach(cb => {
@@ -478,11 +499,21 @@
         toggleFilesVisibility(row);
         toggleMappedVisibility(row);
         toggleDescriptionVisibility(row);
+        toggleConditionValuesVisibility(row);
         row.querySelector('.d-files-mode').addEventListener('change', () => toggleFilesVisibility(row));
         row.querySelector('.d-mapped-mode').addEventListener('change', () => toggleMappedVisibility(row));
         row.querySelector('.d-description-mode').addEventListener('change', () => toggleDescriptionVisibility(row));
+        row.querySelector('.d-condition').addEventListener('change', () => toggleConditionValuesVisibility(row));
         document.getElementById('dispatchContainer').appendChild(node);
         lucide.createIcons();
+    }
+
+    function toggleConditionValuesVisibility(row) {
+        const select = row.querySelector('.d-condition');
+        const opt = select.options[select.selectedIndex];
+        const fieldType = opt ? opt.dataset.fieldType : '';
+        const needsValues = fieldType === 'SELECT' || fieldType === 'MULTI_SELECT';
+        row.querySelector('.d-condition-values-wrap').classList.toggle('hidden', !needsValues);
     }
 
     function toggleFilesVisibility(row) {
@@ -572,7 +603,8 @@
             const item = {
                 label: label,
                 target_service: row.querySelector('.d-service').value,
-                condition_field_name: row.querySelector('.d-condition').value
+                condition_field_name: row.querySelector('.d-condition').value,
+                condition_values: row.querySelector('.d-condition-values').value.split(',').map(v => v.trim()).filter(v => v)
             };
             if (row.querySelector('.d-files-mode').value === 'selected') {
                 item.included_file_fields = Array.from(row.querySelectorAll('.d-file-checkbox:checked')).map(cb => cb.value);
@@ -598,12 +630,5 @@
     existingDispatchTargets.forEach(t => addDispatchRow(t));
     lucide.createIcons();
 </script>
-
-<style>
-    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; border-radius: 0.5rem; outline: none; transition: all 0.2s; color: #1e293b; font-size: 0.85rem; }
-    .input-field:focus { border-color: #3b82f6; background-color: white; }
-    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
-    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; }
-</style>
+</div>
 {% endblock %}

@@ -1,100 +1,114 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
 {% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; outline: none; transition: all 0.2s; color: #1e293b; }
+    .input-field:focus { border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15); background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #2dd4bf; background-color: #020617; box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.2); }
+</style>
 
-
-<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 px-6 pt-6">
-    <div>
-        <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Stock Matériel</h1>
-        <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Parc informatique</p>
+<div class="p-6">
+    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Stock Matériel</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Parc informatique</p>
+        </div>
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
+            </a>
+            <a href="{{ url_for('inventaire.export_stock') }}" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="download" class="w-4 h-4"></i> Exporter
+            </a>
+            <button onclick="document.getElementById('importModal').classList.remove('hidden')" class="bg-accent-600 hover:bg-accent-700 text-white px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="upload" class="w-4 h-4"></i> Importer
+            </button>
+            <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="bg-slate-900 dark:bg-slate-800 hover:bg-slate-800 dark:hover:bg-slate-700 text-white px-5 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i> Ajouter
+            </button>
+        </div>
     </div>
-    <div class="flex flex-wrap gap-3">
-        <!-- BOUTON RETOUR DASHBOARD -->
-        <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-3 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
-            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
-        </a>
 
-        <a href="{{ url_for('inventaire.export_stock') }}" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2">
-            <i data-lucide="download"></i> Exporter
-        </a>
-        <button onclick="document.getElementById('importModal').classList.remove('hidden')" class="bg-blue-600 hover:bg-blue-500 text-white px-4 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2">
-            <i data-lucide="upload"></i> Importer
-        </button>
-        <button onclick="document.getElementById('addModal').classList.remove('hidden')" class="bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 dark:hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-black text-xs uppercase shadow-lg flex items-center gap-2 hover:-translate-y-1 transition">
-            <i data-lucide="plus-circle"></i> Ajouter
-        </button>
-    </div>
-</div>
-
-    <div class="mb-6 flex flex-col md:flex-row gap-4 items-center justify-between">
+    <div class="mb-6">
         <form action="" method="GET" class="relative w-full max-w-md">
-            <input type="text" 
-                name="q" 
-                value="{{ search_query or '' }}" 
-                placeholder="Rechercher..." 
-                class="w-full pl-10 pr-10 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 outline-none dark:text-white transition">
-            
-            <div class="absolute left-3 top-2.5 text-slate-400">
+            <input type="text"
+                name="q"
+                value="{{ search_query or '' }}"
+                placeholder="Rechercher..."
+                class="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm focus:ring-2 focus:ring-accent-500 outline-none dark:text-white transition">
+
+            <div class="absolute left-3 top-3 text-slate-400">
                 <i data-lucide="search" class="w-4 h-4"></i>
             </div>
 
             {% if search_query %}
-                <a href="{{ request.path }}" class="absolute right-3 top-2.5 text-slate-400 hover:text-red-500 transition">
+                <a href="{{ request.path }}" class="absolute right-3 top-3 text-slate-400 hover:text-red-500 transition">
                     <i data-lucide="x-circle" class="w-4 h-4"></i>
                 </a>
             {% endif %}
         </form>
     </div>
 
-<div class="px-6 pb-20">
-    <div class="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
         <table class="w-full text-left text-sm text-slate-600 dark:text-slate-300">
-            <thead class="bg-slate-50 dark:bg-slate-700 border-b border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px] tracking-wider">
-                <tr>
+            <thead>
+                <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 uppercase font-black text-[10px] tracking-wider">
                     <th class="px-6 py-4">Type</th>
                     <th class="px-6 py-4">Modèle</th>
                     <th class="px-6 py-4">S/N</th>
-                    <th class="px-6 py-4">Info</th>
+                    <th class="px-6 py-4">Service/Bureau</th>
                     <th class="px-6 py-4">Statut</th>
                     <th class="px-6 py-4 text-right">Actions</th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-slate-100 dark:divide-slate-700 font-medium">
+            <tbody>
                 {% for item in materiels %}
-                <tr class="hover:bg-slate-50 dark:hover:bg-slate-700/50 transition">
-                    <td class="px-6 py-4"><span class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 px-2 py-1 rounded text-xs font-bold uppercase">{{ item.categorie }}</span></td>
+                <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <td class="px-6 py-4"><span class="bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2 py-1 text-xs font-bold uppercase">{{ item.categorie }}</span></td>
                     <td class="px-6 py-4 text-slate-900 dark:text-white font-bold">{{ item.modele }}</td>
                     <td class="px-6 py-4 font-mono text-xs text-slate-500 dark:text-slate-400">{{ item.sn }}</td>
-                    <td class="px-6 py-4 font-mono text-xs text-blue-600 dark:text-blue-400">{{ item.hostname or '-' }}</td>
+                    <td class="px-6 py-4 font-mono text-xs text-accent-600 dark:text-accent-400">{{ item.hostname or '-' }}</td>
                     <td class="px-6 py-4">
                         {% if item.statut == 'Disponible' %}
-                        <span class="text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Dispo</span>
+                        <span class="text-emerald-600 dark:text-emerald-400 text-xs font-black uppercase flex items-center gap-1.5"><span class="w-2 h-2 bg-emerald-500"></span> Dispo</span>
                         {% else %}
-                        <span class="text-orange-500 dark:text-orange-400 text-xs font-black uppercase flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> {{ item.statut }}</span>
+                        <span class="text-orange-500 dark:text-orange-400 text-xs font-black uppercase flex items-center gap-1.5"><span class="w-2 h-2 bg-orange-500"></span> {{ item.statut }}</span>
                         {% endif %}
                     </td>
-                    <td class="px-6 py-4 text-right flex justify-end gap-2">
-                        <button onclick="document.getElementById('edit-mat-{{ item.id }}').classList.remove('hidden')" class="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
-                        <a href="{{ url_for('inventaire.supprimer', id=item.id) }}" onclick="return confirm('Supprimer ?')" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg"><i data-lucide="trash" class="w-4 h-4"></i></a>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex justify-end gap-1">
+                            <button onclick="document.getElementById('edit-mat-{{ item.id }}').classList.remove('hidden')" class="p-2 text-accent-600 hover:bg-accent-50 dark:hover:bg-accent-500/10"><i data-lucide="edit-2" class="w-4 h-4"></i></button>
+                            <a href="{{ url_for('inventaire.supprimer', id=item.id) }}" onclick="return confirm('Supprimer ?')" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"><i data-lucide="trash" class="w-4 h-4"></i></a>
+                        </div>
                     </td>
                 </tr>
 
                 <!-- MODAL EDIT (Pour chaque item) -->
+                <tr>
+                <td colspan="6" class="p-0">
                 <div id="edit-mat-{{ item.id }}" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
-                    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+                    <div class="bg-white dark:bg-slate-900 p-8 w-full max-w-md shadow-2xl relative border border-gray-200 dark:border-slate-800">
                         <h3 class="text-xl font-black text-slate-900 dark:text-white mb-4">Modifier {{ item.modele }}</h3>
                         <form action="{{ url_for('inventaire.modifier', id=item.id) }}" method="POST" class="space-y-4">
                             <input type="text" name="categorie" value="{{ item.categorie }}" class="input-field" placeholder="Catégorie">
                             <input type="text" name="modele" value="{{ item.modele }}" class="input-field" placeholder="Modèle">
                             <input type="text" name="sn" value="{{ item.sn }}" class="input-field font-mono" placeholder="S/N">
-                            <input type="text" name="hostname" value="{{ item.hostname or '' }}" class="input-field font-mono" placeholder="Info">
+                            <input type="text" name="hostname" value="{{ item.hostname or '' }}" class="input-field font-mono" placeholder="Service/Bureau">
                             <input type="text" name="imei" value="{{ item.imei or '' }}" class="input-field font-mono" placeholder="IMEI">
                             <div class="flex gap-2 mt-4">
-                                <button type="button" onclick="document.getElementById('edit-mat-{{ item.id }}').classList.add('hidden')" class="flex-1 py-3 border border-slate-200 dark:border-slate-600 rounded-xl font-bold text-xs uppercase hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300">Annuler</button>
-                                <button type="submit" class="flex-1 bg-blue-600 text-white rounded-xl font-bold text-xs uppercase hover:bg-blue-700">Sauvegarder</button>
+                                <button type="button" onclick="document.getElementById('edit-mat-{{ item.id }}').classList.add('hidden')" class="flex-1 py-3 border border-gray-200 dark:border-slate-700 font-bold text-xs uppercase hover:bg-gray-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">Annuler</button>
+                                <button type="submit" class="flex-1 bg-accent-600 text-white font-bold text-xs uppercase hover:bg-accent-700">Sauvegarder</button>
                             </div>
                         </form>
                     </div>
                 </div>
+                </td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>
@@ -103,7 +117,7 @@
 
 <!-- MODAL ADD -->
 <div id="addModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+    <div class="bg-white dark:bg-slate-900 p-8 w-full max-w-md shadow-2xl relative border border-gray-200 dark:border-slate-800">
         <button onclick="document.getElementById('addModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i data-lucide="x"></i></button>
         <h3 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6">Ajouter Matériel</h3>
         <form action="{{ url_for('inventaire.ajouter') }}" method="POST" class="space-y-4">
@@ -116,44 +130,31 @@
             </select>
             <input type="text" name="modele" class="input-field" placeholder="Modèle (ex: Dell Latitude)" required>
             <input type="text" name="sn" class="input-field font-mono" placeholder="Numéro Série (S/N)" required>
-            <input type="text" name="hostname" class="input-field font-mono" placeholder="Info (ex: ILVMLT001)">
+            <input type="text" name="hostname" class="input-field font-mono" placeholder="Service/Bureau">
             <input type="text" name="imei" id="imeiField" class="input-field font-mono hidden" placeholder="IMEI (Si téléphone)">
-            <button type="submit" class="w-full bg-slate-900 dark:bg-blue-600 text-white font-black py-4 rounded-xl hover:bg-slate-800 dark:hover:bg-blue-500 transition shadow-lg text-xs uppercase tracking-widest mt-2">Ajouter au stock</button>
+            <button type="submit" class="w-full bg-slate-900 dark:bg-accent-600 text-white font-black py-4 hover:bg-slate-800 dark:hover:bg-accent-700 transition shadow-sm text-xs uppercase tracking-widest mt-2">Ajouter au stock</button>
         </form>
     </div>
 </div>
 
 <!-- MODAL IMPORT -->
 <div id="importModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl w-full max-w-md shadow-2xl relative border border-slate-100 dark:border-slate-700">
+    <div class="bg-white dark:bg-slate-900 p-8 w-full max-w-md shadow-2xl relative border border-gray-200 dark:border-slate-800">
         <button onclick="document.getElementById('importModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><i data-lucide="x"></i></button>
         <h3 class="text-xl font-black text-slate-900 dark:text-white mb-4">Importer Excel</h3>
         <form action="{{ url_for('inventaire.import_stock') }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-            <div class="bg-blue-50 dark:bg-blue-900/30 p-4 rounded-xl text-xs text-blue-800 dark:text-blue-300 font-medium">Fichier .xlsx avec colonnes: Categorie, Modele, SN, Service/Bureau, IMEI</div>
-            <input type="file" name="file" accept=".xlsx" class="input-field bg-white dark:bg-slate-700" required>
-            <button type="submit" class="w-full bg-blue-600 text-white font-black py-3 rounded-xl hover:bg-blue-700 shadow-lg text-xs uppercase tracking-widest">Lancer l'import</button>
+            <div class="bg-accent-50 dark:bg-accent-500/10 p-4 text-xs text-accent-800 dark:text-accent-300 font-medium">Fichier .xlsx avec colonnes: Categorie, Modele, SN, Service/Bureau, IMEI</div>
+            <input type="file" name="file" accept=".xlsx" class="input-field bg-white dark:bg-slate-800" required>
+            <button type="submit" class="w-full bg-accent-600 text-white font-black py-3 hover:bg-accent-700 shadow-sm text-xs uppercase tracking-widest">Lancer l'import</button>
         </form>
     </div>
 </div>
 
 <script>
-    function toggleImei() { 
+    function toggleImei() {
         const val = document.getElementById('catSelect').value;
-        document.getElementById('imeiField').classList.toggle('hidden', val !== 'Telephone' && val !== 'Tablette'); 
+        document.getElementById('imeiField').classList.toggle('hidden', val !== 'Telephone' && val !== 'Tablette');
     }
-    lucide.createIcons();
 </script>
-
-<style>
-    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.1em; margin-bottom: 4px; display: block; }
-    /* Dark mode override */
-    .dark .label-tiny { color: #94a3b8; }
-
-    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 1rem; border-radius: 0.75rem; outline: none; transition: all 0.2s; color: #1e293b; }
-    .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); background-color: white; }
-
-    /* Dark Mode Inputs */
-    .dark .input-field { background-color: #1e293b; border-color: #334155; color: #f1f5f9; }
-    .dark .input-field:focus { border-color: #60a5fa; background-color: #0f172a; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
-</style>
+</div>
 {% endblock %}

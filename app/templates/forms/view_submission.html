@@ -1,9 +1,17 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
+
 {% block content %}
-<div class="container mx-auto px-4 py-8 max-w-3xl">
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+</style>
+
+<div class="p-6 max-w-3xl mx-auto">
 
     <div class="mb-6 flex items-center gap-4">
-        <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+        <a href="{{ url_for('main.user_portal') }}" class="p-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition shadow-sm">
             <i data-lucide="arrow-left" class="w-5 h-5"></i>
         </a>
         <div>
@@ -15,7 +23,7 @@
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
         <div class="md:col-span-2 space-y-6">
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
                 <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
                     <i data-lucide="info" class="w-4 h-4 text-teal-500"></i> Contenu
                 </h3>
@@ -39,7 +47,7 @@
                     {% endfor %}
                 </dl>
                 {% if submission.refusal_reason %}
-                <div class="mt-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-700">
+                <div class="mt-4 p-3 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-900">
                     <p class="text-xs font-bold text-red-600 dark:text-red-400 uppercase mb-1">Motif de refus</p>
                     <p class="text-sm text-red-700 dark:text-red-300">{{ submission.refusal_reason }}</p>
                 </div>
@@ -47,14 +55,14 @@
             </div>
 
             {% if submission.files %}
-            <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
                 <h3 class="font-bold text-slate-700 dark:text-slate-200 mb-4 flex items-center gap-2">
                     <i data-lucide="paperclip" class="w-4 h-4 text-teal-500"></i> Documents joints
                 </h3>
                 <div class="space-y-2">
                     {% for f in submission.files %}
                     <a href="{{ url_for('static', filename='uploads/forms/' + submission.form.slug + '/' + submission.uid_public + '/' + f.stored_filename) }}" target="_blank"
-                        class="flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300 rounded-lg text-sm font-bold hover:bg-teal-100 transition">
+                        class="flex items-center gap-2 px-4 py-2 bg-teal-50 dark:bg-teal-500/10 text-teal-700 dark:text-teal-400 text-sm font-bold hover:bg-teal-100 dark:hover:bg-teal-500/20 transition">
                         <i data-lucide="file-text" class="w-4 h-4"></i> {{ f.original_filename or f.stored_filename }}
                     </a>
                     {% endfor %}
@@ -64,12 +72,12 @@
         </div>
 
         <div class="space-y-4">
-            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+            <div class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm text-center">
                 <p class="text-xs font-bold text-slate-400 uppercase mb-2">Statut</p>
-                <span class="inline-block px-4 py-2 rounded-full text-sm font-black
-                    {% if submission.status.value == 'EN_COURS' %}bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300
-                    {% elif submission.status.value == 'TERMINE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
-                    {% else %}bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300{% endif %}">
+                <span class="inline-block px-4 py-2 text-sm font-black
+                    {% if submission.status.value == 'EN_COURS' %}bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400
+                    {% elif submission.status.value == 'TERMINE' %}bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400
+                    {% else %}bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400{% endif %}">
                     {% if submission.status.value == 'EN_COURS' %}{{ submission.current_step.label if submission.current_step else 'En cours' }}
                     {% elif submission.status.value == 'TERMINE' %}Terminé
                     {% else %}Refusé{% endif %}
@@ -77,7 +85,7 @@
             </div>
 
             {% if submission.form.steps %}
-            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm">
                 <p class="text-xs font-bold text-slate-400 uppercase mb-3">Parcours</p>
                 <div class="space-y-2">
                     {% for step in submission.form.steps %}
@@ -104,17 +112,17 @@
 
             {% set tickets = submission.get_tickets() %}
             {% if tickets %}
-            <div class="bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+            <div class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm">
                 <p class="text-xs font-bold text-slate-400 uppercase mb-3">Tickets créés</p>
-                <div class="space-y-2">
+                <div class="space-y-0">
                     {% for t in tickets %}
                     <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}"
-                        class="flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-600 transition text-xs">
+                        class="flex items-center justify-between px-3 py-2.5 border-b border-gray-200 dark:border-slate-800 last:border-b-0 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition text-xs">
                         <span class="font-bold text-slate-700 dark:text-slate-200">{{ t.target_service.value }}</span>
-                        <span class="px-2 py-0.5 rounded-full font-bold
-                            {% if t.status.value == 'TERMINE' %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300
-                            {% elif t.status.value == 'EN_COURS' %}bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300
-                            {% else %}bg-slate-200 text-slate-600 dark:bg-slate-600 dark:text-slate-300{% endif %}">
+                        <span class="px-2 py-0.5 font-bold
+                            {% if t.status.value == 'TERMINE' %}bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400
+                            {% elif t.status.value == 'EN_COURS' %}bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400
+                            {% else %}bg-gray-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300{% endif %}">
                             {{ t.status.value }}
                         </span>
                     </a>
@@ -124,21 +132,21 @@
             {% endif %}
 
             {% if can_validate %}
-            <div class="bg-slate-900 dark:bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-sm space-y-3">
+            <div class="bg-slate-900 dark:bg-slate-950 p-5 border border-slate-800 shadow-sm space-y-3">
                 <p class="text-xs font-bold text-slate-400 uppercase">Actions — {{ submission.current_step.label }}</p>
 
                 <form action="{{ url_for('forms.validate_submission', id=submission.id, action='validate') }}" method="POST">
                     <button type="submit" onclick="return confirm('Valider cette étape ?')"
-                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 text-sm flex items-center justify-center gap-2 transition">
                         <i data-lucide="check-circle" class="w-4 h-4"></i> Valider
                     </button>
                 </form>
 
                 <form action="{{ url_for('forms.validate_submission', id=submission.id, action='refuse') }}" method="POST" class="space-y-2">
                     <textarea name="refusal_reason" rows="2" placeholder="Motif du refus..."
-                        class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"></textarea>
+                        class="w-full bg-slate-800 border border-slate-700 px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500 resize-none"></textarea>
                     <button type="submit" onclick="return confirm('Refuser cette soumission ?')"
-                        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition">
+                        class="w-full bg-red-700 hover:bg-red-600 text-white font-bold py-2.5 text-sm flex items-center justify-center gap-2 transition">
                         <i data-lucide="x-circle" class="w-4 h-4"></i> Refuser
                     </button>
                 </form>
@@ -147,5 +155,5 @@
         </div>
     </div>
 </div>
-<script>lucide.createIcons();</script>
+</div>
 {% endblock %}

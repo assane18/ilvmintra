@@ -1,13 +1,21 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
+
 {% block content %}
-<div class="container mx-auto px-4 py-8 max-w-2xl">
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+</style>
+
+<div class="p-6 max-w-2xl mx-auto">
 
     <div class="mb-6 flex items-center gap-4">
-        <a href="{{ url_for('main.user_portal') }}" class="p-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-slate-800 dark:hover:text-white transition">
+        <a href="{{ url_for('main.user_portal') }}" class="p-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition shadow-sm">
             <i data-lucide="arrow-left" class="w-5 h-5"></i>
         </a>
         <div>
-            <h1 class="text-2xl font-black text-slate-800 dark:text-white">Publication Actualités</h1>
+            <h1 class="text-xl font-black text-slate-800 dark:text-white">Publication Actualités</h1>
             <p class="text-sm text-slate-500 dark:text-slate-400">Soumettez un texte et des visuels — validation par le Directeur avant publication</p>
         </div>
     </div>
@@ -15,50 +23,50 @@
     <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="Publication Actualités">
 
         <!-- Contenu -->
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+        <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
             <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                 <i data-lucide="newspaper" class="w-5 h-5 text-sky-500"></i> Contenu de la publication
             </h3>
             <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Titre *</label>
                 <input type="text" name="titre" required placeholder="Ex : Journée portes ouvertes — Mai 2026"
-                    class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
+                    class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500">
             </div>
             <div>
                 <label class="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Texte de la publication *</label>
                 <textarea name="contenu" rows="8" required placeholder="Rédigez le texte de votre actualité..."
-                    class="w-full bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-4 py-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"></textarea>
+                    class="w-full bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 resize-none"></textarea>
             </div>
         </div>
 
         <!-- Visuels -->
-        <div class="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm space-y-4">
+        <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm space-y-4">
             <h3 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                 <i data-lucide="image" class="w-5 h-5 text-sky-500"></i> Visuels (photos, affiches...)
             </h3>
             <input type="file" name="visuels" multiple accept="image/*,.pdf"
-                class="w-full text-sm text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl p-3">
+                class="w-full text-sm text-slate-600 dark:text-slate-300 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 p-3">
             <p class="text-xs text-slate-400">Vous pouvez sélectionner plusieurs fichiers. Formats acceptés : images, PDF.</p>
         </div>
 
         <!-- Workflow info -->
-        <div class="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-xl border border-slate-200 dark:border-slate-700">
+        <div class="bg-gray-50 dark:bg-slate-900 p-4 border border-gray-200 dark:border-slate-800">
             <p class="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-3">Parcours de validation :</p>
             <div class="flex items-center gap-2 flex-wrap text-xs font-bold">
-                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 rounded-lg">Vous (Responsable)</span>
+                <span class="px-2 py-1 bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400">Vous (Responsable)</span>
                 <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
-                <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 rounded-lg">Directeur (validation)</span>
+                <span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-500/10 text-yellow-700 dark:text-yellow-400">Directeur (validation)</span>
                 <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
-                <span class="px-2 py-1 bg-sky-100 dark:bg-sky-900/40 text-sky-700 dark:text-sky-300 rounded-lg">Communication (mise en page)</span>
+                <span class="px-2 py-1 bg-sky-100 dark:bg-sky-500/10 text-sky-700 dark:text-sky-400">Communication (mise en page)</span>
                 <i data-lucide="arrow-right" class="w-3 h-3 text-slate-400"></i>
-                <span class="px-2 py-1 bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 rounded-lg">Publication</span>
+                <span class="px-2 py-1 bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">Publication</span>
             </div>
         </div>
 
-        <button type="submit" class="w-full bg-sky-600 hover:bg-sky-500 text-white font-black py-3 rounded-xl shadow-lg transition flex items-center justify-center gap-2 uppercase">
+        <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700 text-white font-black py-3 shadow-sm transition flex items-center justify-center gap-2 uppercase">
             <i data-lucide="send" class="w-5 h-5"></i> Soumettre la publication
         </button>
     </form>
 </div>
-<script>lucide.createIcons();</script>
+</div>
 {% endblock %}

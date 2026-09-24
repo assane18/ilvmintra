@@ -1,183 +1,151 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
 
 {% block content %}
-<div id="ctos" class="min-h-screen w-full relative overflow-hidden bg-[#03060c] text-cyan-50 font-mono">
-
-    <!-- Fond : grille + scanline + vignette -->
-    <div class="pointer-events-none absolute inset-0 z-0" style="
-        background-image:
-            linear-gradient(rgba(34,211,238,0.07) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(34,211,238,0.07) 1px, transparent 1px);
-        background-size: 42px 42px;
-        mask-image: radial-gradient(ellipse 80% 80% at 50% 20%, black 40%, transparent 100%);
-    "></div>
-    <div class="pointer-events-none absolute inset-0 z-0 opacity-[0.04]" id="scanline"></div>
-    <div class="pointer-events-none absolute inset-0 z-0" style="background: radial-gradient(ellipse 70% 50% at 50% 0%, rgba(34,211,238,0.10) 0%, transparent 60%);"></div>
-
-    <div class="relative z-10 px-4 md:px-8 py-8 max-w-7xl mx-auto">
-
-        <!-- En-tête -->
-        <div class="flex flex-wrap justify-between items-end gap-4 mb-8 border-b border-cyan-500/20 pb-5">
-            <div>
-                <p class="text-cyan-400 text-[11px] tracking-[0.3em] uppercase mb-1 flex items-center gap-2">
-                    <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> ilvm // ctos-analytics
-                </p>
-                <h1 class="text-2xl md:text-3xl font-black uppercase tracking-widest text-white flex items-center gap-3"
-                    style="text-shadow: 0 0 12px rgba(34,211,238,0.6), 0 0 28px rgba(34,211,238,0.3);">
-                    Analyse statistique
-                </h1>
-                <p class="text-[11px] text-cyan-500/60 uppercase tracking-widest mt-1">
-                    {% if scope is none %}Périmètre : tous les services{% else %}Périmètre : {{ scope|join(', ') if scope else 'aucun service assigné' }}{% endif %}
-                </p>
-            </div>
-            <a href="{{ url_for('main.user_portal') }}" class="inline-flex items-center gap-2 text-[11px] uppercase tracking-widest text-cyan-500/70 hover:text-cyan-300 transition">
-                <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i> Retour Portail
-            </a>
-        </div>
-
-        <!-- Panneau de contrôle / filtres -->
-        <form method="GET" action="{{ url_for('tickets.stats_dashboard') }}" id="statsFilterForm"
-              class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.03] p-5 mb-8 flex flex-wrap items-end gap-5">
-            <div>
-                <label class="block text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 mb-1.5">Période</label>
-                <select name="period" id="periodSelect" onchange="document.getElementById('customDates').classList.toggle('hidden', this.value !== 'custom')"
-                        class="bg-black/60 border border-cyan-500/30 rounded-lg px-3 py-2 text-xs font-bold text-cyan-200 focus:outline-none focus:border-cyan-400 focus:shadow-[0_0_10px_rgba(34,211,238,0.3)]">
-                    <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>Ce mois-ci</option>
-                    <option value="last_3_months" {% if period == 'last_3_months' %}selected{% endif %}>3 derniers mois</option>
-                    <option value="last_12_months" {% if period == 'last_12_months' %}selected{% endif %}>12 derniers mois</option>
-                    <option value="this_year" {% if period == 'this_year' %}selected{% endif %}>Cette année</option>
-                    <option value="custom" {% if period == 'custom' %}selected{% endif %}>Période personnalisée</option>
-                </select>
-            </div>
-            <div id="customDates" class="flex gap-3 {% if period != 'custom' %}hidden{% endif %}">
-                <div>
-                    <label class="block text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 mb-1.5">Du</label>
-                    <input type="date" name="start" value="{{ start }}" class="bg-black/60 border border-cyan-500/30 rounded-lg px-3 py-2 text-xs font-bold text-cyan-200 focus:outline-none focus:border-cyan-400">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 mb-1.5">Au</label>
-                    <input type="date" name="end" value="{{ end }}" class="bg-black/60 border border-cyan-500/30 rounded-lg px-3 py-2 text-xs font-bold text-cyan-200 focus:outline-none focus:border-cyan-400">
-                </div>
-            </div>
-            <div class="flex-1 min-w-[280px]">
-                <label class="block text-[10px] font-bold uppercase tracking-widest text-cyan-500/70 mb-1.5">Services</label>
-                <div class="flex flex-wrap gap-2">
-                    {% for svc in all_services %}
-                    <input type="checkbox" name="services" value="{{ svc }}" id="svc-{{ loop.index }}" class="peer hidden" {% if svc in selected_services %}checked{% endif %}>
-                    <label for="svc-{{ loop.index }}"
-                           class="cursor-pointer select-none px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide border border-cyan-500/25 text-cyan-500/50 hover:text-cyan-300 hover:border-cyan-400/50 peer-checked:bg-cyan-500/15 peer-checked:text-cyan-200 peer-checked:border-cyan-400/70 peer-checked:shadow-[0_0_10px_rgba(34,211,238,0.35)] transition">
-                        {{ svc }}
-                    </label>
-                    {% else %}
-                    <span class="text-xs text-cyan-500/40 italic">Aucun service disponible</span>
-                    {% endfor %}
-                </div>
-            </div>
-            <div class="flex gap-2">
-                <button type="submit" class="bg-cyan-500/15 border border-cyan-400/50 hover:bg-cyan-500/25 hover:shadow-[0_0_14px_rgba(34,211,238,0.4)] text-cyan-200 font-black py-2 px-5 rounded-lg text-[11px] uppercase tracking-widest transition flex items-center gap-2">
-                    <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrer
-                </button>
-                <button type="submit" formaction="{{ url_for('tickets.export_stats') }}" class="bg-emerald-500/15 border border-emerald-400/50 hover:bg-emerald-500/25 hover:shadow-[0_0_14px_rgba(16,185,129,0.4)] text-emerald-200 font-black py-2 px-5 rounded-lg text-[11px] uppercase tracking-widest transition flex items-center gap-2">
-                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Exporter
-                </button>
-            </div>
-        </form>
-
-        {% if not sections %}
-        <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.02] p-16 text-center">
-            <i data-lucide="bar-chart-3" class="w-10 h-10 text-cyan-500/30 mx-auto mb-3"></i>
-            <p class="text-cyan-500/50 font-bold text-sm uppercase tracking-widest">Aucune donnée pour cette sélection</p>
-        </div>
-        {% endif %}
-
-        {% for s in sections %}
-        <div class="rounded-2xl border border-cyan-500/20 bg-cyan-500/[0.03] p-6 mb-6">
-            <h2 class="text-sm font-black uppercase tracking-[0.25em] text-cyan-300 mb-5 flex items-center gap-2">
-                <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                <i data-lucide="server" class="w-4 h-4"></i> {{ s.service }}
-            </h2>
-
-            <!-- KPI -->
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-                <div class="rounded-xl border border-cyan-500/15 bg-black/40 p-4">
-                    <p class="text-[9px] font-bold uppercase text-cyan-500/60 tracking-widest">Reçus</p>
-                    <p class="text-2xl font-black text-white tabular-nums">{{ s.received }}</p>
-                </div>
-                <div class="rounded-xl border border-cyan-500/15 bg-black/40 p-4">
-                    <p class="text-[9px] font-bold uppercase text-cyan-500/60 tracking-widest">Clôturés</p>
-                    <p class="text-2xl font-black text-emerald-300 tabular-nums">{{ s.closed }}</p>
-                </div>
-                <div class="rounded-xl border border-cyan-500/15 bg-black/40 p-4">
-                    <p class="text-[9px] font-bold uppercase text-cyan-500/60 tracking-widest">Délai assign. (moy/méd)</p>
-                    <p class="text-xl font-black text-cyan-200 tabular-nums">
-                        {% if s.assign_avg_h is not none %}{{ s.assign_avg_h }}h <span class="text-xs text-cyan-500/50">/ {{ s.assign_median_h }}h</span>{% else %}N/A{% endif %}
-                    </p>
-                </div>
-                <div class="rounded-xl border border-cyan-500/15 bg-black/40 p-4">
-                    <p class="text-[9px] font-bold uppercase text-cyan-500/60 tracking-widest">Délai clôture (moy/méd)</p>
-                    <p class="text-xl font-black text-cyan-200 tabular-nums">
-                        {% if s.close_avg_h is not none %}{{ s.close_avg_h }}h <span class="text-xs text-cyan-500/50">/ {{ s.close_median_h }}h</span>{% else %}N/A{% endif %}
-                    </p>
-                </div>
-                <div class="rounded-xl border {{ 'border-red-500/30' if s.refusal_rate >= 20 else 'border-cyan-500/15' }} bg-black/40 p-4">
-                    <p class="text-[9px] font-bold uppercase text-cyan-500/60 tracking-widest">Taux de refus</p>
-                    <p class="text-2xl font-black tabular-nums {{ 'text-red-400' if s.refusal_rate >= 20 else 'text-white' }}">{{ s.refusal_rate }}%</p>
-                </div>
-            </div>
-
-            <div class="rounded-xl border border-cyan-500/15 bg-black/40 p-4 mb-6">
-                <p class="text-[9px] font-bold uppercase text-cyan-500/60 tracking-widest mb-1">Top catégories</p>
-                {% if s.top_categories %}
-                <p class="text-xs font-bold text-cyan-100/80">
-                    {% for cat, count in s.top_categories %}{{ cat }} <span class="text-cyan-500/50">({{ count }})</span>{% if not loop.last %} <span class="text-cyan-500/30 mx-1">·</span> {% endif %}{% endfor %}
-                </p>
-                {% else %}
-                <p class="text-xs text-cyan-500/40 italic">—</p>
-                {% endif %}
-            </div>
-
-            <!-- Graphiques -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div class="rounded-xl border border-cyan-500/15 bg-black/30 p-4">
-                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-cyan-400 mb-3 text-center">Répartition par statut</h3>
-                    <div class="h-48">
-                        <canvas id="statusChart_{{ loop.index }}"></canvas>
-                    </div>
-                </div>
-                <div class="rounded-xl border border-cyan-500/15 bg-black/30 p-4 lg:col-span-2">
-                    <h3 class="text-[10px] font-bold uppercase tracking-widest text-cyan-400 mb-3 text-center">Évolution mensuelle (reçus / clôturés)</h3>
-                    <div class="h-48">
-                        <canvas id="monthlyChart_{{ loop.index }}"></canvas>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% endfor %}
-
-    </div>
-</div>
-
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
 <style>
-    #scanline {
-        background: repeating-linear-gradient(
-            0deg,
-            rgba(34,211,238,0.6) 0px,
-            transparent 1px,
-            transparent 3px
-        );
-        animation: scan-move 9s linear infinite;
-    }
-    @keyframes scan-move {
-        0% { transform: translateY(0); }
-        100% { transform: translateY(120px); }
-    }
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
 </style>
 
-<script>
-    lucide.createIcons();
+<div class="p-6">
 
+    <!-- En-tête -->
+    <div class="flex flex-wrap justify-between items-end gap-4 mb-6">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Analyse statistique</h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wide mt-1">
+                {% if scope is none %}Périmètre : tous les services{% else %}Périmètre : {{ scope|join(', ') if scope else 'aucun service assigné' }}{% endif %}
+            </p>
+        </div>
+        <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
+        </a>
+    </div>
+
+    <!-- Filtres -->
+    <form method="GET" action="{{ url_for('tickets.stats_dashboard') }}" id="statsFilterForm"
+          class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-5 mb-6 flex flex-wrap items-end gap-5">
+        <div>
+            <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Période</label>
+            <select name="period" id="periodSelect" onchange="document.getElementById('customDates').classList.toggle('hidden', this.value !== 'custom')"
+                    class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-accent-500">
+                <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>Ce mois-ci</option>
+                <option value="last_3_months" {% if period == 'last_3_months' %}selected{% endif %}>3 derniers mois</option>
+                <option value="last_12_months" {% if period == 'last_12_months' %}selected{% endif %}>12 derniers mois</option>
+                <option value="this_year" {% if period == 'this_year' %}selected{% endif %}>Cette année</option>
+                <option value="custom" {% if period == 'custom' %}selected{% endif %}>Période personnalisée</option>
+            </select>
+        </div>
+        <div id="customDates" class="flex gap-3 {% if period != 'custom' %}hidden{% endif %}">
+            <div>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Du</label>
+                <input type="date" name="start" value="{{ start }}" class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-accent-500">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Au</label>
+                <input type="date" name="end" value="{{ end }}" class="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none focus:border-accent-500">
+            </div>
+        </div>
+        <div class="flex-1 min-w-[280px]">
+            <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Services</label>
+            <div class="flex flex-wrap gap-2">
+                {% for svc in all_services %}
+                <input type="checkbox" name="services" value="{{ svc }}" id="svc-{{ loop.index }}" class="peer hidden" {% if svc in selected_services %}checked{% endif %}>
+                <label for="svc-{{ loop.index }}"
+                       class="cursor-pointer select-none px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide border border-gray-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-accent-600 hover:border-accent-400 peer-checked:bg-accent-50 dark:peer-checked:bg-accent-500/10 peer-checked:text-accent-700 dark:peer-checked:text-accent-400 peer-checked:border-accent-400 transition">
+                    {{ svc }}
+                </label>
+                {% else %}
+                <span class="text-xs text-slate-400 italic">Aucun service disponible</span>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button type="submit" class="bg-accent-50 dark:bg-accent-500/10 border border-accent-400 hover:bg-accent-100 dark:hover:bg-accent-500/20 text-accent-700 dark:text-accent-400 font-black py-2.5 px-5 text-[11px] uppercase tracking-widest transition flex items-center gap-2">
+                <i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrer
+            </button>
+            <button type="submit" formaction="{{ url_for('tickets.export_stats') }}" class="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 font-black py-2.5 px-5 text-[11px] uppercase tracking-widest transition flex items-center gap-2">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Exporter
+            </button>
+        </div>
+    </form>
+
+    {% if not sections %}
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-16 text-center">
+        <i data-lucide="bar-chart-3" class="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3"></i>
+        <p class="text-slate-400 font-bold text-sm uppercase tracking-widest">Aucune donnée pour cette sélection</p>
+    </div>
+    {% endif %}
+
+    {% for s in sections %}
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 mb-4">
+        <h2 class="text-sm font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 mb-5 flex items-center gap-2">
+            <i data-lucide="server" class="w-4 h-4 text-accent-500"></i> {{ s.service }}
+        </h2>
+
+        <!-- KPI -->
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+            <div class="border border-gray-200 dark:border-slate-800 p-4">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Reçus</p>
+                <p class="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{{ s.received }}</p>
+            </div>
+            <div class="border border-gray-200 dark:border-slate-800 p-4">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Clôturés</p>
+                <p class="text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">{{ s.closed }}</p>
+            </div>
+            <div class="border border-gray-200 dark:border-slate-800 p-4">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Délai assign. (moy/méd)</p>
+                <p class="text-xl font-black text-accent-600 dark:text-accent-400 tabular-nums">
+                    {% if s.assign_avg_h is not none %}{{ s.assign_avg_h }}h <span class="text-xs text-slate-400">/ {{ s.assign_median_h }}h</span>{% else %}N/A{% endif %}
+                </p>
+            </div>
+            <div class="border border-gray-200 dark:border-slate-800 p-4">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Délai clôture (moy/méd)</p>
+                <p class="text-xl font-black text-accent-600 dark:text-accent-400 tabular-nums">
+                    {% if s.close_avg_h is not none %}{{ s.close_avg_h }}h <span class="text-xs text-slate-400">/ {{ s.close_median_h }}h</span>{% else %}N/A{% endif %}
+                </p>
+            </div>
+            <div class="border {{ 'border-red-300 dark:border-red-800' if s.refusal_rate >= 20 else 'border-gray-200 dark:border-slate-800' }} p-4">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Taux de refus</p>
+                <p class="text-2xl font-black tabular-nums {{ 'text-red-600 dark:text-red-400' if s.refusal_rate >= 20 else 'text-slate-900 dark:text-white' }}">{{ s.refusal_rate }}%</p>
+            </div>
+        </div>
+
+        <div class="border border-gray-200 dark:border-slate-800 p-4 mb-6">
+            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest mb-1">Top catégories</p>
+            {% if s.top_categories %}
+            <p class="text-xs font-bold text-slate-700 dark:text-slate-300">
+                {% for cat, count in s.top_categories %}{{ cat }} <span class="text-slate-400">({{ count }})</span>{% if not loop.last %} <span class="text-slate-300 mx-1">·</span> {% endif %}{% endfor %}
+            </p>
+            {% else %}
+            <p class="text-xs text-slate-400 italic">—</p>
+            {% endif %}
+        </div>
+
+        <!-- Graphiques -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="border border-gray-200 dark:border-slate-800 p-4">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 text-center">Répartition par statut</h3>
+                <div class="h-48">
+                    <canvas id="statusChart_{{ loop.index }}"></canvas>
+                </div>
+            </div>
+            <div class="border border-gray-200 dark:border-slate-800 p-4 lg:col-span-2">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 text-center">Évolution mensuelle (reçus / clôturés)</h3>
+                <div class="h-48">
+                    <canvas id="monthlyChart_{{ loop.index }}"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+
+<script>
     const sectionsData = {{ sections|tojson }};
-    const CTOS_PALETTE = ['#22d3ee', '#10b981', '#a855f7', '#f59e0b', '#ec4899', '#3b82f6', '#eab308', '#64748b', '#f43f5e'];
+    const PALETTE = ['#14b8a6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#3b82f6', '#eab308', '#64748b', '#f43f5e'];
 
     sectionsData.forEach((s, i) => {
         const idx = i + 1;
@@ -190,12 +158,12 @@
                 type: 'doughnut',
                 data: {
                     labels: labels,
-                    datasets: [{ data: values, backgroundColor: CTOS_PALETTE, borderWidth: 0 }]
+                    datasets: [{ data: values, backgroundColor: PALETTE, borderWidth: 0 }]
                 },
                 options: {
                     cutout: '65%',
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, color: '#67e8f9', font: { size: 9, family: 'monospace' } } } }
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } }
                 }
             });
         }
@@ -210,20 +178,21 @@
                 data: {
                     labels: months,
                     datasets: [
-                        { label: 'Reçus', data: received, backgroundColor: '#22d3ee', borderRadius: 4 },
-                        { label: 'Clôturés', data: closed, backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: 'Reçus', data: received, backgroundColor: '#14b8a6' },
+                        { label: 'Clôturés', data: closed, backgroundColor: '#10b981' },
                     ]
                 },
                 options: {
                     maintainAspectRatio: false,
                     scales: {
-                        y: { beginAtZero: true, ticks: { precision: 0, color: '#67e8f9', font: { family: 'monospace', size: 9 } }, grid: { color: 'rgba(34,211,238,0.08)' } },
-                        x: { ticks: { color: '#67e8f9', font: { family: 'monospace', size: 9 } }, grid: { display: false } }
+                        y: { beginAtZero: true, ticks: { precision: 0, font: { size: 9 } } },
+                        x: { ticks: { font: { size: 9 } }, grid: { display: false } }
                     },
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, color: '#67e8f9', font: { size: 9, family: 'monospace' } } } }
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } }
                 }
             });
         }
     });
 </script>
+</div>
 {% endblock %}

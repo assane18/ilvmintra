@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" class="scroll-smooth">
+<html lang="fr" class="scroll-smooth" data-theme-color="{{ current_user.theme_color if current_user.is_authenticated and current_user.theme_color else 'teal' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -15,6 +15,18 @@
                         slate: {
                             850: '#1e293b', // Couleur sombre custom
                             950: '#020617', // Très sombre
+                        },
+                        // Palette du nouveau layout "sidebar" (activée page par page par le template enfant).
+                        // Valeurs pilotées par variables CSS : teal en clair, cyan en sombre (voir :root / .dark plus bas) —
+                        // ainsi TOUTES les classes accent-* (avec ou sans préfixe dark:) basculent automatiquement,
+                        // sans avoir à toucher chaque page.
+                        accent: {
+                            50:  'rgb(var(--accent-50) / <alpha-value>)',
+                            100: 'rgb(var(--accent-100) / <alpha-value>)',
+                            400: 'rgb(var(--accent-400) / <alpha-value>)',
+                            500: 'rgb(var(--accent-500) / <alpha-value>)',
+                            600: 'rgb(var(--accent-600) / <alpha-value>)',
+                            700: 'rgb(var(--accent-700) / <alpha-value>)',
                         }
                     }
                 }
@@ -25,12 +37,70 @@
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Icônes Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Font Awesome (utilisé par la page Aide/Tuto) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Récapitulatif de confirmation avant création (formulaires opt-in via data-recap-confirm) -->
     <script src="{{ url_for('static', filename='js/recap_confirm.js') }}" defer></script>
 
     <style>
+        /* Couleur d'accent du layout sidebar, choisie par l'utilisateur dans le panneau
+           profil (attribut data-theme-color sur <html>) — teal/cyan par défaut. Valeurs
+           "R G B" consommées via rgb(var(--accent-x) / alpha). */
+        :root, html[data-theme-color="teal"] {
+            --accent-50: 240 253 250;
+            --accent-100: 204 251 241;
+            --accent-400: 45 212 191;
+            --accent-500: 20 184 166;
+            --accent-600: 13 148 136;
+            --accent-700: 15 118 110;
+        }
+        .dark, html[data-theme-color="teal"].dark {
+            --accent-50: 8 47 73;
+            --accent-100: 12 74 110;
+            --accent-400: 34 211 238;
+            --accent-500: 6 182 212;
+            --accent-600: 8 145 178;
+            --accent-700: 14 116 144;
+        }
+
+        html[data-theme-color="blue"] {
+            --accent-50: 239 246 255; --accent-100: 219 234 254; --accent-400: 96 165 250;
+            --accent-500: 59 130 246; --accent-600: 37 99 235; --accent-700: 29 78 216;
+        }
+        html[data-theme-color="blue"].dark {
+            --accent-50: 23 37 84; --accent-100: 30 58 138; --accent-400: 96 165 250;
+            --accent-500: 59 130 246; --accent-600: 37 99 235; --accent-700: 29 78 216;
+        }
+
+        html[data-theme-color="violet"] {
+            --accent-50: 245 243 255; --accent-100: 237 233 254; --accent-400: 167 139 250;
+            --accent-500: 139 92 246; --accent-600: 124 58 237; --accent-700: 109 40 217;
+        }
+        html[data-theme-color="violet"].dark {
+            --accent-50: 46 16 101; --accent-100: 76 29 149; --accent-400: 167 139 250;
+            --accent-500: 139 92 246; --accent-600: 124 58 237; --accent-700: 109 40 217;
+        }
+
+        html[data-theme-color="rose"] {
+            --accent-50: 255 241 242; --accent-100: 255 228 230; --accent-400: 251 113 133;
+            --accent-500: 244 63 94; --accent-600: 225 29 72; --accent-700: 190 18 60;
+        }
+        html[data-theme-color="rose"].dark {
+            --accent-50: 76 5 25; --accent-100: 136 19 55; --accent-400: 251 113 133;
+            --accent-500: 244 63 94; --accent-600: 225 29 72; --accent-700: 190 18 60;
+        }
+
+        html[data-theme-color="emerald"] {
+            --accent-50: 236 253 245; --accent-100: 209 250 229; --accent-400: 52 211 153;
+            --accent-500: 16 185 129; --accent-600: 5 150 105; --accent-700: 4 120 87;
+        }
+        html[data-theme-color="emerald"].dark {
+            --accent-50: 2 44 34; --accent-100: 6 78 59; --accent-400: 52 211 153;
+            --accent-500: 16 185 129; --accent-600: 5 150 105; --accent-700: 4 120 87;
+        }
+
         /* Vos styles personnalisés conservés */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .modal { transition: opacity 0.25s ease; }
@@ -105,6 +175,168 @@
         {% endwith %}
     </div>
 
+    {% if sidebar_layout is defined and sidebar_layout %}
+    <!-- ===== LAYOUT SIDEBAR (nouveau design, activé page par page via une variable sidebar_layout définie par le template enfant) ===== -->
+    <div class="flex h-screen overflow-hidden relative z-10">
+        <!-- SIDEBAR -->
+        <aside id="app-sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 -translate-x-full md:translate-x-0 transition-transform duration-200 shrink-0 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800">
+            <div class="h-24 flex items-center justify-center px-5 border-b border-slate-800 shrink-0 relative">
+                <a href="{{ url_for('main.user_portal') }}" title="Retour au Portail" class="flex items-center">
+                    <img src="{{ url_for('static', filename='img/logo-dark.png') }}" alt="Logo" class="h-16 w-auto object-contain">
+                </a>
+                <button id="sidebar-mobile-close" class="md:hidden absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" aria-label="Fermer le menu"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <nav class="flex-1 py-4 space-y-0.5 text-sm overflow-y-auto">
+                <a href="{{ url_for('main.user_portal') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.user_portal' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Portail
+                </a>
+                <a href="{{ url_for('tickets.solver_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.solver_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="wrench" class="w-4 h-4"></i> Espace Tech
+                </a>
+                <a href="{{ url_for('tickets.manager_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.manager_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+                </a>
+                <a href="{{ url_for('main.help_center') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.help_center' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
+                </a>
+                {% if current_user.is_authenticated and current_user.role.value in ['DIRECTEUR', 'ADMIN'] %}
+                <a href="{{ url_for('tickets.stats_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.stats_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Statistiques
+                </a>
+                {% endif %}
+                {% if current_user.is_authenticated and current_user.role.value == 'ADMIN' %}
+                <a href="{{ url_for('main.admin_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.admin_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> Administration
+                </a>
+                {% endif %}
+            </nav>
+
+            <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-t border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white transition text-sm shrink-0">
+                <i data-lucide="log-out" class="w-4 h-4"></i> Déconnexion
+            </a>
+        </aside>
+        <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-40 md:hidden"></div>
+
+        <!-- COLONNE PRINCIPALE -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- TOPBAR -->
+            <header class="h-16 shrink-0 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 gap-3">
+                <button id="sidebar-mobile-toggle" class="md:hidden text-slate-500 dark:text-slate-400" aria-label="Ouvrir le menu"><i data-lucide="menu" class="w-5 h-5"></i></button>
+
+                <div class="relative flex-1 max-w-md">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" placeholder="Rechercher…" class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:border-accent-400 focus:bg-white dark:focus:bg-slate-900 outline-none text-sm transition">
+                </div>
+
+                <div class="flex items-center gap-1">
+                    <!-- BOUTON DARK MODE : mêmes id/JS que le layout navbar (script plus bas, inchangé) -->
+                    <button id="theme-toggle" class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400" title="Changer le thème">
+                        <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+                        <i data-lucide="moon" class="w-4 h-4 block dark:hidden"></i>
+                    </button>
+
+                    <!-- Notifications : mêmes id/JS que le layout navbar -->
+                    <div class="relative" id="notif-container">
+                        <button onclick="toggleNotifs()" class="relative w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                            <i data-lucide="bell" class="w-4 h-4"></i>
+                            <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 hidden"></span>
+                        </button>
+                        <div id="notif-dropdown" class="absolute right-0 mt-2 w-80 bg-white border border-gray-200 shadow-2xl hidden origin-top-right transition-all z-50 dark:bg-slate-800 dark:border-slate-700">
+                            <div class="p-3 border-b border-gray-200 flex justify-between items-center bg-gray-50 dark:bg-slate-700 dark:border-slate-600">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Notifications</span>
+                                <button onclick="markAllRead()" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400">Tout marquer lu</button>
+                            </div>
+                            <div id="notif-list" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1">
+                                <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="w-px h-6 bg-gray-200 dark:bg-slate-700 mx-1"></div>
+
+                    <button id="profile-trigger" type="button" class="flex items-center gap-2.5 hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 -m-1.5 transition" title="Mon profil">
+                        {% if current_user.is_authenticated and current_user.avatar_photo %}
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar_photo) }}" alt="Avatar" class="w-9 h-9 object-cover shrink-0">
+                        {% else %}
+                        <div class="w-9 h-9 bg-accent-500 text-white flex items-center justify-center text-xs font-bold shrink-0">{{ current_user.display_initials if current_user.is_authenticated else '?' }}</div>
+                        {% endif %}
+                        <div class="leading-tight hidden sm:block text-left">
+                            <p class="text-sm font-semibold text-slate-700 dark:text-slate-200">{{ current_user.fullname }}</p>
+                            <p class="text-[11px] text-slate-400 font-mono uppercase">{{ current_user.role.value }}</p>
+                        </div>
+                    </button>
+                </div>
+            </header>
+
+            <!-- PANNEAU PROFIL (overlay glissant depuis la droite, même mécanique que le menu mobile) -->
+            {% if current_user.is_authenticated %}
+            <div id="profile-overlay" class="hidden fixed inset-0 bg-black/50 z-[60]"></div>
+            <aside id="profile-panel" class="fixed inset-y-0 right-0 z-[61] w-80 max-w-[90vw] bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800 shadow-2xl translate-x-full transition-transform duration-200 flex flex-col">
+                <div class="h-16 flex items-center justify-between px-5 border-b border-gray-200 dark:border-slate-800 shrink-0">
+                    <h2 class="font-black text-slate-800 dark:text-white uppercase text-sm tracking-wide">Mon profil</h2>
+                    <button id="profile-close" type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-white transition" aria-label="Fermer"><i data-lucide="x" class="w-5 h-5"></i></button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-5 space-y-6">
+
+                    <div class="text-center">
+                        {% if current_user.avatar_photo %}
+                        <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar_photo) }}" alt="Avatar" class="w-20 h-20 object-cover mx-auto mb-3">
+                        {% else %}
+                        <div class="w-20 h-20 bg-accent-500 text-white flex items-center justify-center text-2xl font-black mx-auto mb-3">{{ current_user.display_initials }}</div>
+                        {% endif %}
+                        <p class="font-bold text-slate-800 dark:text-white">{{ current_user.fullname }}</p>
+                        <p class="text-xs text-slate-400 uppercase font-mono">{{ current_user.role.value }}</p>
+                    </div>
+
+                    <div class="border-t border-gray-200 dark:border-slate-800 pt-5">
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Photo de profil</p>
+                        <form action="{{ url_for('main.profile_photo_upload') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
+                            <input type="file" name="photo" accept=".png,.jpg,.jpeg,.webp" class="flex-1 min-w-0 text-xs text-slate-500 dark:text-slate-300 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2">
+                            <button type="submit" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 text-xs font-bold uppercase shrink-0">OK</button>
+                        </form>
+                        {% if current_user.avatar_photo %}
+                        <form action="{{ url_for('main.profile_photo_delete') }}" method="POST" class="mt-2">
+                            <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:underline">Supprimer la photo</button>
+                        </form>
+                        {% endif %}
+                    </div>
+
+                    <form action="{{ url_for('main.profile_update') }}" method="POST" class="border-t border-gray-200 dark:border-slate-800 pt-5 space-y-5">
+
+                        {% if not current_user.avatar_photo %}
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Initiales personnalisées</label>
+                            <input type="text" name="avatar_initials" maxlength="2" placeholder="Ex: JD" value="{{ current_user.avatar_initials or '' }}"
+                                class="w-24 text-center uppercase font-black bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+                            <p class="text-[10px] text-slate-400 mt-1">Laissez vide pour utiliser les initiales automatiques.</p>
+                        </div>
+                        {% endif %}
+
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Couleur d'accent</label>
+                            <div class="flex gap-3">
+                                {% for c, hexcolor in [('teal','#0d9488'), ('blue','#2563eb'), ('violet','#7c3aed'), ('rose','#e11d48'), ('emerald','#059669')] %}
+                                <label class="cursor-pointer" title="{{ c }}">
+                                    <input type="radio" name="theme_color" value="{{ c }}" class="peer hidden" {% if (current_user.theme_color or 'teal') == c %}checked{% endif %}>
+                                    <span class="w-8 h-8 block border-2 border-transparent peer-checked:border-slate-800 dark:peer-checked:border-white transition" style="background-color: {{ hexcolor }};"></span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <button type="submit" class="w-full bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black py-2.5 text-xs uppercase tracking-widest transition">
+                            Enregistrer
+                        </button>
+                    </form>
+                </div>
+            </aside>
+            {% endif %}
+
+            <main class="flex-1 overflow-y-auto relative z-10">
+    {% else %}
+    <!-- ===== LAYOUT NAVBAR (existant, inchangé pour toutes les pages qui ne passent pas sidebar_layout) ===== -->
     <!-- Navigation Bar (Optionnelle, visible sauf sur Login) -->
     {% if current_user.is_authenticated and request.endpoint != 'auth.login' %}
     <!-- Ajout de backdrop-blur et bg avec transparence pour voir l'effet dessous -->
@@ -234,8 +466,17 @@
     <!-- Main Content -->
     <!-- Ajout de relative z-10 pour être au dessus du canvas -->
     <main class="min-h-screen relative z-10">
+    {% endif %}
+
         {% block content %}{% endblock %}
+
+    {% if sidebar_layout is defined and sidebar_layout %}
+            </main>
+        </div>
+    </div>
+    {% else %}
     </main>
+    {% endif %}
 
     <!-- Init Lucide Icons -->
     <script>
@@ -264,6 +505,44 @@
                     lucide.createIcons();
                 }
             });
+        }
+
+        // --- MENU MOBILE (layout sidebar) ---
+        const appSidebar = document.getElementById('app-sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const sidebarOpenBtn = document.getElementById('sidebar-mobile-toggle');
+        const sidebarCloseBtn = document.getElementById('sidebar-mobile-close');
+        if (appSidebar && sidebarOverlay) {
+            function openSidebar() {
+                appSidebar.classList.remove('-translate-x-full');
+                sidebarOverlay.classList.remove('hidden');
+            }
+            function closeSidebar() {
+                appSidebar.classList.add('-translate-x-full');
+                sidebarOverlay.classList.add('hidden');
+            }
+            if (sidebarOpenBtn) sidebarOpenBtn.addEventListener('click', openSidebar);
+            if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
+            sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+
+        // --- PANNEAU PROFIL (overlay glissant depuis la droite) ---
+        const profileTrigger = document.getElementById('profile-trigger');
+        const profilePanel = document.getElementById('profile-panel');
+        const profileOverlay = document.getElementById('profile-overlay');
+        const profileCloseBtn = document.getElementById('profile-close');
+        if (profileTrigger && profilePanel && profileOverlay) {
+            function openProfile() {
+                profilePanel.classList.remove('translate-x-full');
+                profileOverlay.classList.remove('hidden');
+            }
+            function closeProfile() {
+                profilePanel.classList.add('translate-x-full');
+                profileOverlay.classList.add('hidden');
+            }
+            profileTrigger.addEventListener('click', openProfile);
+            if (profileCloseBtn) profileCloseBtn.addEventListener('click', closeProfile);
+            profileOverlay.addEventListener('click', closeProfile);
         }
 
         // --- GESTION DARK MODE ---

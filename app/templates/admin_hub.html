@@ -1,133 +1,129 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-8 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+</style>
+
+<div class="p-6">
 
     <!-- En-tête -->
-    <div class="flex justify-between items-center mb-8">
+    <div class="flex justify-between items-center mb-8 flex-wrap gap-4">
         <div>
-            <h1 class="text-3xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
-                <i data-lucide="shield-check" class="w-8 h-8 text-blue-600"></i> Administration
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                <i data-lucide="shield-check" class="w-6 h-6 text-accent-600 dark:text-accent-400"></i> Administration
             </h1>
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Toutes les pages et fonctionnalités réservées aux administrateurs</p>
         </div>
-        <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 px-4 py-2 rounded-xl font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+        <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
             <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
         </a>
     </div>
 
     <!-- Section : Administration système -->
-    <h2 class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+    <h2 class="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
         <i data-lucide="settings-2" class="w-4 h-4"></i> Administration système
     </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
 
-        <!-- Carte Gestion des utilisateurs -->
-        <a href="{{ url_for('users.list_users') }}" class="card-admin bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden transition hover:-translate-y-1 hover:shadow-xl">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i data-lucide="user-cog" class="w-24 h-24 text-blue-600"></i>
+        <a href="{{ url_for('users.list_users') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-blue-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-blue-600 dark:text-cyan-400">
+                <i data-lucide="user-cog" class="w-5 h-5"></i>
             </div>
-            <div class="w-14 h-14 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center mb-4 text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                <i data-lucide="user-cog" class="w-7 h-7"></i>
-            </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Gestion des utilisateurs</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Rôles, services gérés/d'origine, suppression de comptes.</p>
-            <p class="mt-3 text-[11px] font-black uppercase tracking-wide text-blue-600 dark:text-blue-400">{{ users_count }} utilisateur{{ 's' if users_count != 1 else '' }}</p>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Gestion des utilisateurs</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Rôles, services gérés/d'origine, suppression de comptes.</p>
+            <p class="mt-3 text-[11px] font-black uppercase tracking-wide text-blue-600 dark:text-cyan-400">{{ users_count }} utilisateur{{ 's' if users_count != 1 else '' }}</p>
         </a>
 
-        <!-- Carte Formulaires dynamiques (moteur no-code) -->
-        <a href="{{ url_for('forms_admin.list_forms') }}" class="card-admin bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden transition hover:-translate-y-1 hover:shadow-xl">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i data-lucide="file-cog" class="w-24 h-24 text-indigo-600"></i>
+        <a href="{{ url_for('forms_admin.list_forms') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-indigo-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-indigo-600 dark:text-cyan-400">
+                <i data-lucide="file-cog" class="w-5 h-5"></i>
             </div>
-            <div class="w-14 h-14 bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-4 text-indigo-600 dark:text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                <i data-lucide="file-cog" class="w-7 h-7"></i>
-            </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Formulaires dynamiques (No-Code)</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Créer/modifier champs, étapes de validation et destinataires de tickets, sans coder.</p>
-            <p class="mt-3 text-[11px] font-black uppercase tracking-wide text-indigo-600 dark:text-indigo-400">{{ active_forms_count }} actif{{ 's' if active_forms_count != 1 else '' }} / {{ forms_count }} au total</p>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Formulaires dynamiques (No-Code)</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Créer/modifier champs, étapes de validation et destinataires de tickets, sans coder.</p>
+            <p class="mt-3 text-[11px] font-black uppercase tracking-wide text-indigo-600 dark:text-cyan-400">{{ active_forms_count }} actif{{ 's' if active_forms_count != 1 else '' }} / {{ forms_count }} au total</p>
         </a>
 
-        <!-- Carte Santé du système -->
-        <a href="{{ url_for('main.admin_health') }}" class="card-admin bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 group cursor-pointer relative overflow-hidden transition hover:-translate-y-1 hover:shadow-xl">
-            <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <i data-lucide="activity" class="w-24 h-24 text-green-600"></i>
+        <a href="{{ url_for('main.admin_health') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-emerald-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-emerald-600 dark:text-cyan-400">
+                <i data-lucide="activity" class="w-5 h-5"></i>
             </div>
-            <div class="w-14 h-14 bg-green-50 dark:bg-green-900/30 rounded-2xl flex items-center justify-center mb-4 text-green-600 dark:text-green-400 group-hover:bg-green-600 group-hover:text-white transition-colors">
-                <i data-lucide="activity" class="w-7 h-7"></i>
-            </div>
-            <h3 class="text-xl font-black text-slate-800 dark:text-white mb-1">Santé du système</h3>
-            <p class="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">Base de données, LDAP, service, sauvegardes, file d'attente des tickets — en direct.</p>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Santé du système</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Base de données, LDAP, service, sauvegardes, file d'attente des tickets — en direct.</p>
         </a>
     </div>
 
-    <!-- Section : Accès rapides (fonctionnalités déjà accessibles ailleurs, centralisées ici) -->
-    <h2 class="text-sm font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+    <!-- Section : Accès rapides -->
+    <h2 class="text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
         <i data-lucide="zap" class="w-4 h-4"></i> Accès rapides
     </h2>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 
-        <a href="{{ url_for('tickets.solver_dashboard') }}" class="card-admin bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 group cursor-pointer flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div class="w-11 h-11 shrink-0 bg-blue-50 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+        <a href="{{ url_for('tickets.solver_dashboard') }}" class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors flex items-center gap-4">
+            <div class="w-11 h-11 shrink-0 bg-blue-50 dark:bg-slate-800 flex items-center justify-center text-blue-600 dark:text-cyan-400">
                 <i data-lucide="wrench" class="w-5 h-5"></i>
             </div>
             <div>
-                <h3 class="font-black text-slate-800 dark:text-white text-sm">Espace Tech</h3>
+                <h3 class="font-black text-slate-800 dark:text-slate-200 text-sm">Espace Tech</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Tickets à traiter, tous services</p>
             </div>
         </a>
 
-        <a href="{{ url_for('tickets.manager_dashboard') }}" class="card-admin bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 group cursor-pointer flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div class="w-11 h-11 shrink-0 bg-purple-50 dark:bg-purple-900/30 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+        <a href="{{ url_for('tickets.manager_dashboard') }}" class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors flex items-center gap-4">
+            <div class="w-11 h-11 shrink-0 bg-violet-50 dark:bg-slate-800 flex items-center justify-center text-violet-600 dark:text-cyan-400">
                 <i data-lucide="check-circle" class="w-5 h-5"></i>
             </div>
             <div>
-                <h3 class="font-black text-slate-800 dark:text-white text-sm">Validation</h3>
+                <h3 class="font-black text-slate-800 dark:text-slate-200 text-sm">Validation</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Circuit de validation hiérarchique</p>
             </div>
         </a>
 
-        <a href="{{ url_for('tickets.historique_tickets') }}" class="card-admin bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 group cursor-pointer flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div class="w-11 h-11 shrink-0 bg-slate-100 dark:bg-slate-700 rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 group-hover:bg-slate-600 group-hover:text-white transition-colors">
+        <a href="{{ url_for('tickets.historique_tickets') }}" class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors flex items-center gap-4">
+            <div class="w-11 h-11 shrink-0 bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300">
                 <i data-lucide="history" class="w-5 h-5"></i>
             </div>
             <div>
-                <h3 class="font-black text-slate-800 dark:text-white text-sm">Historique &amp; export</h3>
+                <h3 class="font-black text-slate-800 dark:text-slate-200 text-sm">Historique &amp; export</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Tous les tickets, tous services</p>
             </div>
         </a>
 
-        <a href="{{ url_for('inventaire.liste') }}" class="card-admin bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 group cursor-pointer flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div class="w-11 h-11 shrink-0 bg-teal-50 dark:bg-teal-900/30 rounded-xl flex items-center justify-center text-teal-600 dark:text-teal-400 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+        <a href="{{ url_for('inventaire.liste') }}" class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors flex items-center gap-4">
+            <div class="w-11 h-11 shrink-0 bg-teal-50 dark:bg-slate-800 flex items-center justify-center text-teal-600 dark:text-cyan-400">
                 <i data-lucide="package" class="w-5 h-5"></i>
             </div>
             <div>
-                <h3 class="font-black text-slate-800 dark:text-white text-sm">Parc Informatique</h3>
+                <h3 class="font-black text-slate-800 dark:text-slate-200 text-sm">Parc Informatique</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Inventaire matériel, import/export</p>
             </div>
         </a>
 
-        <a href="{{ url_for('prets.liste_prets') }}" class="card-admin bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 group cursor-pointer flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div class="w-11 h-11 shrink-0 bg-amber-50 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+        <a href="{{ url_for('prets.liste_prets') }}" class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors flex items-center gap-4">
+            <div class="w-11 h-11 shrink-0 bg-amber-50 dark:bg-slate-800 flex items-center justify-center text-amber-600 dark:text-cyan-400">
                 <i data-lucide="arrow-right-left" class="w-5 h-5"></i>
             </div>
             <div>
-                <h3 class="font-black text-slate-800 dark:text-white text-sm">Prêts matériel</h3>
+                <h3 class="font-black text-slate-800 dark:text-slate-200 text-sm">Prêts matériel</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Suivi des prêts, retours</p>
             </div>
         </a>
 
-        <a href="{{ url_for('tech.home') }}" class="card-admin bg-white dark:bg-slate-800 p-5 rounded-2xl border border-slate-200 dark:border-slate-700 group cursor-pointer flex items-center gap-4 transition hover:-translate-y-0.5 hover:shadow-lg">
-            <div class="w-11 h-11 shrink-0 bg-orange-50 dark:bg-orange-900/30 rounded-xl flex items-center justify-center text-orange-600 dark:text-orange-400 group-hover:bg-orange-600 group-hover:text-white transition-colors">
+        <a href="{{ url_for('tech.home') }}" class="bg-white dark:bg-slate-900 p-5 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors flex items-center gap-4">
+            <div class="w-11 h-11 shrink-0 bg-orange-50 dark:bg-slate-800 flex items-center justify-center text-orange-600 dark:text-cyan-400">
                 <i data-lucide="laptop" class="w-5 h-5"></i>
             </div>
             <div>
-                <h3 class="font-black text-slate-800 dark:text-white text-sm">Générateur de fiches</h3>
+                <h3 class="font-black text-slate-800 dark:text-slate-200 text-sm">Générateur de fiches</h3>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Fiches poste informatique</p>
             </div>
         </a>
 
     </div>
 
+</div>
 </div>
 {% endblock %}

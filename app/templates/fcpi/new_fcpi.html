@@ -1,25 +1,38 @@
 {% extends "base.html" %}
+{% set sidebar_layout = true %}
 
 {% block content %}
-<div class="flex justify-center items-start min-h-[80vh] pt-10 pb-20 px-4">
-    <div class="bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-4xl relative transition-colors duration-300">
-        
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 6px; display: block; letter-spacing: 0.1em; }
+    .dark .label-tiny { color: #94a3b8; }
+    .input-field { width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; outline: none; transition: all 0.2s; }
+    .input-field:focus { border-color: #14b8a6; box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12); }
+    .dark .input-field { background: #0f172a; border-color: #334155; color: #f1f5f9; }
+    .dark .input-field:focus { border-color: #2dd4bf; box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.2); }
+</style>
+
+<div class="flex justify-center items-start pt-10 pb-20 px-4">
+    <div class="bg-white dark:bg-slate-900 p-8 shadow-sm border border-gray-200 dark:border-slate-800 w-full max-w-4xl relative transition-colors duration-300">
+
         <a href="{{ url_for('main.user_portal') }}" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
             <i data-lucide="x" class="w-6 h-6"></i>
         </a>
 
         <div class="text-center mb-10">
-            <div class="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-pink-50 dark:bg-pink-900/30 text-pink-600 dark:text-pink-400">
-                <i data-lucide="user-plus" class="w-8 h-8"></i>
+            <div class="w-14 h-14 flex items-center justify-center mx-auto mb-4 bg-pink-50 dark:bg-slate-800 text-pink-600 dark:text-cyan-400">
+                <i data-lucide="user-plus" class="w-7 h-7"></i>
             </div>
-            <h1 class="text-3xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Fiche Agent Recruté (FCPI)</h1>
-            <p class="text-slate-500 dark:text-slate-400">Formulaire unique pour toutes les démarches d'arrivée.</p>
+            <h1 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight mb-2">Fiche Agent Recruté (FCPI)</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm">Formulaire unique pour toutes les démarches d'arrivée.</p>
         </div>
 
-        <form method="POST" enctype="multipart/form-data" class="space-y-8" data-recap-confirm="Fiche Agent Recruté (FCPI)">
-            
+        <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="Fiche Agent Recruté (FCPI)">
+
             <!-- 1. DONNÉES AGENT -->
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div class="bg-gray-50 dark:bg-slate-950 p-6 border border-gray-200 dark:border-slate-800">
                 <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i data-lucide="user" class="w-4 h-4"></i> Données de l'agent
                 </h2>
@@ -34,30 +47,28 @@
             </div>
 
             <!-- 2. DRH -->
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
-                <h2 class="text-sm font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+            <div class="bg-gray-50 dark:bg-slate-950 p-6 border border-gray-200 dark:border-slate-800">
+                <h2 class="text-sm font-black text-violet-600 dark:text-violet-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i data-lucide="briefcase" class="w-4 h-4"></i> Données RH
                 </h2>
-                
-                <!-- Contractuel Toggle -->
+
                 <div class="mb-6">
                     <label class="label-tiny">Statut Contractuel ?</label>
                     <div class="flex gap-4 mt-2">
-                        <label class="flex items-center gap-2 cursor-pointer p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600">
-                            <input type="radio" name="contractuel" value="oui" onclick="toggleContract(false)" class="text-purple-600"> 
+                        <label class="flex items-center gap-2 cursor-pointer p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                            <input type="radio" name="contractuel" value="oui" onclick="toggleContract(false)" class="text-violet-600">
                             <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Oui</span>
                         </label>
-                        <label class="flex items-center gap-2 cursor-pointer p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600">
-                            <input type="radio" name="contractuel" value="non" onclick="toggleContract(true)" checked class="text-purple-600"> 
+                        <label class="flex items-center gap-2 cursor-pointer p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700">
+                            <input type="radio" name="contractuel" value="non" onclick="toggleContract(true)" checked class="text-violet-600">
                             <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Non (Titulaire)</span>
                         </label>
                     </div>
                 </div>
 
-                <!-- Champs Contractuels (Cachés si Non) -->
-                <div id="contract-fields" class="hidden grid grid-cols-2 gap-4 mb-6 bg-purple-50 dark:bg-purple-900/20 p-4 rounded-xl border border-purple-100 dark:border-purple-800">
-                    <div><label class="label-tiny text-purple-600">Date début contrat</label><input type="date" name="date_debut_contrat" class="input-field"></div>
-                    <div><label class="label-tiny text-purple-600">Date fin contrat</label><input type="date" name="date_fin_contrat" class="input-field"></div>
+                <div id="contract-fields" class="hidden grid grid-cols-2 gap-4 mb-6 bg-violet-50 dark:bg-violet-500/10 p-4 border border-violet-100 dark:border-violet-900">
+                    <div><label class="label-tiny text-violet-600">Date début contrat</label><input type="date" name="date_debut_contrat" class="input-field"></div>
+                    <div><label class="label-tiny text-violet-600">Date fin contrat</label><input type="date" name="date_fin_contrat" class="input-field"></div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -103,64 +114,64 @@
                         <input type="file" name="fiche_poste_file" accept=".pdf" class="input-field bg-white dark:bg-slate-800 text-xs">
                     </div>
                 </div>
-                
-                <div class="mt-6 p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
+
+                <div class="mt-6 p-4 border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                     <label class="flex items-center gap-3 cursor-pointer">
-                        <input type="checkbox" name="simulation" value="oui" class="w-5 h-5 rounded text-purple-600 border-slate-300">
+                        <input type="checkbox" name="simulation" value="oui" class="w-5 h-5 text-violet-600 border-gray-300">
                         <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Demander une simulation de salaire</span>
                     </label>
                 </div>
             </div>
 
             <!-- 3. IMAGO -->
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div class="bg-gray-50 dark:bg-slate-950 p-6 border border-gray-200 dark:border-slate-800">
                 <h2 class="text-sm font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i data-lucide="users" class="w-4 h-4"></i> Imago
                 </h2>
-                
-                <label class="flex items-center gap-3 font-bold mb-4 cursor-pointer p-4 bg-white dark:bg-slate-800 rounded-xl border border-indigo-100 dark:border-indigo-900/50 hover:border-indigo-300 transition">
-                    <input type="checkbox" name="imago" value="oui" onchange="document.getElementById('imagoField').classList.toggle('hidden')" class="w-5 h-5 text-indigo-600 rounded">
+
+                <label class="flex items-center gap-3 font-bold mb-4 cursor-pointer p-4 bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900 hover:border-indigo-300 transition">
+                    <input type="checkbox" name="imago" value="oui" onchange="document.getElementById('imagoField').classList.toggle('hidden')" class="w-5 h-5 text-indigo-600">
                     <span class="text-slate-800 dark:text-white">Besoin d'un compte Imago ?</span>
                 </label>
-                
-                <div id="imagoField" class="hidden mt-4 animate-fadeIn">
+
+                <div id="imagoField" class="hidden mt-4">
                     <label class="label-tiny text-indigo-600 dark:text-indigo-400">Mobilité (Sites d'intervention)</label>
                     <input type="text" name="imago_mobilite" class="input-field" placeholder="Ex: Site A, Site B...">
                 </div>
             </div>
 
             <!-- 4. INFORMATIQUE -->
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div class="bg-gray-50 dark:bg-slate-950 p-6 border border-gray-200 dark:border-slate-800">
                 <h2 class="text-sm font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i data-lucide="monitor" class="w-4 h-4"></i> Informatique
                 </h2>
-                
+
                 <label class="label-tiny mb-3">Matériel demandé</label>
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:border-blue-400 transition">
-                        <input type="checkbox" name="materiel_type" value="Fixe" class="text-blue-600 rounded"> 
+                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition">
+                        <input type="checkbox" name="materiel_type" value="Fixe" class="text-blue-600">
                         <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Tél. Fixe</span>
                     </label>
-                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:border-blue-400 transition">
-                        <input type="checkbox" name="materiel_type" value="Portable" class="text-blue-600 rounded"> 
+                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition">
+                        <input type="checkbox" name="materiel_type" value="Portable" class="text-blue-600">
                         <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Tél. Portable</span>
                     </label>
-                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:border-blue-400 transition">
-                        <input type="checkbox" name="materiel_type" value="UC" class="text-blue-600 rounded"> 
+                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition">
+                        <input type="checkbox" name="materiel_type" value="UC" class="text-blue-600">
                         <span class="text-xs font-bold text-slate-600 dark:text-slate-300">PC Fixe</span>
                     </label>
-                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-600 cursor-pointer hover:border-blue-400 transition">
-                        <input type="checkbox" name="materiel_type" value="Laptop" class="text-blue-600 rounded"> 
+                    <label class="flex items-center gap-2 p-3 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 cursor-pointer hover:border-blue-400 transition">
+                        <input type="checkbox" name="materiel_type" value="Laptop" class="text-blue-600">
                         <span class="text-xs font-bold text-slate-600 dark:text-slate-300">PC Portable</span>
                     </label>
                 </div>
-                
+
                 <label class="label-tiny">Accès Informatiques spécifiques</label>
                 <textarea name="acces_info" rows="3" class="input-field" placeholder="Logiciels métiers, dossiers réseaux, droits spécifiques..."></textarea>
             </div>
 
             <!-- 5. BADGE & CLEFS -->
-            <div class="bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+            <div class="bg-gray-50 dark:bg-slate-950 p-6 border border-gray-200 dark:border-slate-800">
                 <h2 class="text-sm font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest mb-6 flex items-center gap-2">
                     <i data-lucide="key" class="w-4 h-4"></i> Badge & Sécurité
                 </h2>
@@ -181,7 +192,7 @@
             </div>
 
             <!-- SUBMIT -->
-            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 dark:bg-pink-600 dark:hover:bg-pink-500 text-white font-black py-4 rounded-xl transition shadow-lg text-sm uppercase tracking-widest flex items-center justify-center gap-2">
+            <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 dark:bg-pink-600 dark:hover:bg-pink-700 text-white font-black py-4 transition shadow-sm text-sm uppercase tracking-widest flex items-center justify-center gap-2">
                 Envoyer la demande de recrutement <i data-lucide="send" class="w-5 h-5"></i>
             </button>
 
@@ -201,15 +212,6 @@
         if (val === 'Plein') field.classList.add('hidden');
         else field.classList.remove('hidden');
     }
-    lucide.createIcons();
 </script>
-
-<style>
-    .label-tiny { font-size: 10px; font-weight: 900; text-transform: uppercase; color: #64748b; margin-bottom: 6px; display: block; letter-spacing: 0.1em; }
-    .dark .label-tiny { color: #94a3b8; }
-    .input-field { width: 100%; padding: 0.75rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; background: #fff; color: #1e293b; outline: none; transition: all 0.2s; }
-    .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
-    .dark .input-field { background: #1e293b; border-color: #334155; color: #f1f5f9; }
-    .dark .input-field:focus { border-color: #60a5fa; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); }
-</style>
+</div>
 {% endblock %}

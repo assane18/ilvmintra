@@ -34,6 +34,9 @@ class ServiceType(str, enum.Enum):
     IMAGO = "IMAGO"
     COMMUNICATION = "COMMUNICATION"
     MEDIATEAM = "MEDIATEAM"
+    DRH_PAIE_CARRIERE = "DRH-PAIE_CARRIERE"
+    DRH_RECRUTEMENT_FORMATION = "DRH-RECRUTEMENT_FORMATION"
+    DRH_EFFECTIFS_SOCIAL = "DRH-EFFECTIFS_SOCIAL"
 
     # Tous les Services Établissements
     ACCUEIL = "Accueil"
@@ -123,10 +126,21 @@ class User(UserMixin, db.Model):
     location = db.Column(db.String(100), nullable=True)
     notifications = db.relationship('Notification', backref='user', lazy='dynamic')
 
+    # Profil personnalisable (panneau profil : photo/initiales/couleur d'accent)
+    avatar_photo = db.Column(db.String(255), nullable=True)
+    avatar_initials = db.Column(db.String(2), nullable=True)
+    theme_color = db.Column(db.String(20), default='teal')
+
     @property
     def service(self):
         origins = self.get_origin_services()
         return origins[0] if origins else "AUCUN"
+
+    @property
+    def display_initials(self):
+        if self.avatar_initials:
+            return self.avatar_initials.upper()
+        return (self.fullname or '?')[:2].upper()
 
     def set_origin_services(self, services_list):
         try: self.origin_services_json = json.dumps(services_list)
@@ -591,10 +605,25 @@ class FormDispatchTarget(db.Model):
     form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
     label = db.Column(db.String(100), nullable=False)
     target_service = db.Column(db.Enum(ServiceType), nullable=False)
-    # None = toujours dispatché. Sinon : dispatché seulement si ce champ
-    # (obligatoirement de type CHECKBOX) est coché dans la soumission.
+    # None = toujours dispatché. Sinon, selon le type de condition_field :
+    # CHECKBOX -> dispatché si coché (condition_values_json ignoré) ;
+    # SELECT/MULTI_SELECT -> dispatché si la valeur soumise fait partie de
+    # condition_values_json (liste JSON — un même destinataire peut être visé
+    # par plusieurs valeurs, ex: DRH-PAIE_CARRIERE reçoit "Paie", "Carrière",
+    # "Contrat", "Avenant"... tandis que DRH-RECRUTEMENT_FORMATION reçoit
+    # aussi "Contrat"/"Avenant" -> une soumission peut dispatcher vers
+    # plusieurs destinataires à la fois selon la valeur choisie).
     condition_field_id = db.Column(db.Integer, db.ForeignKey('form_fields.id'), nullable=True)
     condition_field = db.relationship('FormField')
+    condition_values_json = db.Column(db.Text, nullable=True)
+
+    def get_condition_values(self):
+        if not self.condition_values_json:
+            return []
+        try:
+            return json.loads(self.condition_values_json) or []
+        except Exception:
+            return []
 
     # Liste JSON des noms de champs FILE/MULTI_FILE à copier dans le Ticket créé
     # pour ce destinataire. None/vide = tous les fichiers de la soumission
@@ -636,7 +665,14 @@ class FormDispatchTarget(db.Model):
     def is_satisfied(self, data):
         if not self.condition_field_id or not self.condition_field:
             return True
-        return bool(data.get(self.condition_field.name))
+        ref = self.condition_field
+        if ref.field_type == FormFieldType.CHECKBOX:
+            return bool(data.get(ref.name))
+        values = self.get_condition_values()
+        submitted = data.get(ref.name)
+        if isinstance(submitted, list):
+            return bool(set(submitted) & set(values))
+        return submitted in values
 
     def get_included_file_fields(self):
         """None = non configuré -> tous les fichiers (défaut). Une liste (même

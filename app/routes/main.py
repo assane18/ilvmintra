@@ -1,5 +1,6 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app
 import os
+from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
 from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus
 from app import db
@@ -7,6 +8,11 @@ from app.decorators import admin_required
 from app.health import get_liveness, get_full_health
 
 main_bp = Blueprint('main', __name__)
+
+# Palette de couleurs disponible dans le panneau profil (voir base.html pour
+# les valeurs CSS réelles de chaque thème) — whitelist stricte côté serveur.
+PROFILE_THEME_COLORS = {'teal', 'blue', 'violet', 'rose', 'emerald'}
+PROFILE_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 
 # Pilotes du moteur de formulaires déjà basculés en direct avec leur propre
 # tuile dédiée dans portal.html (icône/texte historique conservés, juste le
@@ -167,3 +173,65 @@ def admin_health():
 @admin_required
 def admin_health_data():
     return jsonify(get_full_health())
+
+@main_bp.route('/profile/update', methods=['POST'])
+@login_required
+def profile_update():
+    theme_color = request.form.get('theme_color', '').strip().lower()
+    if theme_color in PROFILE_THEME_COLORS:
+        current_user.theme_color = theme_color
+
+    # Initiales personnalisées : ignorées si une photo est déjà définie (la
+    # photo prime toujours sur les initiales tant qu'elle existe).
+    initials = request.form.get('avatar_initials', '').strip().upper()
+    if not current_user.avatar_photo:
+        current_user.avatar_initials = initials[:2] or None
+
+    db.session.commit()
+    flash('Profil mis à jour.', 'success')
+    return redirect(request.referrer or url_for('main.user_portal'))
+
+@main_bp.route('/profile/photo', methods=['POST'])
+@login_required
+def profile_photo_upload():
+    file = request.files.get('photo')
+    if not file or not file.filename:
+        flash('Aucune image sélectionnée.', 'danger')
+        return redirect(request.referrer or url_for('main.user_portal'))
+
+    ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+    if ext not in PROFILE_PHOTO_EXTENSIONS:
+        flash('Format d\'image non supporté (PNG, JPG ou WEBP uniquement).', 'danger')
+        return redirect(request.referrer or url_for('main.user_portal'))
+
+    avatars_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'avatars')
+    os.makedirs(avatars_dir, exist_ok=True)
+
+    # Supprime l'ancienne photo si elle avait une extension différente,
+    # pour ne pas accumuler de fichiers orphelins au fil des changements.
+    if current_user.avatar_photo:
+        old_path = os.path.join(avatars_dir, current_user.avatar_photo)
+        if os.path.exists(old_path):
+            try: os.remove(old_path)
+            except OSError: pass
+
+    filename = secure_filename(f'user_{current_user.id}.{ext}')
+    file.save(os.path.join(avatars_dir, filename))
+    current_user.avatar_photo = filename
+    db.session.commit()
+    flash('Photo de profil mise à jour.', 'success')
+    return redirect(request.referrer or url_for('main.user_portal'))
+
+@main_bp.route('/profile/photo/delete', methods=['POST'])
+@login_required
+def profile_photo_delete():
+    if current_user.avatar_photo:
+        avatars_dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'avatars')
+        old_path = os.path.join(avatars_dir, current_user.avatar_photo)
+        if os.path.exists(old_path):
+            try: os.remove(old_path)
+            except OSError: pass
+        current_user.avatar_photo = None
+        db.session.commit()
+        flash('Photo de profil supprimée.', 'success')
+    return redirect(request.referrer or url_for('main.user_portal'))
