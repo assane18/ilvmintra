@@ -184,18 +184,28 @@
 
             <!-- FILE D'ATTENTE (POOL) -->
             <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[600px]">
-                <div class="p-6 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center sticky top-0 bg-white dark:bg-slate-900 z-10">
-                    <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
-                        <span class="w-2 h-2 bg-orange-500"></span> File d'attente
-                    </h2>
-                    <span class="bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold px-2 py-0.5">{{ stats.pending }}</span>
+                <div class="p-6 border-b border-gray-200 dark:border-slate-800 flex flex-col gap-3 sticky top-0 bg-white dark:bg-slate-900 z-10">
+                    <div class="flex justify-between items-center">
+                        <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
+                            <span class="w-2 h-2 bg-orange-500"></span> File d'attente
+                        </h2>
+                        <span class="bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold px-2 py-0.5">{{ stats.pending }}</span>
+                    </div>
+                    {% if current_user.get_allowed_services()|length > 1 %}
+                    <select id="poolServiceFilter" class="w-full bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-accent-500">
+                        <option value="">Tous les services</option>
+                        {% for svc in current_user.get_allowed_services() %}
+                        <option value="{{ svc }}">{{ svc }}</option>
+                        {% endfor %}
+                    </select>
+                    {% endif %}
                 </div>
 
-                <div class="overflow-y-auto flex-1 scrollbar-hide">
+                <div class="overflow-y-auto flex-1 scrollbar-hide" id="poolContainer">
 
                     <!-- POOL IMAGO -->
                     {% for ticket in pool_imago %}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition" data-service="{{ ticket.target_service.value }}">
                         <div class="flex justify-between mb-2">
                             <span class="text-[10px] font-bold text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-0.5 uppercase tracking-wider">IMAGO</span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
@@ -220,13 +230,13 @@
 
                     <!-- POOL DRH -->
                     {% if pool_drh %}
-                    <div class="px-6 pt-4 pb-2 bg-gray-50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-slate-800">
+                    <div class="px-6 pt-4 pb-2 bg-gray-50 dark:bg-slate-800/40 border-b border-gray-200 dark:border-slate-800" data-service-header="DRH">
                         <h3 class="text-[11px] font-black uppercase tracking-widest text-pink-600 dark:text-pink-400 flex items-center gap-2">
                             <span class="w-2 h-2 bg-pink-500"></span> Ressources Humaines
                         </h3>
                     </div>
                     {% for ticket in pool_drh %}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition" data-service="{{ ticket.target_service.value }}">
                         <div class="flex justify-between mb-2">
                             <span class="text-[10px] font-bold text-pink-600 bg-pink-50 dark:bg-pink-900/30 px-2 py-0.5 uppercase tracking-wider">DRH</span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
@@ -252,7 +262,7 @@
 
                     <!-- POOL STANDARD -->
                     {% for ticket in pool_standard %}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition" data-service="{{ ticket.target_service.value }}">
                         <div class="flex justify-between mb-2">
                             <span class="text-[10px] font-bold text-orange-600 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 uppercase tracking-wider">{{ ticket.category_ticket or 'Standard' }}</span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
@@ -278,7 +288,7 @@
 
                     <!-- POOL NOUVEAUX UTILISATEURS -->
                     {% for ticket in pool_users %}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition" data-service="{{ ticket.target_service.value }}">
                         <div class="flex justify-between mb-2">
                             <span class="text-[10px] font-bold text-accent-600 bg-accent-50 dark:bg-accent-500/10 px-2 py-0.5 uppercase tracking-wider">Arrivée</span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
@@ -303,7 +313,7 @@
 
                     <!-- POOL BONS DE COMMANDE -->
                     {% for ticket in pool_bons %}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition" data-service="{{ ticket.target_service.value }}">
                         <div class="flex justify-between mb-2">
                             <span class="text-[10px] font-bold text-violet-600 bg-violet-50 dark:bg-violet-500/10 px-2 py-0.5 uppercase tracking-wider">DAF</span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
@@ -328,7 +338,7 @@
 
                     <!-- POOL MATÉRIEL -->
                     {% for ticket in pool_materiel %}
-                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <div class="px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition" data-service="{{ ticket.target_service.value }}">
                         <div class="flex justify-between mb-2">
                             <span class="text-[10px] font-bold text-teal-600 bg-teal-50 dark:bg-teal-500/10 px-2 py-0.5 uppercase tracking-wider">Matériel</span>
                             <span class="text-[10px] font-mono text-slate-400 dark:text-slate-500">#{{ ticket.uid_public }}</span>
@@ -357,6 +367,12 @@
                         <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Tout est calme</p>
                     </div>
                     {% endif %}
+
+                    <!-- Affiché par JS si le filtre service ne remonte aucun ticket -->
+                    <div id="poolFilterEmpty" hidden class="h-full flex flex-col items-center justify-center opacity-40 p-12">
+                        <i data-lucide="filter-x" class="w-12 h-12 text-slate-300 dark:text-slate-600 mb-2"></i>
+                        <p class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Aucun ticket pour ce service</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -473,6 +489,37 @@
 <script>
     lucide.createIcons();
     setInterval(() => { const d = new Date(); document.getElementById('liveClock').innerText = d.toLocaleTimeString(); }, 1000);
+
+    // Filtre "File d'attente" par service (visible seulement si le solver a
+    // plusieurs services). Purement côté client : ne modifie aucune requête
+    // serveur, cache/affiche les cartes déjà rendues via data-service.
+    const poolFilter = document.getElementById('poolServiceFilter');
+    if (poolFilter) {
+        const poolContainer = document.getElementById('poolContainer');
+        const poolCards = poolContainer.querySelectorAll('[data-service]');
+        const poolHeaders = poolContainer.querySelectorAll('[data-service-header]');
+        const poolFilterEmpty = document.getElementById('poolFilterEmpty');
+
+        function applyPoolFilter() {
+            const selected = poolFilter.value;
+            let visibleCount = 0;
+            poolCards.forEach(card => {
+                const match = !selected || card.dataset.service === selected;
+                card.classList.toggle('hidden', !match);
+                if (match) visibleCount++;
+            });
+            poolHeaders.forEach(header => {
+                const match = !selected || header.dataset.serviceHeader === selected;
+                header.classList.toggle('hidden', !match);
+            });
+            // Ne s'affiche que si un service précis est choisi et ne remonte rien —
+            // le cas "aucun ticket du tout" est déjà géré par le bloc "Tout est calme".
+            poolFilterEmpty.hidden = !(selected && visibleCount === 0);
+        }
+
+        poolFilter.addEventListener('change', applyPoolFilter);
+        applyPoolFilter();
+    }
 
     // Chat Logic (inchangée, même API /api/team_chat)
     const chatBox = document.getElementById('teamChatBox');
