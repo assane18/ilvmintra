@@ -98,6 +98,22 @@
                     {% endif %}
                 </div>
                 <p class="text-[10px] text-slate-400 mt-3">Ces coordonnées sont affichées aux techniciens sur vos tickets pour vous joindre plus facilement.</p>
+
+                <div class="mt-5 pt-5 border-t border-gray-200 dark:border-slate-800">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Notifications par e-mail</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {% for key, label, desc, icon in [('all', 'Tout', 'Un e-mail à chaque événement (défaut)', 'bell'), ('important', "L'important", 'Clôture, validation, affectation — pas chaque message du chat', 'bell-ring'), ('daily', 'Résumé quotidien', 'Un seul e-mail par jour à 8h avec tout ce qui s\'est passé', 'calendar-clock')] %}
+                        <label class="cursor-pointer">
+                            <input type="radio" name="email_mode" value="{{ key }}" class="peer sr-only" {% if (current_user.email_mode or 'all') == key %}checked{% endif %}>
+                            <span class="block h-full p-3 border-2 border-gray-200 dark:border-slate-700 peer-checked:border-accent-500 peer-checked:bg-accent-50 dark:peer-checked:bg-accent-50/40 transition">
+                                <span class="flex items-center gap-1.5 text-sm font-black text-slate-800 dark:text-white"><i data-lucide="{{ icon }}" class="w-3.5 h-3.5"></i> {{ label }}</span>
+                                <span class="block text-[11px] text-slate-400 mt-1">{{ desc }}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-2">La cloche de l'intranet affiche toujours tout, quel que soit le choix. Les relances et récapitulatifs sont envoyés dans tous les cas.</p>
+                </div>
                 <button type="submit" class="mt-4 bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black px-5 py-2.5 text-xs uppercase tracking-widest transition">
                     Enregistrer
                 </button>

@@ -1,14 +1,16 @@
-from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app
+from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, send_from_directory, current_app, send_file, make_response
 import os
 from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
-from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus, ServiceType, TicketStatus, HelpTip, CannedResponse
+from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus, ServiceType, TicketStatus, HelpTip, CannedResponse, Announcement
 from app import db
 from app.decorators import admin_required
 from app.health import get_liveness, get_full_health
 from app.routes.tickets import generate_ticket_uid, notify_solvers_new_ticket, get_service_emails, get_paris_time
 from app.emails import send_service_alert
 from app.status_display import status_label, is_open_status
+from datetime import datetime, timedelta
+import io
 import json
 
 main_bp = Blueprint('main', __name__)
@@ -63,8 +65,12 @@ def user_portal():
         .filter(FormDefinition.slug.notin_(LIVE_PILOT_SLUGS))\
         .order_by(FormDefinition.name).all()
 
+    announcements = [a for a in Announcement.query.filter_by(is_active=True).order_by(Announcement.created_at.desc()).all()
+                     if a.is_visible()]
+
     return render_template('portal.html', user=current_user, items=recent_items, open_items=open_items,
-                           open_count=sum(1 for i in all_items if i['is_open']), active_forms=active_forms)
+                           open_count=sum(1 for i in all_items if i['is_open']), active_forms=active_forms,
+                           announcements=announcements)
 
 def _ticket_status_class(status_value):
     if 'VALIDATION' in status_value:
@@ -273,12 +279,117 @@ def admin_help_contents():
                            contexts=sorted(context_labels.items(), key=lambda x: x[1]),
                            services=[s.value for s in ServiceType][:14])
 
+HISTORY_STATUS_FILTERS = {
+    'open': ('En cours', lambda i: i['is_open']),
+    'done': ('Terminées', lambda i: i['status_value'] == 'TERMINE'),
+    'refused': ('Refusées', lambda i: i['status_value'] == 'REFUSE'),
+}
+
+def _parse_date(value):
+    try:
+        return datetime.strptime(value, '%Y-%m-%d')
+    except (TypeError, ValueError):
+        return None
+
+def _filtered_history(user):
+    """Historique filtré par les paramètres de requête (q, status, service,
+    date_from, date_to). Retourne (items, filtres, services disponibles)."""
+    f = {
+        'q': request.args.get('q', '').strip(),
+        'status': request.args.get('status', 'all'),
+        'service': request.args.get('service', '').strip(),
+        'date_from': request.args.get('date_from', '').strip(),
+        'date_to': request.args.get('date_to', '').strip(),
+    }
+    items = _user_history_items(user, f['q'])
+    services = sorted({i['service'] for i in items})
+    if f['status'] in HISTORY_STATUS_FILTERS:
+        items = [i for i in items if HISTORY_STATUS_FILTERS[f['status']][1](i)]
+    if f['service']:
+        items = [i for i in items if i['service'] == f['service']]
+    d_from, d_to = _parse_date(f['date_from']), _parse_date(f['date_to'])
+    if d_from:
+        items = [i for i in items if i['date'] and i['date'].replace(tzinfo=None) >= d_from]
+    if d_to:
+        items = [i for i in items if i['date'] and i['date'].replace(tzinfo=None) < d_to + timedelta(days=1)]
+    return items, f, services
+
 @main_bp.route('/my_history')
 @login_required
 def my_history():
-    search_query = request.args.get('q', '')
-    items = _user_history_items(current_user, search_query)
-    return render_template('my_history.html', items=items, search_query=search_query)
+    items, filters, services = _filtered_history(current_user)
+    return render_template('my_history.html', items=items, search_query=filters['q'], filters=filters,
+                           services=services, status_filters=[(k, v[0]) for k, v in HISTORY_STATUS_FILTERS.items()])
+
+@main_bp.route('/my_history/export')
+@login_required
+def my_history_export():
+    """Export CSV (défaut) ou Excel de l'historique filtré courant."""
+    import pandas as pd
+    items, filters, _ = _filtered_history(current_user)
+    rows = [{'Référence': i['ref'], 'Date': i['date'].strftime('%d/%m/%Y %H:%M') if i['date'] else '',
+             'Service': i['service'], 'Sujet': i['subject'], 'Statut': i['status_label'],
+             'Détail': i['status_hint']} for i in items]
+    df = pd.DataFrame(rows, columns=['Référence', 'Date', 'Service', 'Sujet', 'Statut', 'Détail'])
+    stamp = datetime.now().strftime('%Y%m%d')
+    if request.args.get('format') == 'xlsx':
+        buf = io.BytesIO()
+        with pd.ExcelWriter(buf, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Mes demandes')
+        buf.seek(0)
+        return send_file(buf, as_attachment=True, download_name=f'mes_demandes_{stamp}.xlsx',
+                         mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    csv = df.to_csv(index=False, sep=';', encoding='utf-8-sig')
+    resp = make_response(csv.encode('utf-8-sig'))
+    resp.headers['Content-Type'] = 'text/csv; charset=utf-8'
+    resp.headers['Content-Disposition'] = f'attachment; filename=mes_demandes_{stamp}.csv'
+    return resp
+
+# ---------------------------------------------------------------------------
+#  ANNONCES DU PORTAIL (bandeau) — ADMIN + service Communication
+# ---------------------------------------------------------------------------
+
+ANNOUNCEMENT_LEVELS = [('info', 'Information'), ('warning', 'Attention'), ('urgent', 'Urgent')]
+
+def can_manage_announcements(user):
+    if not user.is_authenticated:
+        return False
+    if 'ADMIN' in str(user.role.value).upper():
+        return True
+    services = set(user.get_allowed_services() or []) | set(user.get_origin_services() or [])
+    return 'COMMUNICATION' in services or 'GS-COMMUNICATION' in services
+
+@main_bp.route('/announcements/manage', methods=['GET', 'POST'])
+@login_required
+def announcements_manage():
+    if not can_manage_announcements(current_user):
+        return render_template('errors/catdance.html'), 403
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            level = request.form.get('level', 'info')
+            a = Announcement(title=request.form.get('title', '').strip()[:150],
+                             body=request.form.get('body', '').strip(),
+                             level=level if level in dict(ANNOUNCEMENT_LEVELS) else 'info',
+                             starts_at=_parse_date(request.form.get('starts_at')),
+                             ends_at=(_parse_date(request.form.get('ends_at')) + timedelta(days=1) - timedelta(seconds=1))
+                                     if _parse_date(request.form.get('ends_at')) else None,
+                             created_by=current_user)
+            if a.title and a.body:
+                db.session.add(a); db.session.commit(); flash('Annonce publiée.', 'success')
+            else:
+                flash('Titre et texte sont obligatoires.', 'danger')
+        elif action in ('toggle', 'delete'):
+            a = Announcement.query.get_or_404(int(request.form.get('id')))
+            if action == 'delete':
+                db.session.delete(a)
+            else:
+                a.is_active = not a.is_active
+            db.session.commit()
+        return redirect(url_for('main.announcements_manage'))
+    announcements = Announcement.query.order_by(Announcement.created_at.desc()).all()
+    return render_template('announcements_manage.html', announcements=announcements, levels=ANNOUNCEMENT_LEVELS,
+                           today=datetime.now().strftime('%Y-%m-%d'))
 
 @main_bp.route('/admin/dashboard')
 @login_required
@@ -383,6 +494,9 @@ def profile_info_update():
     """Coordonnées éditables (téléphone, bureau) + initiales personnalisées."""
     current_user.phone = request.form.get('phone', '').strip()[:30] or None
     current_user.office = request.form.get('office', '').strip()[:100] or None
+    email_mode = request.form.get('email_mode', '').strip().lower()
+    if email_mode in ('all', 'important', 'daily'):
+        current_user.email_mode = email_mode
 
     # Initiales personnalisées : ignorées si une photo est déjà définie (la
     # photo prime toujours sur les initiales tant qu'elle existe).

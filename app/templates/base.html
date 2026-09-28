@@ -275,6 +275,11 @@
                 <a href="{{ url_for('main.help_center') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.help_center' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
                     <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
                 </a>
+                {% if current_user.is_authenticated and (current_user.role.value == 'ADMIN' or 'COMMUNICATION' in (current_user.get_allowed_services() + current_user.get_origin_services())) %}
+                <a href="{{ url_for('main.announcements_manage') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.announcements_manage' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="megaphone" class="w-4 h-4"></i> Annonces
+                </a>
+                {% endif %}
                 <a href="{{ url_for('main.profile') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.profile' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
                     <i data-lucide="user-circle" class="w-4 h-4"></i> Mon profil
                 </a>

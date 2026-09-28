@@ -18,6 +18,25 @@
         <p class="text-slate-500 dark:text-slate-400 font-medium text-sm mt-1">Sélectionnez un service pour créer une nouvelle demande.</p>
     </div>
 
+    {% if announcements %}
+    <!-- Bandeau d'annonces (Annonces du portail : ADMIN + Communication) -->
+    <div class="mb-6 space-y-3">
+        {% for a in announcements %}
+        <div class="border-l-4 p-4 flex gap-3 shadow-sm
+            {% if a.level == 'urgent' %}bg-red-50 dark:bg-red-900/20 border-red-500 text-red-900 dark:text-red-100
+            {% elif a.level == 'warning' %}bg-amber-50 dark:bg-amber-900/20 border-amber-500 text-amber-900 dark:text-amber-100
+            {% else %}bg-accent-50 dark:bg-accent-50/40 border-accent-500 text-slate-800 dark:text-slate-100{% endif %}">
+            <i data-lucide="{% if a.level == 'urgent' %}siren{% elif a.level == 'warning' %}alert-triangle{% else %}megaphone{% endif %}" class="w-5 h-5 shrink-0 mt-0.5"></i>
+            <div class="min-w-0">
+                <p class="font-black text-sm">{{ a.title }}</p>
+                <p class="text-sm mt-0.5 whitespace-pre-line">{{ a.body }}</p>
+                {% if a.ends_at %}<p class="text-[10px] opacity-70 mt-1">Jusqu'au {{ a.ends_at.strftime('%d/%m/%Y') }}</p>{% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
     {% if open_items %}
     <!-- Mes demandes en cours (en tête : on revient sur le portail surtout pour suivre) -->
     <div class="mb-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 border-l-4 border-l-accent-500 shadow-sm">

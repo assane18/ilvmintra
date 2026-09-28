@@ -1871,6 +1871,169 @@ class TestLotUX:
             assert User.query.filter(User.username.ilike('astraore')).count() == 1
             assert u.role == UserRole.SOLVER
 
+
+# ===========================================================================
+#  LOT 2 (2026-09-28) : annonces, filtres/export d'historique, préférence
+#  e-mail, résumé quotidien et récap hebdo managers
+# ===========================================================================
+
+class TestLot2:
+
+    def _users(self, app):
+        with app.app_context():
+            make_user(username='l2_user', role=UserRole.USER, service=ServiceType.DRH, fullname='Lucie DEUX')
+            make_user(username='l2_com', role=UserRole.USER, service=ServiceType.COMMUNICATION, allowed_services=[ServiceType.COMMUNICATION])
+            make_user(username='l2_admin', role=UserRole.ADMIN, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+            make_user(username='l2_manager', role=UserRole.MANAGER, service=ServiceType.DRH, allowed_services=[ServiceType.INFO])
+            make_user(username='l2_solver', role=UserRole.SOLVER, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+
+    def _ticket(self, app, status, author='l2_user', service=ServiceType.INFO, title='Sujet', days_ago=0, solver=None):
+        with app.app_context():
+            a = User.query.filter_by(username=author).first()
+            s = User.query.filter_by(username=solver).first() if solver else None
+            t = Ticket(title=title, description='d', author=a, solver=s, target_service=service, status=status,
+                       uid_public=f'L2-{Ticket.query.count()+1:03d}', category_ticket='Standard',
+                       created_at=datetime.now() - timedelta(days=days_ago), service_demandeur='DRH')
+            if status == TicketStatus.DONE: t.closed_at = datetime.now()
+            db.session.add(t); db.session.commit(); return t.uid_public
+
+    # --- annonces ---
+    def test_annonce_visible_selon_dates_et_activation(self, app, db_session):
+        from app.models import Announcement
+        now = datetime(2026, 9, 28, 12, 0)
+        a = Announcement(title='x', body='y')
+        assert a.is_visible(now)
+        a.is_active = False; assert not a.is_visible(now); a.is_active = True
+        a.starts_at = now + timedelta(days=1); assert not a.is_visible(now); a.starts_at = None
+        a.ends_at = now - timedelta(hours=1); assert not a.is_visible(now)
+
+    def test_gestion_annonces_acces(self, client, db_session, app):
+        self._users(app)
+        login(client, 'l2_user');    assert client.get('/announcements/manage').status_code == 403
+        login(client, 'l2_com');     assert client.get('/announcements/manage').status_code == 200
+        login(client, 'l2_admin');   assert client.get('/announcements/manage').status_code == 200
+
+    def test_publication_annonce_et_bandeau_portail(self, client, db_session, app):
+        from app.models import Announcement
+        self._users(app)
+        login(client, 'l2_com')
+        client.post('/announcements/manage', data={'action': 'add', 'title': 'Maintenance messagerie', 'body': 'Samedi 8h-12h', 'level': 'warning'})
+        client.post('/announcements/manage', data={'action': 'add', 'title': 'Future annonce', 'body': 'x', 'level': 'info', 'starts_at': '2099-01-01'})
+        with app.app_context():
+            a = Announcement.query.filter_by(title='Maintenance messagerie').first()
+            assert a and a.level == 'warning' and a.created_by.username == 'l2_com'
+            future_id = Announcement.query.filter_by(title='Future annonce').first().id
+        login(client, 'l2_user')
+        html = client.get('/portal').data.decode()
+        assert 'Maintenance messagerie' in html and 'Samedi 8h-12h' in html
+        assert 'Future annonce' not in html
+        # Un simple utilisateur ne peut pas modifier
+        r = client.post('/announcements/manage', data={'action': 'delete', 'id': future_id})
+        assert r.status_code == 403
+        login(client, 'l2_com')
+        client.post('/announcements/manage', data={'action': 'toggle', 'id': future_id})
+        with app.app_context():
+            assert Announcement.query.get(future_id).is_active is False
+
+    # --- historique : filtres + export ---
+    def test_historique_filtres(self, client, db_session, app):
+        self._users(app)
+        self._ticket(app, TicketStatus.IN_PROGRESS, title='Ouvert INFO', service=ServiceType.INFO, solver='l2_solver')
+        self._ticket(app, TicketStatus.DONE, title='Fini DRH', service=ServiceType.DRH, days_ago=10)
+        self._ticket(app, TicketStatus.REFUSED, title='Refuse GEN', service=ServiceType.GEN)
+        login(client, 'l2_user')
+        def titles(qs):
+            html = client.get('/my_history' + qs).data.decode()
+            return [t for t in ('Ouvert INFO', 'Fini DRH', 'Refuse GEN') if t in html]
+        assert titles('') == ['Ouvert INFO', 'Fini DRH', 'Refuse GEN']
+        assert titles('?status=open') == ['Ouvert INFO']
+        assert titles('?status=done') == ['Fini DRH']
+        assert titles('?status=refused') == ['Refuse GEN']
+        assert titles('?service=DRH') == ['Fini DRH']
+        recent = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+        assert titles(f'?date_from={recent}') == ['Ouvert INFO', 'Refuse GEN']
+        assert titles(f'?date_to={recent}') == ['Fini DRH']
+
+    def test_historique_export_csv_et_excel(self, client, db_session, app):
+        self._users(app)
+        self._ticket(app, TicketStatus.DONE, title='Export moi', days_ago=1)
+        self._ticket(app, TicketStatus.IN_PROGRESS, title='Pas moi', solver='l2_solver')
+        login(client, 'l2_user')
+        r = client.get('/my_history/export?status=done')
+        assert r.status_code == 200 and 'text/csv' in r.headers['Content-Type']
+        body = r.data.decode('utf-8-sig')
+        assert 'Export moi' in body and 'Pas moi' not in body and 'Terminée' in body
+        r = client.get('/my_history/export?format=xlsx')
+        assert r.status_code == 200 and 'spreadsheetml' in r.headers['Content-Type']
+        assert r.data[:2] == b'PK'  # zip = xlsx
+
+    # --- préférence e-mail ---
+    def test_profil_enregistre_la_preference_email(self, client, db_session, app):
+        self._users(app)
+        login(client, 'l2_user')
+        client.post('/profile/info', data={'phone': '', 'office': '', 'email_mode': 'daily'})
+        with app.app_context():
+            assert User.query.filter_by(username='l2_user').first().email_mode == 'daily'
+        client.post('/profile/info', data={'email_mode': 'n_importe_quoi'})
+        with app.app_context():
+            assert User.query.filter_by(username='l2_user').first().email_mode == 'daily'
+
+    def test_filtre_destinataires_selon_preference(self, app, db_session):
+        from app.emails import filter_recipients_by_preference
+        self._users(app)
+        with app.app_context():
+            User.query.filter_by(username='l2_user').first().email_mode = 'important'
+            User.query.filter_by(username='l2_com').first().email_mode = 'daily'
+            db.session.commit()
+            all_r = ['l2_user@test.lan', 'L2_COM@test.lan', 'l2_admin@test.lan', 'inconnu@ailleurs.fr']
+            assert filter_recipients_by_preference(all_r, 'message') == ['l2_admin@test.lan', 'inconnu@ailleurs.fr']
+            assert filter_recipients_by_preference(all_r, 'important') == ['l2_user@test.lan', 'l2_admin@test.lan', 'inconnu@ailleurs.fr']
+            assert filter_recipients_by_preference(all_r, 'digest') == all_r
+
+    # --- résumés ---
+    def test_resume_quotidien_liste_les_notifications_recentes(self, app, db_session):
+        from app.digests import daily_digest_for, daily_digest_recipients
+        self._users(app)
+        with app.app_context():
+            u = User.query.filter_by(username='l2_user').first(); u.email_mode = 'daily'
+            db.session.add(Notification(user=u, message='Récent', timestamp=datetime.utcnow() - timedelta(hours=2)))
+            db.session.add(Notification(user=u, message='Vieux', timestamp=datetime.utcnow() - timedelta(days=3)))
+            db.session.commit()
+            assert [x.username for x in daily_digest_recipients()] == ['l2_user']
+            assert [n.message for n in daily_digest_for(u)] == ['Récent']
+
+    def test_recap_hebdo_manager(self, app, db_session):
+        from app.digests import weekly_manager_summary, weekly_digest_recipients
+        self._users(app)
+        # N1 : demandeur du service DRH (origine du manager), pas lui-même
+        n1 = self._ticket(app, TicketStatus.VALIDATION_N1, title='A valider N1')
+        # N2 : cible INFO (service géré par le manager)
+        n2 = self._ticket(app, TicketStatus.VALIDATION_N2, title='A valider N2', service=ServiceType.INFO)
+        stale = self._ticket(app, TicketStatus.PENDING, title='En retard', service=ServiceType.INFO, days_ago=3)
+        self._ticket(app, TicketStatus.PENDING, title='Autre service', service=ServiceType.GEN, days_ago=3)
+        with app.app_context():
+            m = User.query.filter_by(username='l2_manager').first()
+            assert 'l2_manager' in [u.username for u in weekly_digest_recipients()]
+            data = weekly_manager_summary(m)
+            assert [t.uid_public for t in data['pending_tickets']] == [n1, n2]
+            assert [t.uid_public for t in data['stale']] == [stale]
+            assert {t.uid_public for t in data['received_week']} == {n1, n2, stale}  # tous ciblent INFO
+            # Un manager sans rien à traiter -> None (pas d'e-mail)
+            other = make_user(username='l2_manager2', role=UserRole.MANAGER, service=ServiceType.SG, allowed_services=[ServiceType.SG])
+            assert weekly_manager_summary(other) is None
+
+    def test_email_recap_hebdo_se_construit(self, app, db_session):
+        from app.digests import weekly_manager_summary
+        from app.emails import send_weekly_manager_digest, send_daily_digest
+        self._users(app)
+        self._ticket(app, TicketStatus.VALIDATION_N1, title='A valider')
+        with app.app_context():
+            m = User.query.filter_by(username='l2_manager').first()
+            send_weekly_manager_digest(m, weekly_manager_summary(m))  # MAIL_SUPPRESS_SEND : ne doit juste pas planter
+            u = User.query.filter_by(username='l2_user').first()
+            db.session.add(Notification(user=u, message='Test', link='/tickets/view/X')); db.session.commit()
+            send_daily_digest(u, u.notifications.all())
+
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================

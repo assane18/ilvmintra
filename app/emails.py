@@ -100,7 +100,30 @@ def get_outlook_friendly_html(title, content, link_url=None, link_text="Voir le 
     </html>
     """
 
-def send_email(subject, recipients, text_body, html_body):
+# Types d'e-mail, pour la préférence User.email_mode :
+#   'message'   -> retenu pour les utilisateurs en mode "important" et "daily"
+#   'important' -> retenu seulement pour les utilisateurs en mode "daily"
+#   'digest'    -> toujours envoyé (résumés, relances, récaps : c'est LE canal des modes réduits)
+def filter_recipients_by_preference(recipients, kind):
+    if kind == 'digest' or not recipients:
+        return list(recipients or [])
+    from app.models import User
+    from sqlalchemy import func
+    lowered = [r.lower() for r in recipients if r]
+    modes = {u.email.lower(): (u.email_mode or 'all')
+             for u in User.query.filter(func.lower(User.email).in_(lowered)).all() if u.email}
+    kept = []
+    for r in recipients:
+        mode = modes.get((r or '').lower(), 'all')
+        if mode == 'daily':
+            continue
+        if mode == 'important' and kind == 'message':
+            continue
+        kept.append(r)
+    return kept
+
+def send_email(subject, recipients, text_body, html_body, kind='important'):
+    recipients = filter_recipients_by_preference(recipients, kind)
     if not recipients:
         return
 
@@ -198,7 +221,7 @@ def send_message_notification(ticket, message_content, recipient):
     """
     
     full_html = get_outlook_friendly_html(f"Message sur {ticket.uid_public}", html_content, link, "Répondre")
-    send_email(f"[Message] {ticket.title}", [recipient.email], message_content, full_html)
+    send_email(f"[Message] {ticket.title}", [recipient.email], message_content, full_html, kind='message')
 
 # --- 4. NOTIFICATION CLÔTURE ---
 def send_closure_notification(ticket):
@@ -277,7 +300,8 @@ def send_stale_tickets_reminder(recipient_email, tickets, assigned_to_me):
         f"🔔 Rappel : {len(tickets)} ticket(s) en attente depuis plus de 24h",
         [recipient_email],
         f"{len(tickets)} ticket(s) en retard.",
-        full_html
+        full_html,
+        kind='digest',
     )
 
 # --- 5. ALERTE ÉTAPE FORMULAIRE À VALIDER ---
@@ -332,3 +356,80 @@ def send_form_refused_notification(submission, recipient_email):
     full_html = get_outlook_friendly_html("Formulaire refusé", html_content, link, "Voir le formulaire")
     send_email(f"[Refusé] {submission.form.name} — {submission.uid_public}", [recipient_email],
                submission.refusal_reason or "Formulaire refusé.", full_html)
+
+
+# --- RÉSUMÉ QUOTIDIEN (utilisateurs en mode e-mail "daily") ---
+def send_daily_digest(user, notifications):
+    base_url = current_app.config.get('BASE_URL', '').rstrip('/')
+    rows = ""
+    for n in notifications:
+        link = f"{base_url}{n.link}" if n.link else base_url
+        when = n.timestamp.strftime('%d/%m %H:%M') if n.timestamp else ''
+        rows += f"""
+        <tr>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0; white-space:nowrap; color:#718096;">{when}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;"><a href="{link}">{n.message}</a></td>
+        </tr>"""
+    html_content = f"""
+    <p>Bonjour {user.fullname or user.username},</p>
+    <p>Voici ce qui s'est passé sur vos demandes ces dernières 24 heures ({len(notifications)} événement(s)) :</p>
+    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse; margin: 15px 0;">{rows}</table>
+    <p style="font-size:12px; color:#718096;">Vous recevez ce résumé parce que vous avez choisi « un résumé par jour » dans votre profil. Modifiable à tout moment dans Mon profil &gt; Mon compte.</p>
+    """
+    full_html = get_outlook_friendly_html("Résumé quotidien", html_content, f"{base_url}/my_history", "Voir mes demandes")
+    send_email("[Intranet] Résumé quotidien de vos demandes", [user.email], f"{len(notifications)} événement(s)", full_html, kind='digest')
+
+
+# --- RÉCAP HEBDOMADAIRE MANAGERS / DIRECTEURS (lundi 8h, scripts/recap_hebdo_managers.py) ---
+def send_weekly_manager_digest(user, data):
+    base_url = current_app.config.get('BASE_URL', '').rstrip('/')
+    now = data['now']
+
+    def age(dt):
+        d = (now - dt).days
+        return f"{d} j" if d else "aujourd'hui"
+
+    def ticket_rows(tickets):
+        return "".join(f"""
+        <tr>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;"><a href="{base_url}/tickets/view/{t.uid_public}">#{t.uid_public}</a></td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">{t.title}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">{t.author.fullname if t.author else ''}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; white-space:nowrap;">{age(t.created_at)}</td>
+        </tr>""" for t in tickets)
+
+    def sub_rows(subs):
+        return "".join(f"""
+        <tr>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;"><a href="{base_url}/forms/submission/{s.id}">{s.uid_public}</a></td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">{s.form.name if s.form else 'Formulaire'}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0;">{s.author.fullname if s.author else ''}</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; white-space:nowrap;">{age(s.created_at)}</td>
+        </tr>""" for s in subs)
+
+    head = """<tr style="background-color:#f7fafc;"><th style="padding:6px; text-align:left;">Réf.</th><th style="padding:6px; text-align:left;">Objet</th><th style="padding:6px; text-align:left;">Demandeur</th><th style="padding:6px; text-align:center;">Ancienneté</th></tr>"""
+    sections = ""
+    pending = data['pending_tickets']; subs = data['pending_submissions']
+    if pending or subs:
+        sections += f"""
+        <h3 style="margin:18px 0 6px; color:#b45309;">⏳ En attente de votre validation ({len(pending) + len(subs)})</h3>
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">{head}{ticket_rows(pending)}{sub_rows(subs)}</table>"""
+    if data['stale']:
+        sections += f"""
+        <h3 style="margin:18px 0 6px; color:#b91c1c;">🔴 Tickets en retard sur vos services ({len(data['stale'])})</h3>
+        <p style="font-size:12px; color:#718096; margin:0 0 6px;">Non pris en charge ou en cours depuis plus de 24 h.</p>
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">{head}{ticket_rows(data['stale'])}</table>"""
+    sections += f"""
+        <h3 style="margin:18px 0 6px; color:#1e40af;">📥 Reçu cette semaine sur vos services ({len(data['received_week'])})</h3>
+        <p style="font-size:12px; color:#718096; margin:0;">{', '.join(data['services']) or 'aucun service géré'}</p>"""
+
+    html_content = f"""
+    <p>Bonjour {user.fullname or user.username},</p>
+    <p>Votre point hebdomadaire sur les demandes qui vous concernent :</p>
+    {sections}
+    <p style="font-size:12px; color:#718096; margin-top:18px;">Envoyé chaque lundi matin uniquement s'il y a quelque chose à traiter.</p>
+    """
+    full_html = get_outlook_friendly_html("Récap hebdomadaire", html_content, f"{base_url}/tickets/manager", "Ouvrir mes validations")
+    n = len(pending) + len(subs)
+    subject = f"[Intranet] {n} demande(s) attendent votre validation" if n else f"[Intranet] Récap hebdomadaire — {len(data['stale'])} ticket(s) en retard"
+    send_email(subject, [user.email], "Récap hebdomadaire", full_html, kind='digest')

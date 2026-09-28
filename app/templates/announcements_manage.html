@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    .flat, .flat * { border-radius: 0 !important; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; outline: none; color: #1e293b; font-size: 0.875rem; }
+    .input-field:focus { border-color: rgb(var(--accent-500)); background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+</style>
+
+<div class="p-6 max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Annonces du portail</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Bandeau affiché à tout le personnel sur la page d'accueil</p>
+        </div>
+        <a href="{{ url_for('main.user_portal') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Portail
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <form method="POST" class="xl:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 space-y-3 self-start">
+            <input type="hidden" name="action" value="add">
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Nouvelle annonce</h2>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Titre</label>
+                <input type="text" name="title" required maxlength="150" placeholder="Ex: Maintenance de la messagerie samedi" class="input-field">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Texte</label>
+                <textarea name="body" required rows="4" placeholder="Ex: La messagerie sera indisponible samedi 4 octobre de 8h à 12h." class="input-field"></textarea>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Niveau</label>
+                <div class="grid grid-cols-3 gap-2">
+                    {% for key, label in levels %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="level" value="{{ key }}" class="peer sr-only" {% if loop.first %}checked{% endif %}>
+                        <span class="block text-center py-2 text-[11px] font-black uppercase border-2 border-gray-200 dark:border-slate-700 peer-checked:border-accent-500 peer-checked:bg-accent-50 dark:peer-checked:bg-accent-50/40 text-slate-700 dark:text-slate-200 transition">{{ label }}</span>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Du (optionnel)</label>
+                    <input type="date" name="starts_at" class="input-field">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Jusqu'au (inclus, optionnel)</label>
+                    <input type="date" name="ends_at" min="{{ today }}" class="input-field">
+                </div>
+            </div>
+            <p class="text-[10px] text-slate-400">Sans dates : visible immédiatement et jusqu'à désactivation.</p>
+            <button type="submit" class="w-full bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black px-5 py-2.5 text-xs uppercase tracking-widest transition">Publier</button>
+        </form>
+
+        <div class="xl:col-span-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800">
+            {% for a in announcements %}
+            {% set visible = a.is_visible() %}
+            <div class="p-5 flex gap-4 {% if not visible %}opacity-60{% endif %}">
+                <div class="w-1.5 shrink-0 {% if a.level == 'urgent' %}bg-red-500{% elif a.level == 'warning' %}bg-amber-500{% else %}bg-accent-500{% endif %}"></div>
+                <div class="min-w-0 flex-1">
+                    <div class="flex flex-wrap items-center gap-2 mb-1">
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 {% if a.level == 'urgent' %}bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300{% elif a.level == 'warning' %}bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300{% else %}bg-accent-100 text-accent-700 dark:bg-accent-50 dark:text-accent-400{% endif %}">{{ dict(levels).get(a.level, a.level) }}</span>
+                        <span class="text-[10px] font-black uppercase px-2 py-0.5 {% if visible %}bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300{% else %}bg-gray-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400{% endif %}">{% if not a.is_active %}Désactivée{% elif visible %}Visible{% else %}Programmée / expirée{% endif %}</span>
+                        <span class="text-[10px] text-slate-400">{% if a.starts_at %}du {{ a.starts_at.strftime('%d/%m/%Y') }} {% endif %}{% if a.ends_at %}jusqu'au {{ a.ends_at.strftime('%d/%m/%Y') }}{% endif %}</span>
+                    </div>
+                    <p class="font-bold text-slate-800 dark:text-white">{{ a.title }}</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 whitespace-pre-line">{{ a.body }}</p>
+                    <p class="text-[10px] text-slate-400 mt-2">Publiée le {{ a.created_at.strftime('%d/%m/%Y') if a.created_at else '' }}{% if a.created_by %} par {{ a.created_by.fullname }}{% endif %}</p>
+                </div>
+                <div class="flex flex-col gap-1 shrink-0">
+                    <form method="POST"><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="{{ a.id }}"><button class="text-[10px] font-bold uppercase px-2 py-1 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 w-full">{{ 'Désactiver' if a.is_active else 'Réactiver' }}</button></form>
+                    <form method="POST"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ a.id }}"><button class="text-[10px] font-bold uppercase px-2 py-1 border border-red-200 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 w-full">Supprimer</button></form>
+                </div>
+            </div>
+            {% else %}
+            <p class="p-10 text-center text-sm text-slate-400">Aucune annonce pour le moment.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

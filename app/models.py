@@ -144,6 +144,12 @@ class User(UserMixin, db.Model):
     density = db.Column(db.String(12), default='comfortable')   # comfortable | compact
     high_contrast = db.Column(db.Boolean, default=False)
 
+    # Préférence e-mail (page /profile) : all = chaque événement (défaut),
+    # important = clôture / validation / affectation mais pas chaque message du
+    # chat, daily = un seul résumé par jour (scripts/resume_quotidien.py).
+    # Filtrée centralement dans app/emails.py::send_email.
+    email_mode = db.Column(db.String(10), default='all')
+
     @property
     def service(self):
         origins = self.get_origin_services()
@@ -340,6 +346,28 @@ class Recruitment(db.Model):
     def __repr__(self):
         # IMPORTANT: Ne pas inclure de relations ici
         return f'<Recruitment {self.uid_public}>'
+
+class Announcement(db.Model):
+    """Annonce affichée en bandeau sur le portail entre starts_at et ends_at.
+    Publiable par les ADMIN et le service Communication (/announcements/manage)."""
+    __tablename__ = 'announcements'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(150), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    level = db.Column(db.String(10), default='info')  # info | warning | urgent
+    starts_at = db.Column(db.DateTime, nullable=True)
+    ends_at = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    created_by = db.relationship('User')
+
+    def is_visible(self, now=None):
+        now = now or datetime.utcnow()
+        if self.is_active is False: return False  # None = pas encore flushé, défaut actif
+        if self.starts_at and now < self.starts_at: return False
+        if self.ends_at and now > self.ends_at: return False
+        return True
 
 class HelpTip(db.Model):
     """Conseil affiché AVANT l'envoi d'une demande ("Avez-vous essayé…"),

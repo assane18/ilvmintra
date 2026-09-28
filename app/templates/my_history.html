@@ -20,25 +20,46 @@
         </a>
     </div>
 
-    <div class="mb-6">
-        <form action="" method="GET" class="relative w-full max-w-md">
-            <input type="text"
-                name="q"
-                value="{{ search_query or '' }}"
-                placeholder="Rechercher..."
-                class="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm focus:ring-2 focus:ring-accent-500 outline-none dark:text-white transition">
-
-            <div class="absolute left-3 top-3 text-slate-400">
-                <i data-lucide="search" class="w-4 h-4"></i>
+    <form action="" method="GET" class="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-4 grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
+        <div class="col-span-2">
+            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Recherche</label>
+            <div class="relative">
+                <input type="text" name="q" value="{{ filters.q }}" placeholder="N°, sujet, description…"
+                       class="w-full pl-9 pr-3 py-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 focus:ring-2 focus:ring-accent-500 outline-none dark:text-white text-sm">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
             </div>
-
-            {% if search_query %}
-                <a href="{{ request.path }}" class="absolute right-3 top-3 text-slate-400 hover:text-red-500 transition">
-                    <i data-lucide="x-circle" class="w-4 h-4"></i>
-                </a>
-            {% endif %}
-        </form>
-    </div>
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Statut</label>
+            <select name="status" class="w-full py-2 px-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 dark:text-white text-sm">
+                <option value="all">Tous</option>
+                {% for key, label in status_filters %}<option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Service</label>
+            <select name="service" class="w-full py-2 px-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 dark:text-white text-sm">
+                <option value="">Tous</option>
+                {% for svc in services %}<option value="{{ svc }}" {% if filters.service == svc %}selected{% endif %}>{{ svc }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Du</label>
+            <input type="date" name="date_from" value="{{ filters.date_from }}" class="w-full py-1.5 px-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 dark:text-white text-sm">
+        </div>
+        <div>
+            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wide mb-1">Au</label>
+            <input type="date" name="date_to" value="{{ filters.date_to }}" class="w-full py-1.5 px-2 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 dark:text-white text-sm">
+        </div>
+        <div class="col-span-2 md:col-span-6 flex flex-wrap items-center gap-2 pt-1">
+            <button type="submit" class="bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-2"><i data-lucide="filter" class="w-3.5 h-3.5"></i> Filtrer</button>
+            <a href="{{ request.path }}" class="px-3 py-2 text-xs font-bold text-slate-500 hover:text-red-500 transition">Réinitialiser</a>
+            <span class="flex-1"></span>
+            <span class="text-xs text-slate-400 font-bold">{{ items|length }} demande(s)</span>
+            <a href="{{ url_for('main.my_history_export', **request.args) }}" class="border border-gray-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-3 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-1.5"><i data-lucide="download" class="w-3.5 h-3.5"></i> CSV</a>
+            <a href="{{ url_for('main.my_history_export', format='xlsx', **request.args) }}" class="border border-emerald-300 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 px-3 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-1.5"><i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i> Excel</a>
+        </div>
+    </form>
 
     <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
         <table class="w-full text-left text-sm">
@@ -71,8 +92,8 @@
                 {% else %}
                 <tr><td colspan="6" class="p-10 text-center">
                     <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 text-slate-300 dark:text-slate-600"></i>
-                    <p class="text-slate-500 dark:text-slate-400 font-bold">{% if search_query %}Aucune demande ne correspond à « {{ search_query }} ».{% else %}Aucune demande enregistrée.{% endif %}</p>
-                    {% if not search_query %}<a href="{{ url_for('main.user_portal') }}" class="inline-block mt-3 bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide">Créer ma première demande</a>{% endif %}
+                    <p class="text-slate-500 dark:text-slate-400 font-bold">{% if filters.q or filters.status != 'all' or filters.service or filters.date_from or filters.date_to %}Aucune demande ne correspond à ces filtres.{% else %}Aucune demande enregistrée.{% endif %}</p>
+                    {% if not (filters.q or filters.status != 'all' or filters.service or filters.date_from or filters.date_to) %}<a href="{{ url_for('main.user_portal') }}" class="inline-block mt-3 bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide">Créer ma première demande</a>{% endif %}
                 </td></tr>
                 {% endfor %}
             </tbody>
