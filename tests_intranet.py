@@ -1282,6 +1282,152 @@ class TestPagesErreur:
         assert r.status_code in (200, 302)
 
 
+
+# ===========================================================================
+#  PAGE PROFIL (Mon compte / Apparence / Signaler un bug)
+# ===========================================================================
+
+class TestProfil:
+    """Page /profile : infos, coordonnées, préférences d'apparence, bug intranet."""
+
+    def _setup(self, app):
+        with app.app_context():
+            make_user(username='profil_user', password='Prof1234!',
+                      role=UserRole.USER, service=ServiceType.DRH,
+                      fullname='Jeanne DUPONT')
+            make_user(username='profil_solver_info', password='Prof1234!',
+                      role=UserRole.SOLVER, service=ServiceType.INFO,
+                      allowed_services=[ServiceType.INFO])
+            make_user(username='profil_solver_drh', password='Prof1234!',
+                      role=UserRole.SOLVER, service=ServiceType.DRH,
+                      allowed_services=[ServiceType.DRH])
+
+    def test_profil_inaccessible_sans_login(self, client, db_session, app):
+        r = client.get('/profile', follow_redirects=False)
+        assert r.status_code in (302, 401)
+
+    def test_page_profil_affiche_infos(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.get('/profile')
+        assert r.status_code == 200
+        html = r.data.decode()
+        assert 'Jeanne' in html and 'DUPONT' in html
+        assert 'profil_user@test.lan' in html
+        assert 'Signaler un bug' in html and 'Apparence' in html
+
+    def test_onglet_bug_prerempli_avec_page(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.get('/profile?tab=bug&page=/tickets/view/X')
+        assert r.status_code == 200
+        assert 'value="/tickets/view/X"' in r.data.decode()
+
+    def test_maj_coordonnees(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.post('/profile/info', data={'phone': '01 23 45 67 89', 'office': 'Bât. A - 12', 'avatar_initials': 'jd'})
+        assert r.status_code == 302
+        with app.app_context():
+            u = User.query.filter_by(username='profil_user').first()
+            assert u.phone == '01 23 45 67 89'
+            assert u.office == 'Bât. A - 12'
+            assert u.avatar_initials == 'JD'
+
+    def test_apparence_json_valide(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.post('/profile/appearance', json={
+            'theme_color': 'indigo', 'theme_mode': 'dark', 'font_scale': 'large',
+            'density': 'compact', 'high_contrast': True,
+        })
+        assert r.status_code == 200
+        assert r.get_json()['ok'] is True
+        with app.app_context():
+            u = User.query.filter_by(username='profil_user').first()
+            assert (u.theme_color, u.theme_mode, u.font_scale, u.density, u.high_contrast) == \
+                   ('indigo', 'dark', 'large', 'compact', True)
+
+    def test_apparence_valeurs_inconnues_ignorees(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.post('/profile/appearance', json={'theme_color': 'javascript:alert(1)', 'theme_mode': 'neon', 'font_scale': 'huge'})
+        assert r.status_code == 200
+        assert r.get_json()['changed'] == {}
+        with app.app_context():
+            u = User.query.filter_by(username='profil_user').first()
+            assert u.theme_color in (None, 'teal')
+            assert u.theme_mode in (None, 'auto')
+
+    def test_preferences_appliquees_dans_le_html(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        client.post('/profile/appearance', json={'theme_color': 'rose', 'theme_mode': 'light', 'font_scale': 'xlarge', 'density': 'compact', 'high_contrast': True})
+        html = client.get('/portal').data.decode()
+        assert 'data-theme-color="rose"' in html
+        assert 'data-font-scale="xlarge"' in html
+        assert 'data-density="compact"' in html
+        assert 'data-contrast="high"' in html
+        assert 'window.ILVM_THEME_MODE = "light"' in html
+
+    def test_declaration_bug_cree_ticket_info_et_notifie(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.post('/profile/bug', data={
+            'title': 'Bouton Valider inactif', 'bug_type': 'Erreur',
+            'page': '/tickets/view/20260101-001', 'description': 'Rien ne se passe au clic.',
+            'user_agent': 'TestBrowser/1.0', 'screen': '1920x1080',
+        }, follow_redirects=False)
+        assert r.status_code == 302
+        with app.app_context():
+            t = Ticket.query.filter(Ticket.category_ticket == 'Bug Intranet').first()
+            assert t is not None
+            assert t.title == '[Bug Intranet] Bouton Valider inactif'
+            assert t.target_service == ServiceType.INFO
+            assert t.status == TicketStatus.PENDING
+            assert t.author.username == 'profil_user'
+            assert t.service_demandeur == 'DRH'
+            for fragment in ('Type : Erreur', '/tickets/view/20260101-001', 'Rien ne se passe', 'TestBrowser/1.0', '1920x1080'):
+                assert fragment in t.description
+            assert r.headers['Location'].endswith(f'/tickets/view/{t.uid_public}')
+            # Le solver Informatique est notifié in-app, pas celui de la DRH.
+            info = User.query.filter_by(username='profil_solver_info').first()
+            drh = User.query.filter_by(username='profil_solver_drh').first()
+            assert Notification.query.filter_by(user_id=info.id).count() == 1
+            assert Notification.query.filter_by(user_id=drh.id).count() == 0
+
+    def test_declaration_bug_champs_obligatoires(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        r = client.post('/profile/bug', data={'title': '', 'description': ''}, follow_redirects=False)
+        assert r.status_code == 302
+        assert 'tab=bug' in r.headers['Location']
+        with app.app_context():
+            assert Ticket.query.count() == 0
+
+    def test_declaration_bug_avec_capture(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        data = {'title': 'Affichage cassé', 'bug_type': 'Affichage', 'description': 'Voir capture.',
+                'screenshot': (io.BytesIO(b'\x89PNG fake'), 'ecran.png')}
+        r = client.post('/profile/bug', data=data, content_type='multipart/form-data')
+        assert r.status_code == 302
+        with app.app_context():
+            t = Ticket.query.filter(Ticket.category_ticket == 'Bug Intranet').first()
+            assert t.get_daf_files() == ['CAPTURE_ecran.png']
+            import shutil
+            shutil.rmtree(os.path.join(app.root_path, 'static', 'uploads', 'tickets', t.uid_public), ignore_errors=True)
+
+    def test_detail_ticket_affiche_coordonnees_profil(self, client, db_session, app):
+        self._setup(app)
+        login(client, 'profil_user', 'Prof1234!')
+        client.post('/profile/info', data={'phone': '4512', 'office': 'Bureau 7'})
+        client.post('/profile/bug', data={'title': 'X', 'description': 'Y'})
+        with app.app_context():
+            uid = Ticket.query.first().uid_public
+        html = client.get(f'/tickets/view/{uid}').data.decode()
+        assert '4512' in html and 'Bureau 7' in html
+
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================

@@ -218,10 +218,18 @@
                         <span class="text-slate-400">Service</span>
                         <span class="font-bold dark:text-white">{{ ticket.service_demandeur }}</span>
                     </div>
-                    {% if ticket.tel_demandeur %}
+                    {# Téléphone saisi sur le ticket, sinon celui renseigné par l'auteur dans son profil #}
+                    {% set author_phone = ticket.tel_demandeur or ticket.author.phone %}
+                    {% if author_phone %}
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-400">Téléphone</span>
-                        <span class="font-bold dark:text-white">{{ ticket.tel_demandeur }}</span>
+                        <span class="font-bold dark:text-white">{{ author_phone }}</span>
+                    </div>
+                    {% endif %}
+                    {% if ticket.author.office %}
+                    <div class="flex justify-between text-xs">
+                        <span class="text-slate-400">Bureau</span>
+                        <span class="font-bold dark:text-white">{{ ticket.author.office }}</span>
                     </div>
                     {% endif %}
                     {% if ticket.hostname %}

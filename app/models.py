@@ -131,6 +131,19 @@ class User(UserMixin, db.Model):
     avatar_initials = db.Column(db.String(2), nullable=True)
     theme_color = db.Column(db.String(20), default='teal')
 
+    # Coordonnées saisies par l'utilisateur lui-même (page /profile, onglet
+    # "Mon compte") — le reste du compte est piloté par l'annuaire LDAP.
+    phone = db.Column(db.String(30), nullable=True)
+    office = db.Column(db.String(100), nullable=True)
+
+    # Préférences d'apparence (page /profile, onglet "Apparence"), appliquées
+    # via des attributs data-* sur <html> dans base.html. Stockées en base (et
+    # non en localStorage) pour suivre l'utilisateur d'un poste à l'autre.
+    theme_mode = db.Column(db.String(10), default='auto')       # light | dark | auto
+    font_scale = db.Column(db.String(10), default='normal')     # normal | large | xlarge
+    density = db.Column(db.String(12), default='comfortable')   # comfortable | compact
+    high_contrast = db.Column(db.Boolean, default=False)
+
     @property
     def service(self):
         origins = self.get_origin_services()

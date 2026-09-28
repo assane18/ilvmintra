@@ -47,6 +47,14 @@ def get_hostname_from_ip(ip_address):
     try: return socket.gethostbyaddr(ip_address)[0]
     except: return ip_address
 
+def generate_ticket_uid():
+    """Uid public historique AAAAMMJJ-NNN (compteur du jour). Factorisé pour
+    être réutilisé par la déclaration de bug intranet (main.py::profile_bug),
+    qui crée un Ticket standard vers l'Informatique."""
+    today_str = datetime.now().strftime('%Y%m%d')
+    count = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%")).count() + 1
+    return f"{today_str}-{str(count).zfill(3)}"
+
 def notify_solvers_new_ticket(ticket):
     """Notifications in-app pour les solvers/admins concernés par un nouveau
     ticket PENDING (prise en charge directe, sans étape de validation) —
@@ -260,10 +268,7 @@ def new_ticket(service_name):
             else: status = TicketStatus.VALIDATION_N1
 
         # UID
-        today_str = datetime.now().strftime('%Y%m%d')
-        base_query = Ticket.query.filter(Ticket.uid_public.like(f"{today_str}%"))
-        count = base_query.count() + 1
-        uid = f"{today_str}-{str(count).zfill(3)}"
+        uid = generate_ticket_uid()
         
         # Fichiers
         daf_files = []

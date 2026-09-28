@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr" class="scroll-smooth" data-theme-color="{{ current_user.theme_color if current_user.is_authenticated and current_user.theme_color else 'teal' }}">
+<html lang="fr" class="scroll-smooth"
+      data-theme-color="{{ current_user.theme_color if current_user.is_authenticated and current_user.theme_color else 'teal' }}"
+      data-font-scale="{{ current_user.font_scale if current_user.is_authenticated and current_user.font_scale else 'normal' }}"
+      data-density="{{ current_user.density if current_user.is_authenticated and current_user.density else 'comfortable' }}"
+      data-contrast="{{ 'high' if current_user.is_authenticated and current_user.high_contrast else 'normal' }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -101,6 +105,84 @@
             --accent-500: 16 185 129; --accent-600: 5 150 105; --accent-700: 4 120 87;
         }
 
+        html[data-theme-color="indigo"] {
+            --accent-50: 238 242 255; --accent-100: 224 231 255; --accent-400: 129 140 248;
+            --accent-500: 99 102 241; --accent-600: 79 70 229; --accent-700: 67 56 202;
+        }
+        html[data-theme-color="indigo"].dark {
+            --accent-50: 30 27 75; --accent-100: 49 46 129; --accent-400: 129 140 248;
+            --accent-500: 99 102 241; --accent-600: 79 70 229; --accent-700: 67 56 202;
+        }
+
+        html[data-theme-color="fuchsia"] {
+            --accent-50: 253 244 255; --accent-100: 250 232 255; --accent-400: 232 121 249;
+            --accent-500: 217 70 239; --accent-600: 192 38 211; --accent-700: 162 28 175;
+        }
+        html[data-theme-color="fuchsia"].dark {
+            --accent-50: 74 4 78; --accent-100: 112 26 117; --accent-400: 232 121 249;
+            --accent-500: 217 70 239; --accent-600: 192 38 211; --accent-700: 162 28 175;
+        }
+
+        html[data-theme-color="orange"] {
+            --accent-50: 255 247 237; --accent-100: 255 237 213; --accent-400: 251 146 60;
+            --accent-500: 249 115 22; --accent-600: 234 88 12; --accent-700: 194 65 12;
+        }
+        html[data-theme-color="orange"].dark {
+            --accent-50: 67 20 7; --accent-100: 124 45 18; --accent-400: 251 146 60;
+            --accent-500: 249 115 22; --accent-600: 234 88 12; --accent-700: 194 65 12;
+        }
+
+        html[data-theme-color="amber"] {
+            --accent-50: 255 251 235; --accent-100: 254 243 199; --accent-400: 251 191 36;
+            --accent-500: 245 158 11; --accent-600: 217 119 6; --accent-700: 180 83 9;
+        }
+        html[data-theme-color="amber"].dark {
+            --accent-50: 69 26 3; --accent-100: 120 53 15; --accent-400: 251 191 36;
+            --accent-500: 245 158 11; --accent-600: 217 119 6; --accent-700: 180 83 9;
+        }
+
+        html[data-theme-color="lime"] {
+            --accent-50: 247 254 231; --accent-100: 236 252 203; --accent-400: 163 230 53;
+            --accent-500: 132 204 22; --accent-600: 101 163 13; --accent-700: 77 124 15;
+        }
+        html[data-theme-color="lime"].dark {
+            --accent-50: 26 46 5; --accent-100: 54 83 20; --accent-400: 163 230 53;
+            --accent-500: 132 204 22; --accent-600: 101 163 13; --accent-700: 77 124 15;
+        }
+
+        /* --- Préférences d'affichage (page profil > Apparence), attributs data-* sur <html> --- */
+
+        /* Taille de police : Tailwind travaille en rem, il suffit d'ajuster la racine. */
+        html[data-font-scale="large"]  { font-size: 110%; }
+        html[data-font-scale="xlarge"] { font-size: 120%; }
+
+        /* Densité compacte : resserre les espacements les plus utilisés dans les
+           listes/cartes/tableaux. Sélecteurs plus spécifiques que les utilitaires
+           Tailwind (injectés après), donc ils l'emportent sans !important. */
+        html[data-density="compact"] .p-6 { padding: 1rem; }
+        html[data-density="compact"] .p-5 { padding: 0.875rem; }
+        html[data-density="compact"] .p-4 { padding: 0.625rem; }
+        html[data-density="compact"] .py-3 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        html[data-density="compact"] .py-4 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+        html[data-density="compact"] .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+        html[data-density="compact"] .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.625rem; }
+        html[data-density="compact"] .gap-6 { gap: 1rem; }
+        html[data-density="compact"] .gap-4 { gap: 0.625rem; }
+        html[data-density="compact"] .mb-6 { margin-bottom: 1rem; }
+        html[data-density="compact"] td, html[data-density="compact"] th { padding-top: 0.375rem; padding-bottom: 0.375rem; }
+
+        /* Contraste élevé : textes secondaires plus foncés (ou plus clairs en sombre),
+           bordures plus marquées, fond uni sans dégradé. */
+        html[data-contrast="high"] .text-slate-400, html[data-contrast="high"] .text-gray-400 { color: rgb(51 65 85); }
+        html[data-contrast="high"] .text-slate-500, html[data-contrast="high"] .text-gray-500 { color: rgb(30 41 59); }
+        html[data-contrast="high"] .text-slate-600 { color: rgb(15 23 42); }
+        html[data-contrast="high"] .border-gray-200, html[data-contrast="high"] .border-slate-200 { border-color: rgb(148 163 184); }
+        html[data-contrast="high"].dark .text-slate-400, html[data-contrast="high"].dark .dark\:text-slate-400 { color: rgb(226 232 240); }
+        html[data-contrast="high"].dark .text-slate-500, html[data-contrast="high"].dark .dark\:text-slate-300 { color: rgb(241 245 249); }
+        html[data-contrast="high"].dark .dark\:border-slate-800, html[data-contrast="high"].dark .dark\:border-slate-700 { border-color: rgb(100 116 139); }
+        html[data-contrast="high"]:not(.dark) #background-container { background: #ffffff; }
+        html[data-contrast="high"].dark #background-container { background: #000000; }
+
         /* Vos styles personnalisés conservés */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .modal { transition: opacity 0.25s ease; }
@@ -140,11 +222,28 @@
     
     <!-- Script d'initialisation du thème (avant chargement du body pour éviter le flash) -->
     <script>
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
-        } else {
-            document.documentElement.classList.remove('dark');
-        }
+        // Mode d'affichage : la préférence enregistrée dans le profil (light/dark/auto)
+        // prime, pour suivre l'utilisateur d'un poste à l'autre ; localStorage ne sert
+        // que de repli pour les pages non connectées (login) et de cache local.
+        window.ILVM_THEME_MODE = "{{ current_user.theme_mode if current_user.is_authenticated and current_user.theme_mode else '' }}";
+        window.ILVM_AUTHENTICATED = {{ 'true' if current_user.is_authenticated else 'false' }};
+        (function() {
+            var mode = window.ILVM_THEME_MODE || localStorage.theme || 'auto';
+            var mq = window.matchMedia('(prefers-color-scheme: dark)');
+            function apply() {
+                var dark = mode === 'dark' || (mode === 'auto' && mq.matches);
+                document.documentElement.classList.toggle('dark', dark);
+                if (window.updateCanvasTheme) window.updateCanvasTheme();
+            }
+            apply();
+            // En mode auto, suit les changements du système en direct.
+            if (mq.addEventListener) mq.addEventListener('change', function() { if (mode === 'auto') apply(); });
+            window.ILVM_setThemeMode = function(newMode) {
+                mode = newMode;
+                try { localStorage.theme = newMode; } catch (e) {}
+                apply();
+            };
+        })();
     </script>
 </head>
 <!-- Retrait des bg-colors du body car gérés par #background-container -->
@@ -199,6 +298,9 @@
                 </a>
                 <a href="{{ url_for('main.help_center') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.help_center' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
                     <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
+                </a>
+                <a href="{{ url_for('main.profile') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.profile' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="user-circle" class="w-4 h-4"></i> Mon profil
                 </a>
                 {% if current_user.is_authenticated and current_user.role.value in ['DIRECTEUR', 'ADMIN'] %}
                 <a href="{{ url_for('tickets.stats_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.stats_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
@@ -278,7 +380,7 @@
                     <button id="profile-close" type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-white transition" aria-label="Fermer"><i data-lucide="x" class="w-5 h-5"></i></button>
                 </div>
 
-                <div class="flex-1 overflow-y-auto p-5 space-y-6">
+                <div class="flex-1 overflow-y-auto p-5 space-y-5">
 
                     <div class="text-center">
                         {% if current_user.avatar_photo %}
@@ -287,50 +389,37 @@
                         <div class="w-20 h-20 bg-accent-500 text-white flex items-center justify-center text-2xl font-black mx-auto mb-3">{{ current_user.display_initials }}</div>
                         {% endif %}
                         <p class="font-bold text-slate-800 dark:text-white">{{ current_user.fullname }}</p>
-                        <p class="text-xs text-slate-400 uppercase font-mono">{{ current_user.role.value }}</p>
+                        <p class="text-xs text-slate-400 uppercase font-mono">{{ current_user.role.value }} · {{ current_user.service }}</p>
+                        {% if current_user.email %}<p class="text-xs text-slate-400 mt-1">{{ current_user.email }}</p>{% endif %}
                     </div>
 
                     <div class="border-t border-gray-200 dark:border-slate-800 pt-5">
-                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Photo de profil</p>
-                        <form action="{{ url_for('main.profile_photo_upload') }}" method="POST" enctype="multipart/form-data" class="flex items-center gap-2">
-                            <input type="file" name="photo" accept=".png,.jpg,.jpeg,.webp" class="flex-1 min-w-0 text-xs text-slate-500 dark:text-slate-300 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2">
-                            <button type="submit" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 text-xs font-bold uppercase shrink-0">OK</button>
-                        </form>
-                        {% if current_user.avatar_photo %}
-                        <form action="{{ url_for('main.profile_photo_delete') }}" method="POST" class="mt-2">
-                            <button type="submit" class="text-xs text-red-500 hover:text-red-700 hover:underline">Supprimer la photo</button>
-                        </form>
-                        {% endif %}
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Mode d'affichage</p>
+                        <div class="grid grid-cols-3 gap-1 text-xs font-bold uppercase" id="panel-theme-mode">
+                            {% for m, label, icon in [('light','Clair','sun'), ('dark','Sombre','moon'), ('auto','Auto','monitor')] %}
+                            <button type="button" data-mode="{{ m }}" class="theme-mode-btn flex items-center justify-center gap-1.5 py-2 border border-gray-200 dark:border-slate-700 text-slate-500 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 transition">
+                                <i data-lucide="{{ icon }}" class="w-3.5 h-3.5"></i> {{ label }}
+                            </button>
+                            {% endfor %}
+                        </div>
                     </div>
 
-                    <form action="{{ url_for('main.profile_update') }}" method="POST" class="border-t border-gray-200 dark:border-slate-800 pt-5 space-y-5">
-
-                        {% if not current_user.avatar_photo %}
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Initiales personnalisées</label>
-                            <input type="text" name="avatar_initials" maxlength="2" placeholder="Ex: JD" value="{{ current_user.avatar_initials or '' }}"
-                                class="w-24 text-center uppercase font-black bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
-                            <p class="text-[10px] text-slate-400 mt-1">Laissez vide pour utiliser les initiales automatiques.</p>
-                        </div>
-                        {% endif %}
-
-                        <div>
-                            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Couleur d'accent</label>
-                            <div class="flex gap-3">
-                                {% for c, hexcolor in [('teal','#0d9488'), ('blue','#2563eb'), ('violet','#7c3aed'), ('rose','#e11d48'), ('emerald','#059669')] %}
-                                <label class="cursor-pointer" title="{{ c }}">
-                                    <input type="radio" name="theme_color" value="{{ c }}" class="peer hidden" {% if (current_user.theme_color or 'teal') == c %}checked{% endif %}>
-                                    <span class="w-8 h-8 block border-2 border-transparent peer-checked:border-slate-800 dark:peer-checked:border-white transition" style="background-color: {{ hexcolor }};"></span>
-                                </label>
-                                {% endfor %}
-                            </div>
-                        </div>
-
-                        <button type="submit" class="w-full bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black py-2.5 text-xs uppercase tracking-widest transition">
-                            Enregistrer
-                        </button>
-                    </form>
+                    <div class="border-t border-gray-200 dark:border-slate-800 pt-5 space-y-2">
+                        <a href="{{ url_for('main.profile') }}" class="flex items-center gap-3 px-3 py-2.5 bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black text-xs uppercase tracking-widest transition">
+                            <i data-lucide="user-circle" class="w-4 h-4"></i> Mon profil complet
+                        </a>
+                        <a href="{{ url_for('main.profile', tab='appearance') }}" class="flex items-center gap-3 px-3 py-2.5 border border-gray-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-bold text-xs uppercase tracking-wide transition">
+                            <i data-lucide="palette" class="w-4 h-4"></i> Apparence
+                        </a>
+                        <a href="{{ url_for('main.profile', tab='bug', page=request.path) }}" class="flex items-center gap-3 px-3 py-2.5 border border-gray-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 font-bold text-xs uppercase tracking-wide transition">
+                            <i data-lucide="bug" class="w-4 h-4"></i> Signaler un bug
+                        </a>
+                    </div>
                 </div>
+
+                <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-3 px-5 py-4 border-t border-gray-200 dark:border-slate-800 text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-slate-800 transition text-sm font-bold shrink-0">
+                    <i data-lucide="log-out" class="w-4 h-4"></i> Déconnexion
+                </a>
             </aside>
             {% endif %}
 
@@ -548,20 +637,33 @@
         // --- GESTION DARK MODE ---
         const themeToggleBtn = document.getElementById('theme-toggle');
         
+        // Applique un mode (light/dark/auto), le mémorise en localStorage et, si
+        // connecté, l'enregistre dans le profil pour le retrouver sur tout poste.
+        window.ILVM_saveThemeMode = function(mode) {
+            if (window.ILVM_setThemeMode) window.ILVM_setThemeMode(mode);
+            window.ILVM_THEME_MODE = mode;
+            document.querySelectorAll('.theme-mode-btn').forEach(function(b) {
+                var on = b.dataset.mode === mode;
+                b.classList.toggle('bg-accent-500', on); b.classList.toggle('!text-white', on); b.classList.toggle('border-accent-500', on);
+            });
+            if (window.ILVM_AUTHENTICATED) {
+                fetch("{{ url_for('main.profile_appearance_update') }}", {
+                    method: 'POST', headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({theme_mode: mode})
+                }).catch(function() {});
+            }
+        };
         if (themeToggleBtn) {
             themeToggleBtn.addEventListener('click', function() {
-                // Bascule la classe dark sur html
-                if (document.documentElement.classList.contains('dark')) {
-                    document.documentElement.classList.remove('dark');
-                    localStorage.theme = 'light';
-                } else {
-                    document.documentElement.classList.add('dark');
-                    localStorage.theme = 'dark';
-                }
-                // Mise à jour de l'effet Canvas après changement
-                if (window.updateCanvasTheme) window.updateCanvasTheme();
+                // Bascule explicite : on quitte le mode auto pour le mode opposé à l'affichage actuel.
+                window.ILVM_saveThemeMode(document.documentElement.classList.contains('dark') ? 'light' : 'dark');
             });
         }
+        document.querySelectorAll('.theme-mode-btn').forEach(function(b) {
+            var on = b.dataset.mode === (window.ILVM_THEME_MODE || 'auto');
+            b.classList.toggle('bg-accent-500', on); b.classList.toggle('!text-white', on); b.classList.toggle('border-accent-500', on);
+            b.addEventListener('click', function() { window.ILVM_saveThemeMode(b.dataset.mode); });
+        });
 
         // --- GESTION NOTIFICATIONS (CORRIGÉ) ---
         const notifBadge = document.getElementById('notif-badge');
