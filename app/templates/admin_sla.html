@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    .flat, .flat * { border-radius: 0 !important; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; outline: none; color: #1e293b; font-size: 0.875rem; }
+    .input-field:focus { border-color: rgb(var(--accent-500)); background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+</style>
+
+<div class="p-6 max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Délais cibles (SLA)</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Délai de traitement attendu par service, affinable par catégorie</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Administration
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <form method="POST" class="xl:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 space-y-3 self-start">
+            <input type="hidden" name="action" value="add">
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ajouter / modifier une règle</h2>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Service</label>
+                <select name="service" required class="input-field">{% for s in services %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Catégorie (optionnel)</label>
+                <input type="text" name="category" list="categories" maxlength="100" placeholder="Vide = toutes les catégories du service" class="input-field">
+                <datalist id="categories">{% for c in categories %}<option value="{{ c }}">{% endfor %}</datalist>
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Délai cible (heures)</label>
+                <input type="number" name="hours" min="1" max="720" required placeholder="Ex: 8 (= 8 h), 48 (= 2 j), 120 (= 5 j)" class="input-field">
+            </div>
+            <p class="text-[10px] text-slate-400">Une règle service + catégorie prime sur la règle du service seul. Sans règle : {{ default_hours }} h. Si le couple existe déjà, le délai est mis à jour.</p>
+            <button type="submit" class="w-full bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black px-5 py-2.5 text-xs uppercase tracking-widest transition">Enregistrer</button>
+        </form>
+
+        <div class="xl:col-span-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                        <th class="px-5 py-3">Service</th>
+                        <th class="px-5 py-3">Catégorie</th>
+                        <th class="px-5 py-3 text-right">Délai</th>
+                        <th class="px-5 py-3 text-right"></th>
+                    </tr>
+                </thead>
+                <tbody class="text-slate-700 dark:text-slate-300">
+                    {% for r in rules %}
+                    <tr class="border-b border-gray-100 dark:border-slate-800 {% if not r.is_active %}opacity-50{% endif %}">
+                        <td class="px-5 py-3 font-bold">{{ r.service }}</td>
+                        <td class="px-5 py-3">{% if r.category %}{{ r.category }}{% else %}<span class="text-slate-400 italic">toutes</span>{% endif %}</td>
+                        <td class="px-5 py-3 text-right font-black tabular-nums">{{ r.hours }} h{% if r.hours >= 48 %} <span class="text-slate-400 font-normal">({{ (r.hours / 24)|round(1) }} j)</span>{% endif %}</td>
+                        <td class="px-5 py-3 text-right whitespace-nowrap">
+                            <form method="POST" class="inline"><input type="hidden" name="action" value="toggle"><input type="hidden" name="id" value="{{ r.id }}"><button class="text-[10px] font-bold uppercase px-2 py-1 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800">{{ 'Désactiver' if r.is_active else 'Activer' }}</button></form>
+                            <form method="POST" class="inline"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="{{ r.id }}"><button class="text-[10px] font-bold uppercase px-2 py-1 border border-red-200 dark:border-red-900 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20">Supprimer</button></form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="p-8 text-center text-slate-400">Aucune règle : {{ default_hours }} h pour tout le monde.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}

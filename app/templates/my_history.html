@@ -65,9 +65,9 @@
         <table class="w-full text-left text-sm">
             <thead>
                 <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
-                    <th class="px-6 py-4">Réf</th>
-                    <th class="px-6 py-4">Date</th>
-                    <th class="px-6 py-4">Service</th>
+                    <th class="px-6 py-4 hidden md:table-cell">Réf</th>
+                    <th class="px-6 py-4 hidden sm:table-cell">Date</th>
+                    <th class="px-6 py-4 hidden md:table-cell">Service</th>
                     <th class="px-6 py-4">Sujet</th>
                     <th class="px-6 py-4">Statut</th>
                     <th class="px-6 py-4 text-right"></th>
@@ -76,10 +76,10 @@
             <tbody class="text-slate-700 dark:text-slate-300">
                 {% for item in items %}
                 <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
-                    <td class="px-6 py-4 font-mono text-slate-400 dark:text-slate-500 font-bold">{{ item.ref }}</td>
-                    <td class="px-6 py-4 text-xs font-bold">{{ item.date.strftime('%d/%m/%Y') }}</td>
-                    <td class="px-6 py-4"><span class="font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1">{{ item.service }}</span></td>
-                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ item.subject }}</td>
+                    <td class="px-6 py-4 font-mono text-slate-400 dark:text-slate-500 font-bold hidden md:table-cell">{{ item.ref }}</td>
+                    <td class="px-6 py-4 text-xs font-bold hidden sm:table-cell">{{ item.date.strftime('%d/%m/%Y') }}</td>
+                    <td class="px-6 py-4 hidden md:table-cell"><span class="font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1">{{ item.service }}</span></td>
+                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ item.subject }}<span class="md:hidden block text-[10px] font-mono font-normal text-slate-400 mt-0.5">{{ item.ref }} · {{ item.service }} · {{ item.date.strftime('%d/%m/%Y') }}</span></td>
                     <td class="px-6 py-4">
                         <span class="inline-block px-2.5 py-1 text-[10px] font-black uppercase tracking-wide {{ item.status_class }}" title="{{ item.status_hint }}">
                             {{ item.status_label }}

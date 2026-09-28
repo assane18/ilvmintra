@@ -203,6 +203,11 @@ class Ticket(db.Model):
     satisfaction_comment = db.Column(db.Text, nullable=True)
     satisfaction_at = db.Column(db.DateTime, nullable=True)
     reopen_count = db.Column(db.Integer, default=0)
+
+    # Traçabilité de la dernière validation manager (temps moyen de validation
+    # sur le tableau de bord manager) — renseigné par tickets._validate_ticket.
+    validated_at = db.Column(db.DateTime, nullable=True)
+    validated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     # Horodatage de la PREMIÈRE prise en charge (passage à IN_PROGRESS) — nul
     # pour les tickets historiques créés avant l'ajout de cette colonne, à
     # exclure du calcul des délais d'assignation plutôt que compté comme 0.
@@ -275,13 +280,33 @@ class Ticket(db.Model):
         return (datetime.now() - self.created_at).total_seconds() / 3600
 
     @property
+    def sla_hours(self):
+        """Délai cible (h) selon service + catégorie — voir app/sla.py."""
+        from app.sla import sla_hours_for
+        return sla_hours_for(self.target_service, self.category_ticket)
+
+    @property
+    def sla_remaining_hours(self):
+        return self.sla_hours - self.age_hours
+
+    @property
+    def due_at(self):
+        from datetime import timedelta
+        return self.created_at + timedelta(hours=self.sla_hours) if self.created_at else None
+
+    @property
+    def sla_label(self):
+        """« échéance dans 3 h » / « dépassé de 2 j » (cartes de l'Espace Tech)."""
+        from app.sla import format_remaining
+        return format_remaining(self.sla_remaining_hours)
+
+    @property
     def is_stale(self):
         """Ticket réellement 'en retard' : encore à traiter par un
         technicien (PENDING/IN_PROGRESS — pas en attente de validation N1/N2,
-        qui dépend d'un manager, pas d'un solver) et créé il y a plus de 24h.
-        Trouvé comme angle mort lors de l'analyse fonctionnelle complète :
-        rien ne signalait avant un ticket qui traîne."""
-        return self.status in (TicketStatus.PENDING, TicketStatus.IN_PROGRESS) and self.age_hours > 24
+        qui dépend d'un manager, pas d'un solver) et dont le délai cible
+        (SLA par service/catégorie, 24h par défaut) est dépassé."""
+        return self.status in (TicketStatus.PENDING, TicketStatus.IN_PROGRESS) and self.age_hours > self.sla_hours
 
     def __repr__(self):
         # IMPORTANT: Ne pas inclure de relations (author, solver) ici pour éviter la récursion
@@ -368,6 +393,16 @@ class Announcement(db.Model):
         if self.starts_at and now < self.starts_at: return False
         if self.ends_at and now > self.ends_at: return False
         return True
+
+class SlaRule(db.Model):
+    """Délai cible (heures) par service, éventuellement affiné par catégorie de
+    ticket (category=None = toutes les catégories du service). /admin/sla."""
+    __tablename__ = 'sla_rules'
+    id = db.Column(db.Integer, primary_key=True)
+    service = db.Column(db.String(60), nullable=False, index=True)
+    category = db.Column(db.String(100), nullable=True)
+    hours = db.Column(db.Integer, nullable=False, default=24)
+    is_active = db.Column(db.Boolean, default=True)
 
 class HelpTip(db.Model):
     """Conseil affiché AVANT l'envoi d'une demande ("Avez-vous essayé…"),
@@ -793,9 +828,11 @@ class FormSubmission(db.Model):
     form_definition_id = db.Column(db.Integer, db.ForeignKey('form_definitions.id'), nullable=False)
     form = db.relationship('FormDefinition')
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    author = db.relationship('User', backref='my_form_submissions')
+    author = db.relationship('User', foreign_keys=[author_id], backref='my_form_submissions')
     data_json = db.Column(db.Text, default='{}')
     current_step_index = db.Column(db.Integer, default=0)
+    last_validated_at = db.Column(db.DateTime, nullable=True)
+    validated_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
     status = db.Column(db.Enum(FormSubmissionStatus), default=FormSubmissionStatus.IN_PROGRESS)
     refusal_reason = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

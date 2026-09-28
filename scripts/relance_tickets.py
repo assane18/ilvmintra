@@ -1,6 +1,6 @@
 #!/var/www/intranet/venv/bin/python3
-"""Relance quotidienne des tickets PENDING/IN_PROGRESS créés il y a plus de
-24h et toujours ouverts (voir Ticket.is_stale dans app/models.py).
+"""Relance quotidienne des tickets PENDING/IN_PROGRESS dont le délai cible (SLA,
+voir app/sla.py) est dépassé et toujours ouverts (Ticket.is_stale).
 
 - Un ticket assigné (IN_PROGRESS) -> un email groupé à son solver.
 - Un ticket non pris en charge (PENDING) -> un email groupé à tous les

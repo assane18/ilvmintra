@@ -5,7 +5,7 @@ from app import db
 # --- IMPORT DES FONCTIONS EMAIL (AJOUTÉ) ---
 from app.emails import send_service_alert, send_assignment_notification, send_message_notification, send_closure_notification
 # -------------------------------------------
-from datetime import datetime
+from datetime import datetime, timedelta
 import pytz
 import json
 import os
@@ -639,13 +639,40 @@ def manager_dashboard():
             stale_tickets = [t for t in candidates if t.is_stale]
             stale_tickets.sort(key=lambda t: t.created_at)
 
+        # Les plus anciennes en tête (celles qui bloquent quelqu'un depuis > 48 h
+        # sont signalées en rouge dans le template).
+        tickets_n1.sort(key=lambda t: t.created_at)
+        tickets_n2.sort(key=lambda t: t.created_at)
+        form_submissions_n1.sort(key=lambda s: s.created_at)
+        form_submissions_n2.sort(key=lambda s: s.created_at)
+        now = datetime.now()
+        pending_all = tickets_n1 + tickets_n2 + form_submissions_n1 + form_submissions_n2
+        overdue = sum(1 for x in pending_all if (now - x.created_at).total_seconds() > 48 * 3600)
+
+        # Temps moyen de validation de CE manager sur 30 jours (tickets + formulaires
+        # qu'il a validés, création -> validation).
+        since = now - timedelta(days=30)
+        durations = [(t.validated_at - t.created_at).total_seconds() / 3600
+                     for t in Ticket.query.filter(Ticket.validated_by_id == current_user.id, Ticket.validated_at >= since).all()
+                     if t.created_at and t.validated_at]
+        durations += [(s.last_validated_at - s.created_at).total_seconds() / 3600
+                      for s in FormSubmission.query.filter(FormSubmission.validated_by_id == current_user.id, FormSubmission.last_validated_at >= since).all()
+                      if s.created_at and s.last_validated_at]
+        kpi = {
+            'pending': len(pending_all),
+            'overdue': overdue,
+            'avg_validation_h': round(sum(durations) / len(durations), 1) if durations else None,
+            'validated_30d': len(durations),
+            'stale': len(stale_tickets),
+        }
+
         return render_template('tickets/manager_dashboard.html',
                             tickets_n1=tickets_n1,
                             tickets_n2=tickets_n2,
                             fcpi_requests=fcpi_requests,
                             form_submissions_n1=form_submissions_n1,
                             form_submissions_n2=form_submissions_n2,
-                            stale_tickets=stale_tickets)
+                            stale_tickets=stale_tickets, kpi=kpi, now=now)
 
     except Exception as e:
         flash(f"Erreur Dashboard: {e}", "danger")
@@ -1058,6 +1085,59 @@ def _can_validate_ticket(user, t):
     return False
 
 
+def _validate_ticket(t, user):
+    """Fait avancer un ticket validé par un manager/directeur (droits déjà
+    vérifiés par l'appelant) et trace qui a validé, quand."""
+    if t.status == TicketStatus.VALIDATION_N1:
+        if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
+        else: t.status = TicketStatus.VALIDATION_N2
+
+    elif t.status == TicketStatus.VALIDATION_N2:
+        # DAF n'atteint plus jamais VALIDATION_N2 depuis le correctif
+        # du 2026-09-18 (voir new_ticket) — un ticket DAF y arrivant
+        # malgré tout (donnée historique, par ex.) suit désormais le
+        # même chemin que tout le reste : retour en file DAF normale,
+        # pas de raccourci vers la signature.
+        t.status = TicketStatus.PENDING
+
+    elif t.status == TicketStatus.VALIDATION_DAF_MANAGER:
+        t.status = TicketStatus.DAF_SIGNATURE
+
+    t.validated_at = get_paris_time()
+    t.validated_by_id = user.id
+
+def _batch_eligible(t):
+    """Validation en lot : uniquement les validations standard N1/N2 hors DAF
+    (les bons de commande — montants, signature directeur — se valident un par un)."""
+    return t.status in (TicketStatus.VALIDATION_N1, TicketStatus.VALIDATION_N2) and t.target_service != ServiceType.DAF
+
+@tickets_bp.route('/manager/batch_validate', methods=['POST'])
+@login_required
+def manager_batch_validate():
+    from app.routes.forms import advance_submission
+    from app.models import FormSubmission, FormSubmissionStatus
+    from app.decorators import can_validate_step
+    done, skipped = 0, 0
+    for raw in request.form.getlist('ticket_ids'):
+        t = Ticket.query.get(int(raw)) if raw.isdigit() else None
+        if t and _batch_eligible(t) and _can_validate_ticket(current_user, t):
+            _validate_ticket(t, current_user); done += 1
+        else:
+            skipped += 1
+    for raw in request.form.getlist('submission_ids'):
+        sub = FormSubmission.query.get(int(raw)) if raw.isdigit() else None
+        if sub and sub.status == FormSubmissionStatus.IN_PROGRESS and sub.current_step \
+                and can_validate_step(current_user, sub.current_step, sub):
+            advance_submission(sub, current_user); done += 1
+        else:
+            skipped += 1
+    db.session.commit()
+    if done:
+        flash(f"{done} demande(s) validée(s)." + (f" {skipped} ignorée(s) (non éligible ou droits insuffisants)." if skipped else ""), "success")
+    else:
+        flash("Aucune demande validée : sélection vide ou non éligible.", "warning")
+    return redirect(url_for('tickets.manager_dashboard'))
+
 @tickets_bp.route('/manager/action/<int:ticket_id>/<action>', methods=['GET', 'POST'])
 @login_required
 def manager_action(ticket_id, action):
@@ -1069,28 +1149,13 @@ def manager_action(ticket_id, action):
             return redirect(url_for('tickets.manager_dashboard'))
 
         if action == 'validate':
-            if t.status == TicketStatus.VALIDATION_N1:
-                if t.target_service == ServiceType.DAF: t.status = TicketStatus.PENDING
-                else: t.status = TicketStatus.VALIDATION_N2
-                
-            elif t.status == TicketStatus.VALIDATION_N2:
-                # DAF n'atteint plus jamais VALIDATION_N2 depuis le correctif
-                # du 2026-09-18 (voir new_ticket) — un ticket DAF y arrivant
-                # malgré tout (donnée historique, par ex.) suit désormais le
-                # même chemin que tout le reste : retour en file DAF normale,
-                # pas de raccourci vers la signature.
-                t.status = TicketStatus.PENDING
-                
-            elif t.status == TicketStatus.VALIDATION_DAF_MANAGER:
-                t.status = TicketStatus.DAF_SIGNATURE
-
-            elif t.category_ticket == 'Demande Matériel' and t.status == TicketStatus.VALIDATION_N2:
-                t.status = TicketStatus.PENDING
+            _validate_ticket(t, current_user)
 
         elif action == 'refuse':
             reason = request.form.get('refusal_reason', 'Refusé.')
             msg = TicketMessage(content=f"Ticket REFUSÉ par {current_user.fullname}.\nMotif : {reason}", ticket=t, author=current_user)
             db.session.add(msg)
+            t.validated_at = get_paris_time(); t.validated_by_id = current_user.id
             create_notification(t.author, f"Votre ticket {t.uid_public} a été refusé.", 'danger', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
 
             if t.target_service == ServiceType.DAF and t.status in [TicketStatus.VALIDATION_DAF_MANAGER]:

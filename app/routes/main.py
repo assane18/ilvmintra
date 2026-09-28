@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 import os
 from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
-from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus, ServiceType, TicketStatus, HelpTip, CannedResponse, Announcement
+from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus, ServiceType, TicketStatus, HelpTip, CannedResponse, Announcement, SlaRule
 from app import db
 from app.decorators import admin_required
 from app.health import get_liveness, get_full_health
@@ -313,6 +313,48 @@ def _filtered_history(user):
     if d_to:
         items = [i for i in items if i['date'] and i['date'].replace(tzinfo=None) < d_to + timedelta(days=1)]
     return items, f, services
+
+# ---------------------------------------------------------------------------
+#  ADMIN : délais cibles (SLA) par service / catégorie
+# ---------------------------------------------------------------------------
+
+@main_bp.route('/admin/sla', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_sla():
+    from app.sla import DEFAULT_SLA_HOURS
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add':
+            service = request.form.get('service', '').strip()[:60]
+            category = request.form.get('category', '').strip()[:100] or None
+            try:
+                hours = int(request.form.get('hours', 0))
+            except ValueError:
+                hours = 0
+            if not service or hours <= 0:
+                flash('Service et délai (en heures, > 0) sont obligatoires.', 'danger')
+            else:
+                existing = SlaRule.query.filter_by(service=service, category=category).first()
+                if existing:
+                    existing.hours = hours; existing.is_active = True
+                    flash('Règle mise à jour.', 'success')
+                else:
+                    db.session.add(SlaRule(service=service, category=category, hours=hours))
+                    flash('Règle ajoutée.', 'success')
+                db.session.commit()
+        elif action in ('toggle', 'delete'):
+            rule = SlaRule.query.get_or_404(int(request.form.get('id')))
+            if action == 'delete':
+                db.session.delete(rule)
+            else:
+                rule.is_active = not rule.is_active
+            db.session.commit()
+        return redirect(url_for('main.admin_sla'))
+    rules = SlaRule.query.order_by(SlaRule.service, SlaRule.category.nullsfirst()).all()
+    categories = sorted({c for (c,) in db.session.query(Ticket.category_ticket).distinct().all() if c})
+    return render_template('admin_sla.html', rules=rules, default_hours=DEFAULT_SLA_HOURS,
+                           services=[s.value for s in ServiceType], categories=categories)
 
 @main_bp.route('/my_history')
 @login_required

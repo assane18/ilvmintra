@@ -1,0 +1,14 @@
+{# Badge d'échéance d'un ticket (variable `ticket`) : rouge si le délai cible est
+   dépassé, ambre s'il reste moins de 25 % du délai, discret sinon. Uniquement
+   pour les tickets encore à traiter (PENDING / IN_PROGRESS). #}
+{% if ticket.status.value in ('EN_ATTENTE_TRAITEMENT', 'EN_COURS') %}
+{% set remaining = ticket.sla_remaining_hours %}
+<span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 uppercase mb-1
+    {% if remaining < 0 %}bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300
+    {% elif remaining < ticket.sla_hours * 0.25 %}bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300
+    {% else %}bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400{% endif %}"
+    title="Délai cible : {{ ticket.sla_hours }} h (échéance {{ ticket.due_at.strftime('%d/%m %H:%M') if ticket.due_at else '?' }})">
+    <i data-lucide="{% if remaining < 0 %}alarm-clock{% else %}timer{% endif %}" class="w-3 h-3"></i>
+    {% if remaining < 0 %}Hors délai · {{ ticket.sla_label }}{% else %}Échéance {{ ticket.sla_label }}{% endif %}
+</span>
+{% endif %}

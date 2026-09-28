@@ -2034,6 +2034,146 @@ class TestLot2:
             db.session.add(Notification(user=u, message='Test', link='/tickets/view/X')); db.session.commit()
             send_daily_digest(u, u.notifications.all())
 
+
+# ===========================================================================
+#  LOT 3 (2026-09-28) : SLA configurables, tableau de bord manager enrichi
+#  (KPI, > 48 h, validation en lot), traçabilité des validations
+# ===========================================================================
+
+class TestLot3:
+
+    def _users(self, app):
+        with app.app_context():
+            make_user(username='l3_user', role=UserRole.USER, service=ServiceType.DRH)
+            make_user(username='l3_manager', role=UserRole.MANAGER, service=ServiceType.DRH, allowed_services=[ServiceType.INFO])
+            make_user(username='l3_solver', role=UserRole.SOLVER, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+            make_user(username='l3_admin', role=UserRole.ADMIN, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+
+    def _ticket(self, app, status, service=ServiceType.INFO, category='Incident Standard', hours_ago=0, title='T', author='l3_user'):
+        with app.app_context():
+            a = User.query.filter_by(username=author).first()
+            t = Ticket(title=title, description='d', author=a, target_service=service, status=status,
+                       uid_public=f'L3-{Ticket.query.count()+1:03d}', category_ticket=category,
+                       created_at=datetime.now() - timedelta(hours=hours_ago), service_demandeur='DRH')
+            db.session.add(t); db.session.commit(); return t.id
+
+    # --- SLA ---
+    def test_sla_priorite_categorie_service_defaut(self, app, db_session):
+        from app.models import SlaRule
+        from app.sla import sla_hours_for, format_remaining
+        with app.app_context():
+            db.session.add(SlaRule(service='INFORMATIQUE', category=None, hours=8))
+            db.session.add(SlaRule(service='INFORMATIQUE', category='Demande Matériel', hours=120))
+            db.session.add(SlaRule(service='IMAGO', category=None, hours=4, is_active=False))
+            db.session.commit()
+            assert sla_hours_for(ServiceType.INFO, 'Incident Standard') == 8
+            assert sla_hours_for(ServiceType.INFO, 'demande matériel') == 120   # insensible à la casse
+            assert sla_hours_for(ServiceType.IMAGO, None) == 24                # règle désactivée -> défaut
+            assert sla_hours_for(ServiceType.DRH, 'Paie') == 24
+        assert format_remaining(3.4) == 'dans 3 h' and format_remaining(-50) == 'dépassé de 2 j' and format_remaining(0.2) == "dans moins d'1 h"
+
+    def test_is_stale_utilise_le_sla(self, app, db_session):
+        from app.models import SlaRule
+        self._users(app)
+        with app.app_context():
+            db.session.add(SlaRule(service='IMAGO', category=None, hours=4)); db.session.commit()
+        imago = self._ticket(app, TicketStatus.PENDING, service=ServiceType.IMAGO, category='Dépannage Imago', hours_ago=6)
+        info = self._ticket(app, TicketStatus.PENDING, service=ServiceType.INFO, hours_ago=6)
+        with app.app_context():
+            t_imago, t_info = Ticket.query.get(imago), Ticket.query.get(info)
+            assert t_imago.sla_hours == 4 and t_imago.is_stale and t_imago.sla_label.startswith('dépassé')
+            assert t_info.sla_hours == 24 and not t_info.is_stale and t_info.sla_label.startswith('dans')
+            assert t_info.due_at == t_info.created_at + timedelta(hours=24)
+
+    def test_admin_sla_crud(self, client, db_session, app):
+        from app.models import SlaRule
+        self._users(app)
+        login(client, 'l3_solver'); assert client.get('/admin/sla').status_code in (302, 403)
+        login(client, 'l3_admin'); assert client.get('/admin/sla').status_code == 200
+        client.post('/admin/sla', data={'action': 'add', 'service': 'DAF', 'category': '', 'hours': '72'})
+        client.post('/admin/sla', data={'action': 'add', 'service': 'DAF', 'category': '', 'hours': '96'})  # même couple -> mise à jour
+        client.post('/admin/sla', data={'action': 'add', 'service': 'DAF', 'category': '', 'hours': '0'})   # invalide
+        with app.app_context():
+            rules = SlaRule.query.filter_by(service='DAF').all()
+            assert len(rules) == 1 and rules[0].hours == 96
+            rid = rules[0].id
+        client.post('/admin/sla', data={'action': 'toggle', 'id': rid})
+        with app.app_context():
+            assert SlaRule.query.get(rid).is_active is False
+        client.post('/admin/sla', data={'action': 'delete', 'id': rid})
+        with app.app_context():
+            assert SlaRule.query.get(rid) is None
+
+    def test_badge_sla_sur_espace_tech(self, client, db_session, app):
+        self._users(app)
+        self._ticket(app, TicketStatus.PENDING, hours_ago=30, title='Vieux')
+        login(client, 'l3_solver')
+        html = client.get('/tickets/solver/dashboard').data.decode()
+        assert 'Hors délai' in html and 'dépassé de' in html
+
+    # --- tableau de bord manager ---
+    def test_kpi_manager_et_tri_anciennete(self, client, db_session, app):
+        self._users(app)
+        recent = self._ticket(app, TicketStatus.VALIDATION_N1, hours_ago=2, title='Recent N1')
+        old = self._ticket(app, TicketStatus.VALIDATION_N1, hours_ago=60, title='Vieux N1')
+        login(client, 'l3_manager')
+        html = client.get('/tickets/manager/dashboard').data.decode()
+        assert html.index('Vieux N1') < html.index('Recent N1')   # plus ancien en tête
+        assert 'En attente &gt; 48 h' in html
+        assert 'Valider la sélection' in html
+
+    def test_validation_en_lot(self, client, db_session, app):
+        self._users(app)
+        a = self._ticket(app, TicketStatus.VALIDATION_N1, title='A')
+        b = self._ticket(app, TicketStatus.VALIDATION_N1, title='B')
+        daf = self._ticket(app, TicketStatus.VALIDATION_N1, service=ServiceType.DAF, category='Bon de Commande', title='DAF')
+        login(client, 'l3_manager')
+        r = client.post('/tickets/manager/batch_validate', data={'ticket_ids': [str(a), str(b), str(daf)]})
+        assert r.status_code == 302
+        with app.app_context():
+            m = User.query.filter_by(username='l3_manager').first()
+            for tid in (a, b):
+                t = Ticket.query.get(tid)
+                assert t.status == TicketStatus.VALIDATION_N2 and t.validated_by_id == m.id and t.validated_at is not None
+            assert Ticket.query.get(daf).status == TicketStatus.VALIDATION_N1   # DAF exclu du lot
+
+    def test_validation_en_lot_refuse_sans_droits(self, client, db_session, app):
+        self._users(app)
+        a = self._ticket(app, TicketStatus.VALIDATION_N1, title='A')
+        login(client, 'l3_user')
+        client.post('/tickets/manager/batch_validate', data={'ticket_ids': [str(a)]})
+        with app.app_context():
+            assert Ticket.query.get(a).status == TicketStatus.VALIDATION_N1
+
+    def test_validation_unitaire_trace_et_alimente_le_kpi(self, client, db_session, app):
+        self._users(app)
+        a = self._ticket(app, TicketStatus.VALIDATION_N1, hours_ago=10, title='A')
+        login(client, 'l3_manager')
+        client.get(f'/tickets/manager/action/{a}/validate')
+        with app.app_context():
+            t = Ticket.query.get(a)
+            assert t.status == TicketStatus.VALIDATION_N2 and t.validated_at is not None
+        html = client.get('/tickets/manager/dashboard').data.decode()
+        assert '1 validée(s) sur 30 j' in html
+
+    def test_validation_en_lot_formulaire(self, client, db_session, app):
+        from app.models import FormDefinition, FormField, FormFieldType, FormWorkflowStep, FormSubmission, FormSubmissionStatus, ServiceSource
+        self._users(app)
+        with app.app_context():
+            fd = FormDefinition(slug='lot3-form', name='Lot3', is_active=True)
+            db.session.add(fd); db.session.flush()
+            db.session.add(FormField(form_definition_id=fd.id, name='titre', label='Titre', field_type=FormFieldType.TEXT, is_required=True, order_index=1))
+            db.session.add(FormWorkflowStep(form_definition_id=fd.id, label='Validation Équipe', order_index=0, service_source=ServiceSource.EMITTER))
+            author = User.query.filter_by(username='l3_user').first()
+            sub = FormSubmission(uid_public='FRM-lot3-1', form_definition_id=fd.id, author_id=author.id,
+                                 status=FormSubmissionStatus.IN_PROGRESS, current_step_index=0, data_json='{"titre": "x"}')
+            db.session.add(sub); db.session.commit(); sid = sub.id
+        login(client, 'l3_manager')
+        client.post('/tickets/manager/batch_validate', data={'submission_ids': [str(sid)]})
+        with app.app_context():
+            sub = FormSubmission.query.get(sid)
+            assert sub.status == FormSubmissionStatus.DONE and sub.validated_by_id is not None and sub.last_validated_at is not None
+
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================

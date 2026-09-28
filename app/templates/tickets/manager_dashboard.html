@@ -24,7 +24,7 @@
         <i data-lucide="alarm-clock" class="w-5 h-5 text-red-500 shrink-0"></i>
         <div class="flex-1">
             <p class="font-bold text-red-700 dark:text-red-300 text-sm">
-                {{ stale_tickets|length }} ticket{{ 's' if stale_tickets|length != 1 else '' }} en retard dans votre service (créé{{ 's' if stale_tickets|length != 1 else '' }} il y a plus de 24h, toujours pas traité{{ 's' if stale_tickets|length != 1 else '' }})
+                {{ stale_tickets|length }} ticket{{ 's' if stale_tickets|length != 1 else '' }} hors délai dans votre service (délai cible dépassé, toujours pas traité{{ 's' if stale_tickets|length != 1 else '' }})
             </p>
             <p class="text-xs text-red-600/80 dark:text-red-400/80 mt-0.5">
                 {% for t in stale_tickets[:5] %}
@@ -36,8 +36,29 @@
     </div>
     {% endif %}
 
+    <!-- KPI MANAGER -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4">
+            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">À valider</p>
+            <p class="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{{ kpi.pending }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border {{ 'border-red-300 dark:border-red-800' if kpi.overdue else 'border-gray-200 dark:border-slate-800' }} p-4">
+            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">En attente &gt; 48 h</p>
+            <p class="text-2xl font-black tabular-nums {{ 'text-red-600 dark:text-red-400' if kpi.overdue else 'text-slate-900 dark:text-white' }}">{{ kpi.overdue }}</p>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4" title="Délai moyen entre la création d'une demande et votre validation, sur les 30 derniers jours">
+            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Mon délai de validation</p>
+            <p class="text-2xl font-black text-accent-600 dark:text-accent-400 tabular-nums">{% if kpi.avg_validation_h is not none %}{% if kpi.avg_validation_h >= 48 %}{{ (kpi.avg_validation_h / 24)|round(1) }} j{% else %}{{ kpi.avg_validation_h }} h{% endif %}{% else %}—{% endif %}</p>
+            <p class="text-[10px] text-slate-400">{{ kpi.validated_30d }} validée(s) sur 30 j</p>
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4">
+            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Tickets hors délai</p>
+            <p class="text-2xl font-black tabular-nums {{ 'text-red-600 dark:text-red-400' if kpi.stale else 'text-slate-900 dark:text-white' }}">{{ kpi.stale }}</p>
+        </div>
+    </div>
+
     <!-- TABS -->
-    <div x-data="{ activeTab: 'n1' }" class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden min-h-[600px]">
+    <form method="POST" action="{{ url_for('tickets.manager_batch_validate') }}" id="batch-form" x-data="{ activeTab: 'n1', selected: 0 }" @change="selected = $el.querySelectorAll('input.batch-check:checked').length" class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden min-h-[600px]">
 
         <!-- Tab Headers -->
         <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950">
@@ -69,6 +90,13 @@
             </button>
         </div>
 
+        <div x-show="selected > 0" x-cloak class="px-6 py-3 bg-emerald-50 dark:bg-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800 flex flex-wrap items-center gap-3">
+            <span class="text-sm font-bold text-emerald-800 dark:text-emerald-200"><span x-text="selected"></span> demande(s) sélectionnée(s)</span>
+            <button type="submit" onclick="return confirm('Valider toutes les demandes cochées ?')" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-2"><i data-lucide="check-check" class="w-4 h-4"></i> Valider la sélection</button>
+            <button type="button" @click="$el.closest('form').querySelectorAll('input.batch-check').forEach(c => c.checked = false); selected = 0" class="text-xs font-bold text-slate-500 underline">Tout décocher</button>
+            <span class="text-[11px] text-slate-500 dark:text-slate-400 ml-auto">Les bons de commande DAF se valident un par un.</span>
+        </div>
+
         <!-- TAB N1 -->
         <div x-show="activeTab === 'n1'" class="p-6">
             {% if tickets_n1 %}
@@ -76,20 +104,25 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wide border-b-2 border-gray-200 dark:border-slate-800">
-                            <th class="pb-3 pl-2">Réf</th>
-                            <th class="pb-3">Demandeur</th>
+                            <th class="pb-3 pl-2 w-8"><input type="checkbox" onclick="this.closest('table').querySelectorAll('input.batch-check').forEach(c => c.checked = this.checked); this.closest('form').dispatchEvent(new Event('change'))" title="Tout sélectionner"></th>
+                            <th class="pb-3 hidden md:table-cell">Réf</th>
+                            <th class="pb-3 hidden sm:table-cell">Demandeur</th>
                             <th class="pb-3">Sujet</th>
-                            <th class="pb-3">Cible</th>
+                            <th class="pb-3 hidden lg:table-cell">Cible</th>
+                            <th class="pb-3">Attente</th>
                             <th class="pb-3 text-right pr-2">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in tickets_n1 %}
-                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
-                            <td class="py-4 pl-2 font-mono text-xs text-slate-500">{{ t.uid_public }}</td>
-                            <td class="py-4 font-bold text-sm">{{ t.author.fullname }}</td>
-                            <td class="py-4">{{ t.title }}</td>
-                            <td class="py-4"><span class="px-2 py-1 bg-gray-100 dark:bg-slate-800 text-xs font-bold">{{ t.target_service.value }}</span></td>
+                        {% set wait_h = ((now - t.created_at).total_seconds() / 3600) %}
+                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition {% if wait_h > 48 %}bg-red-50/60 dark:bg-red-900/10{% endif %}">
+                            <td class="py-4 pl-2">{% if t.target_service.value != 'DAF' %}<input type="checkbox" name="ticket_ids" value="{{ t.id }}" class="batch-check w-4 h-4">{% endif %}</td>
+                            <td class="py-4 font-mono text-xs text-slate-500 hidden md:table-cell">{{ t.uid_public }}</td>
+                            <td class="py-4 font-bold text-sm hidden sm:table-cell">{{ t.author.fullname }}</td>
+                            <td class="py-4"><span class="block">{{ t.title }}</span><span class="sm:hidden text-[11px] text-slate-400">{{ t.author.fullname }}</span></td>
+                            <td class="py-4 hidden lg:table-cell"><span class="px-2 py-1 bg-gray-100 dark:bg-slate-800 text-xs font-bold">{{ t.target_service.value }}</span></td>
+                            <td class="py-4"><span class="text-xs font-black whitespace-nowrap {% if wait_h > 48 %}text-red-600 dark:text-red-400{% else %}text-slate-500{% endif %}">{% if wait_h >= 24 %}{{ (wait_h // 24)|int }} j{% else %}{{ wait_h|int }} h{% endif %}</span></td>
                             <td class="py-4 text-right pr-2">
                                 <div class="flex justify-end gap-2">
                                     <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="p-2 text-slate-400 hover:text-accent-500 border border-gray-200 dark:border-slate-700"><i data-lucide="eye" class="w-4 h-4"></i></a>
@@ -108,11 +141,14 @@
             <div class="{% if tickets_n1 %}mt-6 pt-6 border-t border-gray-200 dark:border-slate-800{% endif %}">
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Formulaires</p>
                 {% for s in form_submissions_n1 %}
-                <div class="py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition flex justify-between items-start gap-4">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
+                {% set wait_h = ((now - s.created_at).total_seconds() / 3600) %}
+                <div class="py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition flex justify-between items-start gap-4 {% if wait_h > 48 %}bg-red-50/60 dark:bg-red-900/10{% endif %}">
+                    <input type="checkbox" name="submission_ids" value="{{ s.id }}" class="batch-check w-4 h-4 mt-1 shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="font-mono text-xs text-accent-600 dark:text-accent-400 font-bold">#{{ s.uid_public }}</span>
                             <span class="bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-2 py-0.5 font-bold uppercase">{{ s.current_step.label }}</span>
+                            <span class="text-[10px] font-black uppercase {% if wait_h > 48 %}text-red-600 dark:text-red-400{% else %}text-slate-400{% endif %}">attente {% if wait_h >= 24 %}{{ (wait_h // 24)|int }} j{% else %}{{ wait_h|int }} h{% endif %}</span>
                         </div>
                         <h3 class="font-bold text-slate-800 dark:text-white">{{ s.form.name }}</h3>
                         <p class="text-xs text-slate-500">Demandeur : {{ s.author_name }} • Déposé le {{ s.created_at.strftime('%d/%m/%Y') }}</p>
@@ -135,17 +171,21 @@
                 <table class="w-full text-left border-collapse">
                     <thead>
                         <tr class="text-[11px] font-bold text-slate-400 uppercase tracking-wide border-b-2 border-gray-200 dark:border-slate-800">
-                            <th class="pb-3 pl-2">Réf</th>
+                            <th class="pb-3 pl-2 w-8"><input type="checkbox" onclick="this.closest('table').querySelectorAll('input.batch-check').forEach(c => c.checked = this.checked); this.closest('form').dispatchEvent(new Event('change'))" title="Tout sélectionner"></th>
+                            <th class="pb-3 hidden md:table-cell">Réf</th>
                             <th class="pb-3">Type</th>
-                            <th class="pb-3">Demandeur</th>
-                            <th class="pb-3">Statut</th>
+                            <th class="pb-3 hidden sm:table-cell">Demandeur</th>
+                            <th class="pb-3 hidden lg:table-cell">Statut</th>
+                            <th class="pb-3">Attente</th>
                             <th class="pb-3 text-right pr-2">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for t in tickets_n2 %}
-                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
-                            <td class="py-4 pl-2 font-mono text-xs text-slate-500">{{ t.uid_public }}</td>
+                        {% set wait_h = ((now - t.created_at).total_seconds() / 3600) %}
+                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition {% if wait_h > 48 %}bg-red-50/60 dark:bg-red-900/10{% endif %}">
+                            <td class="py-4 pl-2">{% if t.target_service.value != 'DAF' and t.status.value == 'VALIDATION_TECHNIQUE' %}<input type="checkbox" name="ticket_ids" value="{{ t.id }}" class="batch-check w-4 h-4">{% endif %}</td>
+                            <td class="py-4 font-mono text-xs text-slate-500 hidden md:table-cell">{{ t.uid_public }}</td>
                             <td class="py-4">
                                 <span class="font-bold text-sm block">{{ t.title }}</span>
                                 {% if t.category_ticket == 'Demande Matériel' %}
@@ -154,10 +194,11 @@
                                 <span class="text-xs text-violet-600 dark:text-violet-400 font-bold bg-violet-50 dark:bg-violet-500/10 px-1">Bon de Commande</span>
                                 {% endif %}
                             </td>
-                            <td class="py-4 text-sm">{{ t.author.fullname }}</td>
-                            <td class="py-4">
+                            <td class="py-4 text-sm hidden sm:table-cell">{{ t.author.fullname }}</td>
+                            <td class="py-4 hidden lg:table-cell">
                                 <span class="px-2 py-1 bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-bold border border-orange-200 dark:border-orange-900">{{ t.status|status_label(true) }}</span>
                             </td>
+                            <td class="py-4"><span class="text-xs font-black whitespace-nowrap {% if wait_h > 48 %}text-red-600 dark:text-red-400{% else %}text-slate-500{% endif %}">{% if wait_h >= 24 %}{{ (wait_h // 24)|int }} j{% else %}{{ wait_h|int }} h{% endif %}</span></td>
                             <td class="py-4 text-right pr-2">
                                 <div class="flex justify-end gap-2">
                                     <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}" class="p-2 text-slate-400 hover:text-accent-500 border border-gray-200 dark:border-slate-700"><i data-lucide="eye" class="w-4 h-4"></i></a>
@@ -184,11 +225,14 @@
             <div class="{% if tickets_n2 %}mt-6 pt-6 border-t border-gray-200 dark:border-slate-800{% endif %}">
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-2">Formulaires</p>
                 {% for s in form_submissions_n2 %}
-                <div class="py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition flex justify-between items-start gap-4">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
+                {% set wait_h = ((now - s.created_at).total_seconds() / 3600) %}
+                <div class="py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition flex justify-between items-start gap-4 {% if wait_h > 48 %}bg-red-50/60 dark:bg-red-900/10{% endif %}">
+                    <input type="checkbox" name="submission_ids" value="{{ s.id }}" class="batch-check w-4 h-4 mt-1 shrink-0">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1 flex-wrap">
                             <span class="font-mono text-xs text-accent-600 dark:text-accent-400 font-bold">#{{ s.uid_public }}</span>
                             <span class="bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] px-2 py-0.5 font-bold uppercase">{{ s.current_step.label }}</span>
+                            <span class="text-[10px] font-black uppercase {% if wait_h > 48 %}text-red-600 dark:text-red-400{% else %}text-slate-400{% endif %}">attente {% if wait_h >= 24 %}{{ (wait_h // 24)|int }} j{% else %}{{ wait_h|int }} h{% endif %}</span>
                         </div>
                         <h3 class="font-bold text-slate-800 dark:text-white">{{ s.form.name }}</h3>
                         <p class="text-xs text-slate-500">Demandeur : {{ s.author_name }} • Déposé le {{ s.created_at.strftime('%d/%m/%Y') }}</p>
@@ -231,7 +275,7 @@
             {% endif %}
         </div>
 
-    </div>
+    </form>
 </div>
 
 <!-- MODAL REFUSAL -->
@@ -298,4 +342,5 @@
     }
 </script>
 </div>
+<style>[x-cloak] { display: none !important; }</style>
 {% endblock %}

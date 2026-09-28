@@ -272,13 +272,13 @@ def send_stale_tickets_reminder(recipient_email, tickets, assigned_to_me):
         <tr>
             <td style="padding:6px; border-bottom:1px solid #e2e8f0;"><a href="{link}">#{t.uid_public}</a></td>
             <td style="padding:6px; border-bottom:1px solid #e2e8f0;">{t.title}</td>
-            <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center;">{age_j} j</td>
+            <td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center;">{age_j} j</td><td style="padding:6px; border-bottom:1px solid #e2e8f0; text-align:center; color:#b91c1c;">{t.sla_label}</td>
         </tr>"""
 
     intro = (
-        "Les tickets suivants te sont assignés et sont toujours en cours depuis plus de 24h :"
+        "Les tickets suivants te sont assignés et ont dépassé leur délai cible :"
         if assigned_to_me else
-        "Les tickets suivants attendent d'être pris en charge dans votre service depuis plus de 24h :"
+        "Les tickets suivants attendent d'être pris en charge dans votre service et ont dépassé leur délai cible :"
     )
 
     html_content = f"""
@@ -288,7 +288,7 @@ def send_stale_tickets_reminder(recipient_email, tickets, assigned_to_me):
         <tr style="background-color:#f7fafc;">
             <th style="padding:6px; text-align:left;">Ticket</th>
             <th style="padding:6px; text-align:left;">Titre</th>
-            <th style="padding:6px; text-align:center;">Âge</th>
+            <th style="padding:6px; text-align:center;">Âge</th><th style="padding:6px; text-align:center;">Délai cible</th>
         </tr>
         {rows}
     </table>
@@ -297,7 +297,7 @@ def send_stale_tickets_reminder(recipient_email, tickets, assigned_to_me):
 
     full_html = get_outlook_friendly_html("Tickets en retard", html_content)
     send_email(
-        f"🔔 Rappel : {len(tickets)} ticket(s) en attente depuis plus de 24h",
+        f"🔔 Rappel : {len(tickets)} ticket(s) hors délai",
         [recipient_email],
         f"{len(tickets)} ticket(s) en retard.",
         full_html,
@@ -417,7 +417,7 @@ def send_weekly_manager_digest(user, data):
     if data['stale']:
         sections += f"""
         <h3 style="margin:18px 0 6px; color:#b91c1c;">🔴 Tickets en retard sur vos services ({len(data['stale'])})</h3>
-        <p style="font-size:12px; color:#718096; margin:0 0 6px;">Non pris en charge ou en cours depuis plus de 24 h.</p>
+        <p style="font-size:12px; color:#718096; margin:0 0 6px;">Non pris en charge ou en cours au-delà de leur délai cible (SLA).</p>
         <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse:collapse;">{head}{ticket_rows(data['stale'])}</table>"""
     sections += f"""
         <h3 style="margin:18px 0 6px; color:#1e40af;">📥 Reçu cette semaine sur vos services ({len(data['received_week'])})</h3>

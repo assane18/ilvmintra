@@ -55,6 +55,14 @@
             <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Base de données, LDAP, service, sauvegardes, file d'attente des tickets — en direct.</p>
         </a>
 
+        <a href="{{ url_for('main.admin_sla') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-red-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-red-600 dark:text-cyan-400">
+                <i data-lucide="timer" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Délais cibles (SLA)</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Délai de traitement attendu par service et catégorie : échéances sur les cartes, retards, relances.</p>
+        </a>
+
         <a href="{{ url_for('main.announcements_manage') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
             <div class="w-11 h-11 bg-sky-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-sky-600 dark:text-cyan-400">
                 <i data-lucide="megaphone" class="w-5 h-5"></i>

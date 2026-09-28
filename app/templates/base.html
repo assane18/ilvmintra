@@ -307,9 +307,9 @@
             <header class="h-16 shrink-0 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 gap-3">
                 <button id="sidebar-mobile-toggle" class="md:hidden text-slate-500 dark:text-slate-400" aria-label="Ouvrir le menu"><i data-lucide="menu" class="w-5 h-5"></i></button>
 
-                <form action="{{ url_for('main.search') }}" method="GET" class="relative flex-1 max-w-md" id="global-search" autocomplete="off">
+                <form action="{{ url_for('main.search') }}" method="GET" class="relative flex-1 max-w-md min-w-0" id="global-search" autocomplete="off">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" name="q" id="global-search-input" placeholder="Rechercher une demande, un formulaire…" value="{{ request.args.get('q', '') if request.endpoint == 'main.search' else '' }}"
+                    <input type="text" name="q" id="global-search-input" placeholder="Rechercher…" value="{{ request.args.get('q', '') if request.endpoint == 'main.search' else '' }}"
                            class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:border-accent-400 focus:bg-white dark:focus:bg-slate-900 outline-none text-sm transition dark:text-white">
                     <div id="global-search-results" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-2xl z-50 max-h-[70vh] overflow-y-auto text-sm"></div>
                 </form>

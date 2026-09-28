@@ -365,6 +365,22 @@ def view_submission(id):
     )
 
 
+def advance_submission(submission, user):
+    """Valide l'étape courante au nom de `user` : passe à l'étape éligible
+    suivante (et notifie ses validateurs) ou finalise. Retourne True si la
+    soumission est terminée. Partagé par validate_submission et la validation
+    en lot du tableau de bord manager (tickets.manager_batch_validate)."""
+    submission.last_validated_at = datetime.now()
+    submission.validated_by_id = user.id
+    next_index = _first_eligible_step_index(submission.form, submission.author, submission.current_step_index + 1)
+    if next_index < len(submission.form.steps):
+        submission.current_step_index = next_index
+        _notify_step_validators(submission, submission.current_step)
+        return False
+    _finalize_submission(submission)
+    return True
+
+
 @forms_bp.route('/submission/<int:id>/validate/<action>', methods=['POST'])
 @login_required
 def validate_submission(id, action):
@@ -394,14 +410,8 @@ def validate_submission(id, action):
         flash("Soumission refusée.", "warning")
 
     elif action == 'validate':
-        next_index = _first_eligible_step_index(submission.form, submission.author, submission.current_step_index + 1)
-        if next_index < len(submission.form.steps):
-            submission.current_step_index = next_index
-            _notify_step_validators(submission, submission.current_step)
-            flash("Étape validée, transmise à l'étape suivante.", "success")
-        else:
-            _finalize_submission(submission)
-            flash("Soumission validée et terminée.", "success")
+        finished = advance_submission(submission, current_user)
+        flash("Soumission validée et terminée." if finished else "Étape validée, transmise à l'étape suivante.", "success")
     else:
         abort(400)
 
