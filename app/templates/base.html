@@ -180,8 +180,8 @@
         html[data-contrast="high"].dark .text-slate-400, html[data-contrast="high"].dark .dark\:text-slate-400 { color: rgb(226 232 240); }
         html[data-contrast="high"].dark .text-slate-500, html[data-contrast="high"].dark .dark\:text-slate-300 { color: rgb(241 245 249); }
         html[data-contrast="high"].dark .dark\:border-slate-800, html[data-contrast="high"].dark .dark\:border-slate-700 { border-color: rgb(100 116 139); }
-        html[data-contrast="high"]:not(.dark) #background-container { background: #ffffff; }
-        html[data-contrast="high"].dark #background-container { background: #000000; }
+        html[data-contrast="high"]:not(.dark) body { background: #ffffff; }
+        html[data-contrast="high"].dark body { background: #000000; }
 
         /* Vos styles personnalisés conservés */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -198,26 +198,6 @@
         .dark .alert-success { background-color: #022c22; border-left-color: #10b981; color: #6ee7b7; }
         .dark .alert-warning { background-color: #431407; border-left-color: #f97316; color: #fdba74; }
 
-        /* --- CONFIGURATION DU FOND ANIMÉ --- */
-        #background-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1; /* Derrière tout le contenu */
-            transition: background 0.5s ease;
-        }
-
-        /* Mode Clair : Fond épuré gris/blanc */
-        body:not(.dark) #background-container {
-            background: radial-gradient(circle at 50% 50%, #f8fafc 0%, #cbd5e1 100%);
-        }
-
-        /* Mode Sombre : Fond "Deep Space" (Identique Login) */
-        html.dark #background-container {
-            background: radial-gradient(circle at 30% 30%, #11264a 0%, #061229 40%, #000000 100%);
-        }
     </style>
     
     <!-- Script d'initialisation du thème (avant chargement du body pour éviter le flash) -->
@@ -233,7 +213,6 @@
             function apply() {
                 var dark = mode === 'dark' || (mode === 'auto' && mq.matches);
                 document.documentElement.classList.toggle('dark', dark);
-                if (window.updateCanvasTheme) window.updateCanvasTheme();
             }
             apply();
             // En mode auto, suit les changements du système en direct.
@@ -246,13 +225,7 @@
         })();
     </script>
 </head>
-<!-- Retrait des bg-colors du body car gérés par #background-container -->
-<body class="font-sans text-slate-900 antialiased selection:bg-blue-100 selection:text-blue-900 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
-
-    <!-- FOND ANIMÉ CANVAS -->
-    <div id="background-container">
-        <canvas id="networkCanvas"></canvas>
-    </div>
+<body class="font-sans text-slate-900 antialiased bg-gray-50 dark:bg-slate-950 selection:bg-blue-100 selection:text-blue-900 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
 
     <!-- Flash Messages (Notifications) -->
     <div class="fixed top-4 right-4 z-50 w-96 space-y-2 pointer-events-none">
@@ -746,165 +719,6 @@
             checkNotificationCount();
             notifDropdown.classList.add('hidden');
         }
-    </script>
-
-    <!-- SCRIPT CANVAS RÉSEAU (ADAPTATIF) -->
-    <script>
-        (function() {
-            const canvas = document.getElementById('networkCanvas');
-            const ctx = canvas.getContext('2d');
-            
-            let width, height;
-            let networkParticles = [];
-            let bokehParticles = [];
-            
-            // Configuration par défaut (sera mise à jour)
-            let config = {
-                networkCount: 80,
-                bokehCount: 30,
-                connectionDist: 140,
-                baseColor: '0, 255, 255', // Cyan
-                bokehOpacity: 0.3
-            };
-
-            // Fonction pour mettre à jour la config selon le thème
-            window.updateCanvasTheme = function() {
-                const isDark = document.documentElement.classList.contains('dark');
-                if (isDark) {
-                    // MODE SOMBRE (Style Deep Space - Login)
-                    config.baseColor = '0, 255, 255'; // Cyan
-                    config.bokehOpacity = 0.3;
-                    config.networkCount = 80;
-                } else {
-                    // MODE CLAIR (Style Clean Tech)
-                    config.baseColor = '59, 130, 246'; // Bleu corporate (Blue-500)
-                    config.bokehOpacity = 0.15; // Plus discret
-                    config.networkCount = 60; // Moins chargé
-                }
-            }
-            
-            // Appel initial
-            updateCanvasTheme();
-
-            function resize() {
-                width = canvas.width = window.innerWidth;
-                height = canvas.height = window.innerHeight;
-            }
-            
-            class BokehParticle {
-                constructor() {
-                    this.x = Math.random() * width;
-                    this.y = Math.random() * height;
-                    this.vx = (Math.random() - 0.5) * 0.2;
-                    this.vy = (Math.random() - 0.5) * 0.2;
-                    this.size = Math.random() * 5 + 2;
-                    this.opacity = Math.random() * config.bokehOpacity + 0.05;
-                }
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    if (this.x < 0 || this.x > width) this.vx *= -1;
-                    if (this.y < 0 || this.y > height) this.vy *= -1;
-                }
-                draw() {
-                    ctx.beginPath();
-                    const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 4);
-                    gradient.addColorStop(0, `rgba(${config.baseColor}, ${this.opacity})`);
-                    gradient.addColorStop(1, 'rgba(0,0,0,0)');
-                    ctx.fillStyle = gradient;
-                    ctx.arc(this.x, this.y, this.size * 4, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            class NetworkParticle {
-                constructor() {
-                    this.x = Math.random() * width;
-                    this.y = Math.random() * height;
-                    this.vx = (Math.random() - 0.5) * 0.8;
-                    this.vy = (Math.random() - 0.5) * 0.8;
-                    this.size = Math.random() * 1.5 + 1.5;
-                }
-                update() {
-                    this.x += this.vx;
-                    this.y += this.vy;
-                    if (this.x < 0 || this.x > width) this.vx *= -1;
-                    if (this.y < 0 || this.y > height) this.vy *= -1;
-                }
-                draw() {
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    
-                    const isDark = document.documentElement.classList.contains('dark');
-                    ctx.fillStyle = isDark ? '#e0f7fa' : '#1e293b'; // Coeur blanc en dark, sombre en light
-                    
-                    if(isDark) {
-                        ctx.shadowBlur = 10;
-                        ctx.shadowColor = `rgba(${config.baseColor}, 1)`;
-                    } else {
-                        ctx.shadowBlur = 0; // Pas de glow en mode light pour rester propre
-                    }
-                    ctx.fill();
-                    ctx.shadowBlur = 0;
-                }
-            }
-
-            function initParticles() {
-                networkParticles = [];
-                bokehParticles = [];
-                for (let i = 0; i < config.networkCount; i++) networkParticles.push(new NetworkParticle());
-                for (let i = 0; i < config.bokehCount; i++) bokehParticles.push(new BokehParticle());
-            }
-
-            function animate() {
-                ctx.clearRect(0, 0, width, height);
-
-                // Bokeh (Arrière-plan)
-                ctx.globalCompositeOperation = 'source-over';
-                bokehParticles.forEach(p => { p.update(); p.draw(); });
-
-                // Réseau (Premier plan)
-                // Mode Light: Multiply pour assombrir. Mode Dark: Lighter pour briller
-                const isDark = document.documentElement.classList.contains('dark');
-                ctx.globalCompositeOperation = isDark ? 'lighter' : 'source-over';
-
-                for (let i = 0; i < networkParticles.length; i++) {
-                    let p1 = networkParticles[i];
-                    p1.update();
-                    for (let j = i + 1; j < networkParticles.length; j++) {
-                        let p2 = networkParticles[j];
-                        let dx = p1.x - p2.x;
-                        let dy = p1.y - p2.y;
-                        let distSq = dx * dx + dy * dy;
-
-                        if (distSq < config.connectionDist * config.connectionDist) {
-                            let alpha = 1 - Math.sqrt(distSq) / config.connectionDist;
-                            ctx.beginPath();
-                            ctx.strokeStyle = `rgba(${config.baseColor}, ${alpha * (isDark ? 0.4 : 0.2)})`;
-                            ctx.lineWidth = 0.8;
-                            ctx.moveTo(p1.x, p1.y);
-                            ctx.lineTo(p2.x, p2.y);
-                            ctx.stroke();
-                        }
-                    }
-                    p1.draw();
-                }
-                requestAnimationFrame(animate);
-            }
-
-            window.addEventListener('resize', () => { resize(); initParticles(); });
-            resize();
-            initParticles();
-            animate();
-            
-            // Re-init particules si changement de thème pour ajuster le nombre
-            const originalUpdate = window.updateCanvasTheme;
-            window.updateCanvasTheme = function() {
-                originalUpdate();
-                // On peut réinitialiser les particules si on veut changer leur nombre instantanément
-                // initParticles(); 
-            };
-        })();
     </script>
 </body>
 </html>
