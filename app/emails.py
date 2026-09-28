@@ -103,11 +103,14 @@ def get_outlook_friendly_html(title, content, link_url=None, link_text="Voir le 
 def send_email(subject, recipients, text_body, html_body):
     if not recipients:
         return
-    
-    msg = Message(subject, recipients=recipients)
+
+    sender = current_app.config['MAIL_DEFAULT_SENDER']
+    # Destinataires en CCI : évite que chaque destinataire voie la liste des autres
+    # (ex. alerte à tout un service, formulaire à plusieurs validateurs).
+    msg = Message(subject, recipients=[sender], bcc=recipients)
     msg.body = text_body
     msg.html = html_body
-    msg.sender = current_app.config['MAIL_DEFAULT_SENDER']
+    msg.sender = sender
 
     # --- CORRECTION ICI : Headers doit être un dictionnaire {} ---
     try:

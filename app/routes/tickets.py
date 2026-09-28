@@ -1383,7 +1383,7 @@ def solver_dashboard():
             'active': len(mine),
             'done': len(history),
             'pending': len(pending_tickets),
-            'stock': Materiel.query.filter_by(statut='Disponible').count(),
+            'late': sum(1 for t in pending_tickets if t.age_hours > 24),
             'prets': Pret.query.filter_by(statut_dossier='En cours').count()
         }
         

@@ -76,10 +76,10 @@
                 </div>
             </div>
             <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-4">
-                <div class="w-11 h-11 bg-violet-50 dark:bg-slate-800 text-violet-600 dark:text-cyan-400 flex items-center justify-center shrink-0"><i data-lucide="package" class="w-5 h-5"></i></div>
+                <div class="w-11 h-11 bg-red-50 dark:bg-slate-800 text-red-600 dark:text-red-400 flex items-center justify-center shrink-0"><i data-lucide="alarm-clock" class="w-5 h-5"></i></div>
                 <div>
-                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wide">Stock disponible</p>
-                    <p class="text-2xl font-black leading-tight mt-0.5">{{ stats.stock }}</p>
+                    <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wide">En retard</p>
+                    <p class="text-2xl font-black leading-tight mt-0.5">{{ stats.late }}</p>
                 </div>
             </div>
         </div>
@@ -376,52 +376,6 @@
                 </div>
             </div>
         </div>
-
-        <!-- LISTE DES TICKETS RÉCENTS (mine + history, déjà chargés par la route — aucune requête ajoutée) -->
-        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
-            <div class="p-6 border-b border-gray-200 dark:border-slate-800">
-                <h2 class="font-bold text-slate-800 dark:text-slate-200">Liste des Tickets Récents</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead>
-                        <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-400">
-                            <th class="px-6 py-3 font-bold">Ticket ID</th>
-                            <th class="px-6 py-3 font-bold">Type</th>
-                            <th class="px-6 py-3 font-bold">Demandeur</th>
-                            <th class="px-6 py-3 font-bold">Service</th>
-                            <th class="px-6 py-3 font-bold">Date de création</th>
-                            <th class="px-6 py-3 font-bold">État</th>
-                            <th class="px-6 py-3 font-bold text-right">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% set recent_tickets = (mine + history)|sort(attribute='created_at', reverse=True) %}
-                        {% for ticket in recent_tickets[:8] %}
-                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50">
-                            <td class="px-6 py-4 font-mono text-xs text-slate-500">#{{ ticket.uid_public }}</td>
-                            <td class="px-6 py-4 font-semibold">{{ ticket.category_ticket or ticket.title|truncate(24) }}</td>
-                            <td class="px-6 py-4">{{ ticket.author.fullname }}</td>
-                            <td class="px-6 py-4 text-slate-500">{{ ticket.service_demandeur }}</td>
-                            <td class="px-6 py-4 text-slate-500">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                            <td class="px-6 py-4">
-                                {% if ticket.status.value == 'TERMINE' %}
-                                <span class="inline-block bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold px-2 py-1">Terminé</span>
-                                {% else %}
-                                <span class="inline-block bg-accent-100 dark:bg-accent-500/10 text-accent-700 dark:text-accent-400 text-xs font-bold px-2 py-1">Actif</span>
-                                {% endif %}
-                            </td>
-                            <td class="px-6 py-4 text-right">
-                                <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="inline-flex w-7 h-7 items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="eye" class="w-3.5 h-3.5"></i></a>
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr><td colspan="7" class="px-6 py-8 text-center text-slate-400 text-sm">Aucun ticket récent.</td></tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 
     <!-- SIDEBAR DROITE (GRAPHIQUES & CHAT) -->
@@ -430,9 +384,9 @@
         <!-- Graphique Répartition : anneaux concentriques (radial), données réelles de cette page -->
         {% set pi = 3.14159265 %}
         {% set ring_radii = [62, 48, 34, 20] %}
-        {% set ring_vals = [stats.pending, stats.active, stats.done, stats.stock] %}
-        {% set ring_labels = ['En attente', 'En cours', 'Clôturés', 'Stock dispo'] %}
-        {% set ring_colors = ['#f97316', 'rgb(var(--accent-600))', '#10b981', '#8b5cf6'] %}
+        {% set ring_vals = [stats.pending, stats.active, stats.done, stats.late] %}
+        {% set ring_labels = ['En attente', 'En cours', 'Clôturés', 'En retard'] %}
+        {% set ring_colors = ['#f97316', 'rgb(var(--accent-600))', '#10b981', '#ef4444'] %}
         {% set max_val = ([ring_vals|max, 1]|max) %}
         <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
             <h3 class="font-bold text-slate-700 dark:text-slate-300 text-sm uppercase mb-4 text-center">Répartition</h3>
@@ -466,7 +420,7 @@
         </div>
 
         <!-- Chat Équipe (fonctionnel, API /api/team_chat inchangée) -->
-        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm flex-1 flex flex-col overflow-hidden h-[400px]">
+        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm flex-1 flex flex-col overflow-hidden">
             <div class="p-4 bg-slate-900 dark:bg-slate-950 text-white flex justify-between items-center gap-2">
                 <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0"><i data-lucide="message-circle" class="w-4 h-4"></i> Chat Équipe</span>
                 <select id="teamChatServiceSelect" class="hidden bg-slate-800 text-white text-[11px] font-bold px-2 py-1 border border-slate-700 focus:outline-none max-w-[45%]"></select>
@@ -482,6 +436,52 @@
                 </form>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- LISTE DES TICKETS RÉCENTS (pleine largeur, sous les deux colonnes) -->
+<div class="lg:col-span-4 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
+    <div class="p-6 border-b border-gray-200 dark:border-slate-800">
+        <h2 class="font-bold text-slate-800 dark:text-slate-200">Liste des Tickets Récents</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                    <th class="px-6 py-3 font-bold">Ticket ID</th>
+                    <th class="px-6 py-3 font-bold">Type</th>
+                    <th class="px-6 py-3 font-bold">Demandeur</th>
+                    <th class="px-6 py-3 font-bold">Service</th>
+                    <th class="px-6 py-3 font-bold">Date de création</th>
+                    <th class="px-6 py-3 font-bold">État</th>
+                    <th class="px-6 py-3 font-bold text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set recent_tickets = (mine + history)|sort(attribute='created_at', reverse=True) %}
+                {% for ticket in recent_tickets[:8] %}
+                <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                    <td class="px-6 py-4 font-mono text-xs text-slate-500">#{{ ticket.uid_public }}</td>
+                    <td class="px-6 py-4 font-semibold">{{ ticket.category_ticket or ticket.title|truncate(24) }}</td>
+                    <td class="px-6 py-4">{{ ticket.author.fullname }}</td>
+                    <td class="px-6 py-4 text-slate-500">{{ ticket.service_demandeur }}</td>
+                    <td class="px-6 py-4 text-slate-500">{{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td class="px-6 py-4">
+                        {% if ticket.status.value == 'TERMINE' %}
+                        <span class="inline-block bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-xs font-bold px-2 py-1">Terminé</span>
+                        {% else %}
+                        <span class="inline-block bg-accent-100 dark:bg-accent-500/10 text-accent-700 dark:text-accent-400 text-xs font-bold px-2 py-1">Actif</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <a href="{{ url_for('tickets.view_ticket', ticket_uid=ticket.uid_public) }}" class="inline-flex w-7 h-7 items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="eye" class="w-3.5 h-3.5"></i></a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="px-6 py-8 text-center text-slate-400 text-sm">Aucun ticket récent.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 </div>
