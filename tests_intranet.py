@@ -1439,6 +1439,173 @@ class TestProfil:
         assert '4512' in html and 'Bureau 7' in html
 
 # ===========================================================================
+#  CONNEXION SSO MICROSOFT ENTRA ID (Microsoft et l'AD sont simulés)
+# ===========================================================================
+
+class _FakeAttr:
+    def __init__(self, v): self.v = v
+    def __str__(self): return self.v
+    def __bool__(self): return bool(self.v)
+    def __iter__(self): return iter(self.v)
+
+class _FakeAdEntry:
+    """Imite une entrée ldap3 (attributs displayName / mail / memberOf / sAMAccountName)."""
+    def __init__(self, sam, display, mail, groups):
+        self.sAMAccountName = _FakeAttr(sam)
+        self.displayName = _FakeAttr(display)
+        self.mail = _FakeAttr(mail)
+        self.memberOf = _FakeAttr([f'CN={g},OU=Groupes,DC=ilvm,DC=lan' for g in groups])
+
+class _FakeMsal:
+    """Remplace msal.ConfidentialClientApplication : pas d'appel réseau."""
+    def __init__(self, claims=None, error=None):
+        self.claims, self.error = claims, error
+    def initiate_auth_code_flow(self, scopes, redirect_uri=None, **kw):
+        assert redirect_uri == 'http://localhost/auth/microsoft/callback'
+        return {'state': 'abc', 'auth_uri': 'https://login.microsoftonline.com/fake?state=abc', 'code_verifier': 'x'}
+    def acquire_token_by_auth_code_flow(self, flow, args, **kw):
+        if args.get('state') != flow['state']:
+            raise ValueError('state mismatch')
+        if self.error:
+            return {'error': self.error, 'error_description': 'simulé'}
+        return {'access_token': 'tok', 'id_token_claims': self.claims}
+
+
+class TestSSOMicrosoft:
+    TENANT = '00000000-0000-0000-0000-00000000tnt1'
+
+    def _configure(self, app, monkeypatch, claims=None, error=None, ad_entry='default'):
+        app.config['AZURE_SSO_TENANT_ID'] = self.TENANT
+        app.config['AZURE_SSO_CLIENT_ID'] = 'client-id'
+        app.config['AZURE_SSO_CLIENT_SECRET'] = 'secret'
+        import app.routes.auth as auth_mod
+        monkeypatch.setattr(auth_mod, '_msal_app', lambda: _FakeMsal(claims, error))
+        if ad_entry == 'default':
+            ad_entry = ('jdupont', 'Jeanne DUPONT', 'JDupont@ilvm.fr', ['GR-MANAGER', 'GS-DRH', 'GU-DRH'])
+        def fake_lookup(upn):
+            fake_lookup.called_with = upn
+            if ad_entry is None: return None, None
+            return ad_entry[0], _FakeAdEntry(*ad_entry)
+        fake_lookup.called_with = None
+        monkeypatch.setattr(auth_mod, 'ldap_lookup_by_upn', fake_lookup)
+        return fake_lookup
+
+    def _start_flow(self, client):
+        r = client.get('/auth/microsoft')
+        assert r.status_code == 302 and r.headers['Location'].startswith('https://login.microsoftonline.com/')
+        with client.session_transaction() as sess:
+            assert sess['sso_flow']['state'] == 'abc'
+
+    def _claims(self, **over):
+        c = {'tid': self.TENANT, 'preferred_username': 'JDupont@ilvm.fr', 'name': 'Jeanne DUPONT'}
+        c.update(over); return c
+
+    def test_sso_non_configure_renvoie_vers_login(self, client, db_session, app):
+        app.config['AZURE_SSO_CLIENT_SECRET'] = None
+        r = client.get('/auth/microsoft')
+        assert r.status_code == 302 and r.headers['Location'].endswith('/auth/login')
+
+    def test_bouton_microsoft_visible_seulement_si_configure(self, client, db_session, app):
+        app.config['AZURE_SSO_CLIENT_ID'] = None
+        assert 'compte Microsoft 365' not in client.get('/auth/login').data.decode()
+        app.config['AZURE_SSO_CLIENT_ID'] = 'client-id'
+        assert 'compte Microsoft 365' in client.get('/auth/login').data.decode()
+
+    def test_callback_sans_flux_en_session(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch)
+        r = client.get('/auth/microsoft/callback?code=x&state=abc')
+        assert r.status_code == 302 and r.headers['Location'].endswith('/auth/login')
+
+    def test_connexion_sso_cree_le_compte_avec_les_droits_ad(self, client, db_session, app, monkeypatch):
+        lookup = self._configure(app, monkeypatch, claims=self._claims())
+        self._start_flow(client)
+        r = client.get('/auth/microsoft/callback?code=x&state=abc')
+        assert r.status_code == 302 and r.headers['Location'].endswith('/portal')
+        assert lookup.called_with == 'JDupont@ilvm.fr'
+        with app.app_context():
+            u = User.query.filter_by(username='jdupont').first()
+            assert u is not None
+            assert u.role == UserRole.MANAGER
+            assert u.get_allowed_services() == ['DRH'] and u.get_origin_services() == ['DRH']
+            assert u.fullname == 'Jeanne DUPONT' and u.email == 'JDupont@ilvm.fr'
+        # Session ouverte : le portail est accessible
+        assert client.get('/portal').status_code == 200
+        # Le flux a été consommé, il ne reste rien en session
+        with client.session_transaction() as sess:
+            assert 'sso_flow' not in sess
+
+    def test_connexion_sso_reutilise_le_compte_existant(self, client, db_session, app, monkeypatch):
+        with app.app_context():
+            existing = make_user(username='jdupont', role=UserRole.USER, service=ServiceType.INFO)
+            existing.theme_color = 'rose'; existing.phone = '4512'; db.session.commit(); existing_id = existing.id
+        self._configure(app, monkeypatch, claims=self._claims())
+        self._start_flow(client)
+        client.get('/auth/microsoft/callback?code=x&state=abc')
+        with app.app_context():
+            users = User.query.filter_by(username='jdupont').all()
+            assert len(users) == 1 and users[0].id == existing_id
+            assert users[0].role == UserRole.MANAGER          # droits recalculés depuis l'AD
+            assert users[0].theme_color == 'rose' and users[0].phone == '4512'  # préférences conservées
+
+    def test_connexion_sso_respecte_next(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch, claims=self._claims())
+        client.get('/auth/microsoft?next=/my_history')
+        r = client.get('/auth/microsoft/callback?code=x&state=abc')
+        assert r.headers['Location'].endswith('/my_history')
+
+    def test_next_externe_ignore(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch, claims=self._claims())
+        client.get('/auth/microsoft?next=https://evil.example/phish')
+        r = client.get('/auth/microsoft/callback?code=x&state=abc')
+        assert r.headers['Location'].endswith('/portal')
+
+    def test_state_incoherent_refuse(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch, claims=self._claims())
+        self._start_flow(client)
+        r = client.get('/auth/microsoft/callback?code=x&state=WRONG')
+        assert r.headers['Location'].endswith('/auth/login')
+        with app.app_context():
+            assert User.query.filter_by(username='jdupont').first() is None
+
+    def test_erreur_microsoft_refuse(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch, error='access_denied')
+        self._start_flow(client)
+        r = client.get('/auth/microsoft/callback?error=access_denied&state=abc')
+        assert r.headers['Location'].endswith('/auth/login')
+        assert client.get('/portal').status_code == 302
+
+    def test_autre_locataire_refuse(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch, claims=self._claims(tid='autre-tenant'))
+        self._start_flow(client)
+        r = client.get('/auth/microsoft/callback?code=x&state=abc')
+        assert r.headers['Location'].endswith('/auth/login')
+        with app.app_context():
+            assert User.query.count() == 0
+
+    def test_compte_absent_de_l_ad_refuse(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch, claims=self._claims(preferred_username='invite@partenaire.fr'), ad_entry=None)
+        self._start_flow(client)
+        r = client.get('/auth/microsoft/callback?code=x&state=abc')
+        assert r.headers['Location'].endswith('/auth/login')
+        with app.app_context():
+            assert User.query.count() == 0
+        assert client.get('/portal').status_code == 302
+
+    def test_deja_connecte_va_directement_au_portail(self, client, db_session, app, monkeypatch):
+        self._configure(app, monkeypatch)
+        with app.app_context():
+            make_user(username='deja', role=UserRole.USER)
+        login(client, 'deja')
+        r = client.get('/auth/microsoft')
+        assert r.status_code == 302 and r.headers['Location'].endswith('/portal')
+
+    def test_login_ldap_classique_inchange(self, client, db_session, app):
+        # Le formulaire LDAP reste la porte d'entrée normale (LDAP indisponible en test → message d'erreur, pas de 500)
+        r = client.post('/auth/login', data={'username': 'x', 'password': 'y'})
+        assert r.status_code == 200
+
+
+# ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================
 

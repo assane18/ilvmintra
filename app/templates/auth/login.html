@@ -55,6 +55,21 @@
             </button>
         </form>
 
+        {% if config.AZURE_SSO_CLIENT_ID %}
+        <div class="mt-5">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="flex-1 h-px bg-gray-200 dark:bg-white/10"></div>
+                <span class="text-[10px] uppercase tracking-widest text-slate-400">ou</span>
+                <div class="flex-1 h-px bg-gray-200 dark:bg-white/10"></div>
+            </div>
+            <a href="{{ url_for('auth.microsoft_login') }}"
+               class="w-full flex items-center justify-center gap-2.5 bg-white dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-100 font-bold py-3 text-xs uppercase tracking-wide transition">
+                <svg class="w-4 h-4" viewBox="0 0 21 21" aria-hidden="true"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+                Connexion avec mon compte Microsoft 365
+            </a>
+        </div>
+        {% endif %}
+
         <div class="mt-6 text-center">
             <p class="text-[10px] text-slate-400 dark:text-slate-500">Accès réservé au personnel autorisé.</p>
         </div>

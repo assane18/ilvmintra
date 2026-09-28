@@ -3,9 +3,12 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, UserRole, ServiceType
 from app import db
 from ldap3 import Server, Connection, ALL, SIMPLE
+from ldap3.utils.conv import escape_filter_chars
 from functools import wraps
 from sqlalchemy.exc import DataError, StatementError
+from urllib.parse import urlparse
 import unicodedata
+import msal
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -115,6 +118,30 @@ def parse_ad_groups(groups_entry):
     if role == UserRole.SOLVER and not allowed_services: role = UserRole.USER
     return role, origin_services, allowed_services
 
+def provision_user_from_ad_entry(clean_user, user_entry):
+    """Crée ou met à jour le compte intranet à partir d'une entrée AD
+    (displayName, mail, memberOf) : rôle et services recalculés à chaque
+    connexion via parse_ad_groups(). Partagé par le formulaire LDAP et la
+    connexion SSO Microsoft pour garantir des droits strictement identiques
+    quel que soit le chemin d'entrée. Ne commit pas."""
+    role, origins, alloweds = parse_ad_groups(user_entry.memberOf)
+
+    user = User.query.filter_by(username=clean_user).first()
+    if not user:
+        user = User(username=clean_user)
+        db.session.add(user)
+
+    user.fullname = str(user_entry.displayName) if user_entry.displayName else clean_user
+    user.email = str(user_entry.mail) if user_entry.mail else f"{clean_user}@ilvm.lan"
+
+    # Mise à jour des droits
+    user.role = role
+    user.set_origin_services(origins)
+    user.set_allowed_services(alloweds)
+
+    if clean_user.lower() == 'administrateur': user.role = UserRole.ADMIN
+    return user
+
 @auth_bp.route('/login', methods=['GET', 'POST'])
 @nocache 
 def login():
@@ -137,23 +164,8 @@ def login():
                     return render_template('auth/login.html')
                     
                 user_entry = conn.entries[0]
-                role, origins, alloweds = parse_ad_groups(user_entry.memberOf)
-                
-                user = User.query.filter_by(username=clean_user).first()
-                if not user:
-                    user = User(username=clean_user)
-                    db.session.add(user)
-                
-                user.fullname = str(user_entry.displayName) if user_entry.displayName else clean_user
-                user.email = str(user_entry.mail) if user_entry.mail else f"{clean_user}@ilvm.lan"
-                
-                # Mise à jour des droits
-                user.role = role
-                user.set_origin_services(origins)
-                user.set_allowed_services(alloweds)
-                
-                if clean_user.lower() == 'administrateur': user.role = UserRole.ADMIN
-                
+                user = provision_user_from_ad_entry(clean_user, user_entry)
+
                 try:
                     db.session.commit()
                 except (DataError, StatementError) as db_err:
@@ -172,6 +184,140 @@ def login():
             flash(f"Échec connexion : {error_msg}", "danger")
 
     return render_template('auth/login.html')
+
+# ---------------------------------------------------------------------------
+#  CONNEXION SSO MICROSOFT ENTRA ID
+#  Point d'entrée du bouton "Intranet" de l'extranet SharePoint : l'utilisateur y
+#  est déjà authentifié sur son compte M365, Microsoft répond donc à /auth/microsoft
+#  sans rien lui demander et l'intranet retrouve son compte AD par UPN via le
+#  compte de service LDAP — les droits sont recalculés exactement comme pour le
+#  formulaire classique (provision_user_from_ad_entry). Le formulaire LDAP
+#  /auth/login reste la porte d'entrée normale pour un accès direct.
+# ---------------------------------------------------------------------------
+
+SSO_SCOPES = ['User.Read']  # openid/profile ajoutés automatiquement par MSAL
+
+def sso_enabled():
+    cfg = current_app.config
+    return bool(cfg.get('AZURE_SSO_TENANT_ID') and cfg.get('AZURE_SSO_CLIENT_ID') and cfg.get('AZURE_SSO_CLIENT_SECRET'))
+
+def sso_redirect_uri():
+    # Dérivé de BASE_URL (et non de url_for(_external=True)) pour correspondre
+    # au caractère près à l'URI enregistrée dans Entra ID, indépendamment des
+    # en-têtes du reverse proxy.
+    return current_app.config['BASE_URL'].rstrip('/') + '/auth/microsoft/callback'
+
+def _msal_app():
+    cfg = current_app.config
+    return msal.ConfidentialClientApplication(
+        cfg['AZURE_SSO_CLIENT_ID'],
+        authority=f"https://login.microsoftonline.com/{cfg['AZURE_SSO_TENANT_ID']}",
+        client_credential=cfg['AZURE_SSO_CLIENT_SECRET'],
+    )
+
+def _safe_next(url):
+    """N'accepte qu'un chemin relatif du site (anti open-redirect)."""
+    if not url: return None
+    parsed = urlparse(url)
+    if parsed.scheme or parsed.netloc or not url.startswith('/') or url.startswith('//'):
+        return None
+    return url
+
+def ldap_lookup_by_upn(upn):
+    """Recherche AD par userPrincipalName (ou mail) avec le compte de service
+    du .env. Retourne (sAMAccountName, entrée) ou (None, None)."""
+    server = Server(current_app.config.get('LDAP_SERVER', 'ldap://192.168.1.9'), get_info=ALL, connect_timeout=5)
+    conn = Connection(server, user=current_app.config.get('LDAP_USER_DN'),
+                      password=current_app.config.get('LDAP_USER_PASSWORD'),
+                      authentication=SIMPLE, auto_bind=True)
+    try:
+        safe = escape_filter_chars(upn)
+        base_dn = current_app.config.get('LDAP_BASE_DN', 'dc=ilvm,dc=lan')
+        attrs = ['sAMAccountName', 'memberOf', 'displayName', 'mail']
+        # L'UPN est l'identifiant de connexion Microsoft, c'est la correspondance
+        # exacte ; le mail n'est qu'un repli (UPN et mail diffèrent parfois).
+        for attribute in ('userPrincipalName', 'mail'):
+            conn.search(base_dn, f'(&(objectClass=user)({attribute}={safe}))', attributes=attrs)
+            if conn.entries:
+                if len(conn.entries) > 1:
+                    current_app.logger.warning(f"SSO: {len(conn.entries)} comptes AD pour {attribute}={upn}, le premier est retenu")
+                entry = conn.entries[0]
+                return str(entry.sAMAccountName), entry
+        return None, None
+    finally:
+        conn.unbind()
+
+@auth_bp.route('/microsoft')
+@nocache
+def microsoft_login():
+    if not sso_enabled():
+        flash("Connexion Microsoft non configurée, utilisez vos identifiants réseau.", "warning")
+        return redirect(url_for('auth.login'))
+    next_url = _safe_next(request.args.get('next'))
+    if current_user.is_authenticated:
+        return redirect(next_url or url_for('main.user_portal'))
+
+    # MSAL génère state, nonce et PKCE ; le flux est conservé en session le
+    # temps de l'aller-retour chez Microsoft.
+    flow = _msal_app().initiate_auth_code_flow(SSO_SCOPES, redirect_uri=sso_redirect_uri())
+    session['sso_flow'] = flow
+    session['sso_next'] = next_url
+    return redirect(flow['auth_uri'])
+
+@auth_bp.route('/microsoft/callback')
+@nocache
+def microsoft_callback():
+    flow = session.pop('sso_flow', None)
+    next_url = _safe_next(session.pop('sso_next', None))
+    if not flow:
+        flash("Session de connexion Microsoft expirée, veuillez réessayer.", "warning")
+        return redirect(url_for('auth.login'))
+
+    try:
+        result = _msal_app().acquire_token_by_auth_code_flow(flow, request.args.to_dict())
+    except ValueError as e:  # state incohérent, réponse altérée
+        current_app.logger.warning(f"SSO: échange de code refusé ({e})")
+        flash("Connexion Microsoft invalide, veuillez réessayer.", "danger")
+        return redirect(url_for('auth.login'))
+
+    if 'error' in result:
+        current_app.logger.warning(f"SSO: erreur Microsoft {result.get('error')} - {result.get('error_description')}")
+        flash("Connexion Microsoft refusée. Vous pouvez utiliser vos identifiants réseau.", "danger")
+        return redirect(url_for('auth.login'))
+
+    claims = result.get('id_token_claims') or {}
+    if claims.get('tid') != current_app.config['AZURE_SSO_TENANT_ID']:
+        flash("Compte Microsoft hors de l'organisation ILVM.", "danger")
+        return redirect(url_for('auth.login'))
+
+    upn = claims.get('preferred_username') or claims.get('upn') or claims.get('email')
+    if not upn:
+        flash("Impossible d'identifier votre compte Microsoft.", "danger")
+        return redirect(url_for('auth.login'))
+
+    try:
+        clean_user, entry = ldap_lookup_by_upn(upn)
+    except Exception as e:
+        current_app.logger.error(f"SSO: annuaire injoignable pour {upn} ({e})")
+        flash("Annuaire indisponible, veuillez utiliser vos identifiants réseau.", "danger")
+        return redirect(url_for('auth.login'))
+
+    if not clean_user:
+        current_app.logger.warning(f"SSO: {upn} authentifié chez Microsoft mais absent de l'AD")
+        flash("Votre compte Microsoft n'est rattaché à aucun compte réseau ILVM. Contactez le service informatique.", "danger")
+        return redirect(url_for('auth.login'))
+
+    user = provision_user_from_ad_entry(clean_user, entry)
+    try:
+        db.session.commit()
+    except (DataError, StatementError) as db_err:
+        db.session.rollback()
+        flash(f"Erreur Base de Données (Enum) : {db_err}", "danger")
+        return redirect(url_for('auth.login'))
+
+    login_user(user)
+    current_app.logger.info(f"SSO: connexion de {clean_user} via {upn}")
+    return redirect(next_url or url_for('main.user_portal'))
 
 @auth_bp.route('/logout')
 @login_required

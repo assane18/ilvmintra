@@ -15,6 +15,22 @@ class Config:
     UPLOAD_FOLDER = os.path.join(basedir, 'app/static/uploads')
     MAX_CONTENT_LENGTH = 20 * 1024 * 1024  # 20MB max
 
+    # Connexion SSO Microsoft Entra ID (bouton "Intranet" de l'extranet SharePoint).
+    # Inscription d'application dédiée "Intranet ILVM - Connexion SSO" ; les trois
+    # valeurs viennent du .env. Si l'une manque, la route /auth/microsoft se
+    # contente de renvoyer vers le formulaire LDAP classique.
+    AZURE_SSO_TENANT_ID = os.environ.get('AZURE_SSO_TENANT_ID')
+    AZURE_SSO_CLIENT_ID = os.environ.get('AZURE_SSO_CLIENT_ID')
+    AZURE_SSO_CLIENT_SECRET = os.environ.get('AZURE_SSO_CLIENT_SECRET')
+
+    # Annuaire AD : serveur/base pour le bind utilisateur du formulaire de login,
+    # + compte de service (déjà utilisé par app/tech/routes.py) pour la recherche
+    # par UPN de la connexion SSO. Valeurs du .env, défauts historiques sinon.
+    LDAP_SERVER = 'ldap://' + os.environ.get('LDAP_HOST', '192.168.1.9')
+    LDAP_BASE_DN = os.environ.get('LDAP_BASE_DN', 'dc=ilvm,dc=lan')
+    LDAP_USER_DN = os.environ.get('LDAP_USER_DN')
+    LDAP_USER_PASSWORD = os.environ.get('LDAP_USER_PASSWORD')
+
 # Configuration Email Exchange Local
     MAIL_SERVER = 'ILVMExchangeSrv.Ilvm.lan'  # Ton serveur
     MAIL_PORT = 25                            # Port 25 (interne)
