@@ -75,6 +75,23 @@ def edit_form(id):
     )
 
 
+@forms_admin_bp.route('/<int:id>/preview')
+@login_required
+@admin_required
+def preview_form(id):
+    """Aperçu en lecture seule du formulaire tel que le verra l'utilisateur.
+
+    Page autonome (sans base.html) affichée dans l'iframe du builder et
+    rechargée après chaque enregistrement. Réutilise le même include que la
+    page de dépôt (forms/_submission_fields.html), y compris les champs
+    conditionnels. Fonctionne aussi pour un formulaire encore inactif
+    (brouillon), contrairement à /forms/<slug>/new. Route GET uniquement :
+    aucune soumission n'est possible depuis l'aperçu.
+    """
+    form_def = FormDefinition.query.get_or_404(id)
+    return render_template('forms_admin/preview.html', form_def=form_def, form_data={})
+
+
 @forms_admin_bp.route('/<int:id>/update', methods=['POST'])
 @login_required
 @admin_required
@@ -360,7 +377,9 @@ def duplicate_form(id):
     db.session.add(copy)
     db.session.flush()
 
-    field_id_map = {}
+    # Copie des champs : ancien id -> nouveau champ, pour remapper ensuite les
+    # conditions d'affichage (champs) et de dispatch (destinataires).
+    new_fields_by_old_id = {}
     for f in original.fields:
         new_field = FormField(
             form_definition_id=copy.id, name=f.name, label=f.label, field_type=f.field_type,
@@ -368,14 +387,15 @@ def duplicate_form(id):
             order_index=f.order_index, maps_to_ticket_field=f.maps_to_ticket_field,
         )
         db.session.add(new_field)
-        db.session.flush()
-        field_id_map[f.id] = new_field.id
+        new_fields_by_old_id[f.id] = new_field
+    db.session.flush()
+    field_id_map = {old_id: nf.id for old_id, nf in new_fields_by_old_id.items()}
 
     # 2e passe : les conditions d'affichage référencent d'autres champs du même
     # formulaire, donc seulement une fois que tous les champs ont un nouvel id.
     for f in original.fields:
         if f.condition_field_id:
-            new_field = FormField.query.filter_by(form_definition_id=copy.id, name=f.name).first()
+            new_field = new_fields_by_old_id[f.id]
             new_field.condition_field_id = field_id_map.get(f.condition_field_id)
             new_field.condition_values_json = f.condition_values_json
 
