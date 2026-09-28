@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="fr" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Espace Tech — Nouveau design (mockup)</title>
+
+<!-- Mêmes libs que le reste de l'intranet -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        darkMode: 'class',
+        theme: {
+            extend: {
+                colors: {
+                    slate: { 850: '#1e293b', 950: '#020617' },
+                    accent: { 50:'#f0fdfa',100:'#ccfbf1',400:'#2dd4bf',500:'#14b8a6',600:'#0d9488',700:'#0f766e' },
+                    violet: { 50:'#f5f3ff',100:'#ede9fe',400:'#a78bfa',500:'#8b5cf6',600:'#7c3aed' }
+                }
+            }
+        }
+    }
+</script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<!-- Init thème AVANT le rendu du body (anti-flash), identique à base.html -->
+<script>
+    if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+</script>
+
+<style>
+    body { font-family: 'Inter', sans-serif; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    /* Garde-fou : le brief exige ZÉRO arrondi, y compris sur tout élément
+       qui aurait par défaut un rounded-full (avatar, puces de statut). */
+    .flat, .flat * { border-radius: 0 !important; }
+</style>
+</head>
+<body class="flat bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 transition-colors duration-300">
+
+<div class="flex h-screen overflow-hidden">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="w-60 shrink-0 bg-slate-900 dark:bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800">
+        <div class="h-16 flex items-center gap-2 px-5 border-b border-slate-800">
+            <img src="../img/logo-dark.png" alt="Logo" class="h-8 w-auto object-contain">
+            <span class="font-black text-white tracking-tight text-sm">Espace Tech</span>
+        </div>
+
+        <nav class="flex-1 py-4 space-y-0.5 text-sm">
+            <a href="#" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 border-accent-400 bg-slate-800 text-accent-400 font-semibold">
+                <i data-lucide="inbox" class="w-4 h-4"></i> File d'attente
+            </a>
+            <a href="#mes-tickets" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 border-transparent hover:bg-slate-800 hover:text-white transition">
+                <i data-lucide="play-circle" class="w-4 h-4"></i> Mes tickets
+            </a>
+            <!-- url_for('tickets.historique_tickets') -->
+            <a href="/historique" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 border-transparent hover:bg-slate-800 hover:text-white transition">
+                <i data-lucide="archive" class="w-4 h-4"></i> Historique
+            </a>
+            <!-- url_for('inventaire.liste') -->
+            <a href="/inventaire" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 border-transparent hover:bg-slate-800 hover:text-white transition">
+                <i data-lucide="package" class="w-4 h-4"></i> Inventaire
+            </a>
+            <!-- url_for('tickets.manager_dashboard') -->
+            <a href="/manager/dashboard" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 border-transparent hover:bg-slate-800 hover:text-white transition">
+                <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+            </a>
+
+            <div class="!mt-6 pt-4 border-t border-slate-800">
+                <!-- url_for('main.help_center') -->
+                <a href="/help" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 border-transparent hover:bg-slate-800 hover:text-white transition">
+                    <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
+                </a>
+            </div>
+        </nav>
+
+        <!-- url_for('main.user_portal') -->
+        <a href="/" class="flex items-center gap-3 pl-4 pr-3 py-3 border-t border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white transition text-sm">
+            <i data-lucide="log-out" class="w-4 h-4"></i> Quitter
+        </a>
+    </aside>
+
+    <!-- ============ COLONNE PRINCIPALE ============ -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- ============ TOPBAR ============ -->
+        <header class="h-16 shrink-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-6">
+            <div class="relative w-96 max-w-full">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" placeholder="Rechercher un ticket, un utilisateur…"
+                       class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:border-accent-400 focus:bg-white dark:focus:bg-slate-900 outline-none text-sm transition">
+            </div>
+
+            <div class="flex items-center gap-1">
+                <button class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <i data-lucide="settings" class="w-4 h-4"></i>
+                </button>
+                <button class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                </button>
+                <button class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 relative">
+                    <i data-lucide="bell" class="w-4 h-4"></i>
+                    <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500"></span>
+                </button>
+                <button class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                </button>
+
+                <!-- Toggle dark mode : même mécanisme que base.html (#theme-toggle) -->
+                <button id="theme-toggle" class="w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                    <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+                    <i data-lucide="sun" class="w-4 h-4 hidden dark:block"></i>
+                </button>
+
+                <div class="w-px h-6 bg-gray-200 dark:bg-slate-700 mx-2"></div>
+
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 bg-accent-500 text-white flex items-center justify-center text-xs font-bold">
+                        <!-- current_user.fullname[:2] -->
+                        JD
+                    </div>
+                    <div class="leading-tight">
+                        <p class="text-sm font-semibold">Jean Dupont</p>
+                        <!-- current_user.get_allowed_services() -->
+                        <p class="text-[11px] text-slate-400">Informatique</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ============ CONTENU ============ -->
+        <main class="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 dark:bg-slate-950">
+
+            <h1 class="text-lg font-black tracking-tight">KPI Section</h1>
+
+            <!-- KPI : 4 cartes identiques, blanches, bordure fine, ombre légère -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-4">
+                    <div class="w-11 h-11 bg-accent-50 dark:bg-accent-500/10 text-accent-600 dark:text-accent-400 flex items-center justify-center shrink-0">
+                        <i data-lucide="ticket" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wide">Mes tickets</p>
+                        <p class="text-2xl font-black leading-tight mt-0.5">12</p>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-4">
+                    <div class="w-11 h-11 bg-violet-50 dark:bg-violet-500/10 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+                        <i data-lucide="hourglass" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] text-slate-400 font-bold uppercase tracking-wide">En attente</p>
+                        <p class="text-2xl font-black leading-tight mt-0.5">5</p>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-dashed border-gray-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-4 text-slate-300 dark:text-slate-700">
+                    <div class="w-11 h-11 bg-gray-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <i data-lucide="lock" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wide">Temps résol. moyen</p>
+                        <p class="text-xs mt-0.5">Nécessite une donnée backend</p>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-dashed border-gray-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-4 text-slate-300 dark:text-slate-700">
+                    <div class="w-11 h-11 bg-gray-100 dark:bg-slate-800 flex items-center justify-center shrink-0">
+                        <i data-lucide="lock" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wide">Utilisateurs actifs</p>
+                        <p class="text-xs mt-0.5">Nécessite une donnée backend</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+
+                <!-- ============ FILE D'ATTENTE (pool_standard / pool_users / pool_bons) — liste plate ============ -->
+                <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm lg:col-span-1">
+                    <div class="p-6 pb-4 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
+                        <h2 class="font-bold text-sm flex items-center gap-2">
+                            <i data-lucide="inbox" class="w-4 h-4 text-slate-400"></i> File d'attente
+                        </h2>
+                        <span class="bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-bold px-2 py-0.5">5</span>
+                    </div>
+
+                    <div class="max-h-[520px] overflow-y-auto scrollbar-hide">
+
+                        <!-- {% for ticket in pool_standard %} -->
+                        <div class="group px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition cursor-pointer">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="text-[10px] font-mono text-slate-400">#TCK-2026-8451</span>
+                                <span class="bg-gray-100 dark:bg-slate-800 text-slate-500 dark:text-slate-300 text-[10px] font-bold px-1.5 py-0.5">STD</span>
+                            </div>
+                            <h3 class="font-bold text-sm leading-tight mb-1">Imprimante HS — 3e étage</h3>
+                            <p class="text-xs text-slate-500 truncate">Amadou Ba • Comptabilité</p>
+                        </div>
+                        <!-- {% endfor %} -->
+
+                        <!-- {% for ticket in pool_users %} -->
+                        <div class="group px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition cursor-pointer">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="text-[10px] font-mono text-slate-400">#TCK-2026-8452</span>
+                                <span class="bg-accent-100 dark:bg-accent-500/10 text-accent-700 dark:text-accent-400 text-[10px] font-bold px-1.5 py-0.5">USER</span>
+                            </div>
+                            <h3 class="font-bold text-sm leading-tight mb-1">Nouvel Arrivant</h3>
+                            <p class="text-xs text-slate-500 truncate">Fatou Diop</p>
+                        </div>
+                        <!-- {% endfor %} -->
+
+                        <!-- {% for ticket in pool_bons %} -->
+                        <div class="group px-6 py-4 border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition cursor-pointer">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="text-[10px] font-mono text-slate-400">#TCK-2026-8453</span>
+                                <span class="bg-violet-100 dark:bg-violet-500/10 text-violet-700 dark:text-violet-400 text-[10px] font-bold px-1.5 py-0.5">DAF</span>
+                            </div>
+                            <h3 class="font-bold text-sm leading-tight mb-1">Bon de Commande</h3>
+                            <p class="text-xs text-slate-500 truncate">Fournisseur ABC Sarl</p>
+                        </div>
+                        <!-- {% endfor %} -->
+
+                    </div>
+                </div>
+
+                <!-- ============ MES TICKETS EN COURS (mine) ============ -->
+                <div id="mes-tickets" class="lg:col-span-2 space-y-4">
+                    <h2 class="font-bold text-base flex items-center gap-2">
+                        <i data-lucide="play-circle" class="w-4 h-4 text-accent-500"></i> En cours de traitement
+                    </h2>
+
+                    <!-- {% for ticket in mine %} -->
+                    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6">
+                        <div class="flex justify-between items-start mb-4 gap-4 pb-4 border-b border-gray-200 dark:border-slate-800">
+                            <div>
+                                <h3 class="text-base font-bold">Configuration nouveau poste</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                                    Par <span class="font-semibold text-slate-700 dark:text-slate-300">Moussa Fall</span>
+                                    (Direction Financière)
+                                    <span class="mx-1.5">•</span>
+                                    <span class="font-mono text-[11px] bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5">TCK-2026-0448</span>
+                                </p>
+                            </div>
+                            <div class="flex gap-2 shrink-0">
+                                <a href="#" class="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 text-sm font-medium transition flex items-center">
+                                    <i data-lucide="eye" class="w-4 h-4 mr-1.5"></i> Détails
+                                </a>
+                                <div class="relative group">
+                                    <button class="bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 text-sm font-medium transition">
+                                        Actions
+                                    </button>
+                                    <div class="absolute right-0 mt-2 w-52 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl hidden group-hover:block z-10">
+                                        <a href="#" class="block px-4 py-2.5 text-sm text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 flex items-center">
+                                            <i data-lucide="check" class="w-4 h-4 mr-2"></i> Clôturer
+                                        </a>
+                                        <div class="border-t border-gray-200 dark:border-slate-700 pt-2.5 px-4 pb-2">
+                                            <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Transférer à</p>
+                                            <!-- form action="{{ url_for('tickets.transfer_ticket', ticket_id=ticket.id) }}" -->
+                                            <select name="target_service" class="w-full text-xs bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-1.5">
+                                                <option value="">-- Service --</option>
+                                                <option>Communication</option>
+                                                <option>RH</option>
+                                            </select>
+                                        </div>
+                                        <div class="border-t border-gray-200 dark:border-slate-700 pt-2.5 px-4 pb-2">
+                                            <p class="text-[10px] text-slate-400 uppercase font-bold mb-1">Assigner à</p>
+                                            <!-- form action="{{ url_for('tickets.assign_ticket', ticket_id=ticket.id) }}" -->
+                                            <select name="solver_id" class="w-full text-xs bg-gray-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 p-1.5">
+                                                <option value="">-- Collègue --</option>
+                                                <option>Aïcha Koné</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="bg-gray-50 dark:bg-slate-800/60 p-4 text-sm text-slate-600 dark:text-slate-300 mb-4 border border-gray-200 dark:border-slate-800">
+                            Merci de préparer un poste complet (PC + périphériques) pour l'arrivée de la nouvelle recrue lundi prochain.
+                        </div>
+
+                        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 pt-4 border-t border-gray-200 dark:border-slate-800">
+                            <div class="flex gap-3 flex-wrap">
+                                <span class="flex items-center gap-1"><i data-lucide="phone" class="w-3 h-3"></i> 77 123 45 67</span>
+                                <!-- ticket.hostname → libellé "Service / Bureau" -->
+                                <span class="flex items-center gap-1.5 bg-gray-100 dark:bg-slate-800 px-2.5 py-1">
+                                    <i data-lucide="map-pin" class="w-3 h-3"></i> Direction Financière
+                                </span>
+                            </div>
+                            <div class="w-1/3 border-l border-gray-200 dark:border-slate-800 pl-4 flex flex-col justify-center items-center text-center">
+                                <div class="w-9 h-9 bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-1.5">
+                                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-400">Chat avec Moussa Fall<br>(À venir)</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- {% else %} : garder l'état vide actuel -->
+                    <!-- {% endfor %} -->
+
+                </div>
+            </div>
+
+            <!-- ============ LISTE DES TICKETS RÉCENTS ============ -->
+            <!-- Construite à partir des mêmes listes déjà chargées par la route (mine + pool_*), aucune requête backend supplémentaire -->
+            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
+                <div class="p-6 pb-4 border-b border-gray-200 dark:border-slate-800">
+                    <h2 class="font-bold text-base">Liste des Tickets Récents</h2>
+                </div>
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-left text-[11px] uppercase tracking-wide text-slate-400">
+                            <th class="px-6 py-3 font-bold">Ticket ID</th>
+                            <th class="px-6 py-3 font-bold">Type</th>
+                            <th class="px-6 py-3 font-bold">Demandeur</th>
+                            <th class="px-6 py-3 font-bold">Département</th>
+                            <th class="px-6 py-3 font-bold">Date de création</th>
+                            <th class="px-6 py-3 font-bold">État</th>
+                            <th class="px-6 py-3 font-bold text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- {% for ticket in recent_tickets %} -->
+                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60">
+                            <td class="px-6 py-4 font-mono text-xs text-slate-500">#TCK-2026-8451</td>
+                            <td class="px-6 py-4 font-semibold">Imprimante HS</td>
+                            <td class="px-6 py-4">Fatou Diop</td>
+                            <td class="px-6 py-4 text-slate-500">Direction Financière</td>
+                            <td class="px-6 py-4 text-slate-500">02/03/2026 09:14</td>
+                            <td class="px-6 py-4"><span class="inline-block bg-accent-100 dark:bg-accent-500/10 text-accent-700 dark:text-accent-400 text-xs font-bold px-2 py-1">Actif</span></td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="inline-flex gap-1">
+                                    <button class="w-7 h-7 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                                    <button class="w-7 h-7 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="message-square" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/60">
+                            <td class="px-6 py-4 font-mono text-xs text-slate-500">#TCK-2026-8452</td>
+                            <td class="px-6 py-4 font-semibold">Nouvel Arrivant</td>
+                            <td class="px-6 py-4">Moussa Fall</td>
+                            <td class="px-6 py-4 text-slate-500">Direction Financière</td>
+                            <td class="px-6 py-4 text-slate-500">03/03/2026 09:57</td>
+                            <td class="px-6 py-4"><span class="inline-block bg-gray-100 dark:bg-slate-800 text-slate-500 text-xs font-bold px-2 py-1">Terminé</span></td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="inline-flex gap-1">
+                                    <button class="w-7 h-7 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                                    <button class="w-7 h-7 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="message-square" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="hover:bg-gray-50 dark:hover:bg-slate-800/60">
+                            <td class="px-6 py-4 font-mono text-xs text-slate-500">#TCK-2026-8453</td>
+                            <td class="px-6 py-4 font-semibold">Bon de Commande</td>
+                            <td class="px-6 py-4">Fatou Diop</td>
+                            <td class="px-6 py-4 text-slate-500">Direction Financière</td>
+                            <td class="px-6 py-4 text-slate-500">08/03/2026 09:03</td>
+                            <td class="px-6 py-4"><span class="inline-block bg-gray-100 dark:bg-slate-800 text-slate-500 text-xs font-bold px-2 py-1">Terminé</span></td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="inline-flex gap-1">
+                                    <button class="w-7 h-7 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="eye" class="w-3.5 h-3.5"></i></button>
+                                    <button class="w-7 h-7 inline-flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500"><i data-lucide="message-square" class="w-3.5 h-3.5"></i></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- {% endfor %} -->
+                    </tbody>
+                </table>
+            </div>
+
+        </main>
+    </div>
+</div>
+
+<script>
+    lucide.createIcons();
+
+    // --- DARK MODE : même mécanisme que base.html (#theme-toggle) ---
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', function () {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        });
+    }
+</script>
+
+</body>
+</html>

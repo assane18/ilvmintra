@@ -29,7 +29,13 @@ import io
 import json
 import pytest
 
-os.environ.setdefault('DATABASE_URL', 'sqlite:///:memory:')
+# Force (et pas seulement setdefault) : si DATABASE_URL est déjà présente
+# dans l'environnement du process (ex. terminal/IDE avec .env déjà chargé),
+# un setdefault ne l'écraserait pas et create_app('development') se
+# connecterait à la vraie base Postgres de prod — db.drop_all() plus bas
+# supprimerait alors tout le schéma en production. Incident réel survenu
+# le 24/09/2026 : voir garde-fou supplémentaire dans la fixture `app` ci-dessous.
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
 
 from app import create_app, db, mail
 from app.models import (
@@ -67,6 +73,16 @@ class TestConfig:
 def app():
     _app = create_app('development')
     _app.config.from_object(TestConfig)
+    # Garde-fou irréversible : on refuse d'aller plus loin (donc d'atteindre
+    # db.create_all()/db.drop_all() plus bas) si jamais l'URI n'est pas la
+    # sqlite en mémoire attendue, quelle qu'en soit la raison.
+    assert _app.config['SQLALCHEMY_DATABASE_URI'] == 'sqlite:///:memory:', (
+        "Refus de lancer les tests : SQLALCHEMY_DATABASE_URI ne pointe pas "
+        "vers la sqlite en mémoire de test (valeur actuelle : "
+        f"{_app.config['SQLALCHEMY_DATABASE_URI']!r}). "
+        "Ce garde-fou existe car db.drop_all()/db.create_all() ci-dessous "
+        "supprimeraient tout le schéma de la base réellement connectée."
+    )
     # Flask-Mail capture MAIL_SUPPRESS_SEND au moment de init_app(), déjà
     # appelé dans create_app() avec la config réelle (pas encore TestConfig) —
     # on le rappelle pour qu'il recapture le flag avec la config de test,
@@ -202,6 +218,7 @@ def make_simple_form(app, slug='test-form', manager_only=False, fields=None,
                 form_definition_id=form_def.id, label=tdef.get('label', tdef['target_service'].value),
                 target_service=tdef['target_service'],
                 condition_field_id=field_objs[tdef['condition_on']].id if tdef.get('condition_on') else None,
+                condition_values_json=json.dumps(tdef['condition_values']) if tdef.get('condition_values') else None,
                 included_file_fields_json=json.dumps(included) if included is not None else None,
                 included_mapped_fields_json=json.dumps(included_mapped) if included_mapped is not None else None,
                 included_description_fields_json=json.dumps(included_description) if included_description is not None else None,
@@ -509,6 +526,43 @@ class TestMultiDispatch:
             assert 'Traoré' in secu_ticket.description
             assert 'confidentiel' not in secu_ticket.description
             assert 'confidentiel' in drh_ticket.description
+
+    def test_dispatch_target_condition_on_select_multiple_values(self, app, client):
+        """Reproduit le cas DRH : un destinataire est conditionné par la
+        VALEUR d'un SELECT (pas une case à cocher), avec plusieurs valeurs
+        déclenchantes, et deux destinataires peuvent partager une même
+        valeur (une soumission dispatchée vers plusieurs cibles à la fois)."""
+        form_id = make_simple_form(app, slug='drhlike-form',
+            fields=[
+                {'name': 'type_demande', 'label': 'Type de demande', 'field_type': FormFieldType.SELECT,
+                 'options': ['Paie', 'Contrat', 'Formation', 'Retraite']},
+            ],
+            dispatch_targets=[
+                {'label': 'DRH', 'target_service': ServiceType.DRH},  # toujours (umbrella)
+                {'label': 'Paie/Carrière', 'target_service': ServiceType.DRH_PAIE_CARRIERE,
+                 'condition_on': 'type_demande', 'condition_values': ['Paie', 'Contrat']},
+                {'label': 'Recrutement/Formation', 'target_service': ServiceType.DRH_RECRUTEMENT_FORMATION,
+                 'condition_on': 'type_demande', 'condition_values': ['Formation', 'Contrat']},
+                {'label': 'Effectifs/Social', 'target_service': ServiceType.DRH_EFFECTIFS_SOCIAL,
+                 'condition_on': 'type_demande', 'condition_values': ['Retraite']},
+            ],
+        )
+        uid = make_user(app, role=UserRole.USER)
+        login(client, uid)
+
+        # "Contrat" doit dispatcher vers DRH + Paie/Carrière + Recrutement/Formation (3), pas Effectifs/Social
+        client.post('/forms/drhlike-form/new', data={'type_demande': 'Contrat'}, follow_redirects=True)
+        sub1 = latest_submission(app, form_id)
+        assert {t.target_service for t in sub1.get_tickets()} == {
+            ServiceType.DRH, ServiceType.DRH_PAIE_CARRIERE, ServiceType.DRH_RECRUTEMENT_FORMATION,
+        }
+
+        # "Retraite" doit dispatcher vers DRH + Effectifs/Social uniquement
+        client.post('/forms/drhlike-form/new', data={'type_demande': 'Retraite'}, follow_redirects=True)
+        sub2 = latest_submission(app, form_id)
+        assert {t.target_service for t in sub2.get_tickets()} == {
+            ServiceType.DRH, ServiceType.DRH_EFFECTIFS_SOCIAL,
+        }
 
 
 # ===========================================================================

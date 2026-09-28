@@ -250,7 +250,13 @@ def save_dispatch_targets(id):
         return redirect(url_for('forms_admin.edit_form', id=id))
 
     service_values = [s.value for s in ServiceType]
-    checkbox_fields_by_name = {f.name: f for f in form_def.fields if f.field_type == FormFieldType.CHECKBOX}
+    # Un destinataire peut être conditionné par une case à cocher (dispatché si
+    # coché) ou par un champ SELECT/MULTI_SELECT (dispatché si la valeur
+    # soumise fait partie d'une liste — voir condition_values ci-dessous).
+    condition_eligible_fields_by_name = {
+        f.name: f for f in form_def.fields
+        if f.field_type in (FormFieldType.CHECKBOX, FormFieldType.SELECT, FormFieldType.MULTI_SELECT)
+    }
     file_field_names = {f.name for f in form_def.fields if f.field_type in (FormFieldType.FILE, FormFieldType.MULTI_FILE)}
     mapped_field_names = {f.name for f in form_def.fields if f.maps_to_ticket_field}
     describable_field_names = {f.name for f in form_def.fields if f.field_type not in (FormFieldType.FILE, FormFieldType.MULTI_FILE)}
@@ -264,7 +270,8 @@ def save_dispatch_targets(id):
         if not label or not service_value or service_value not in service_values:
             continue
 
-        condition_field = checkbox_fields_by_name.get(condition_field_name) if condition_field_name else None
+        condition_field = condition_eligible_fields_by_name.get(condition_field_name) if condition_field_name else None
+        condition_values = [v for v in (item.get('condition_values') or []) if v] if condition_field else []
 
         # included_file_fields absent du payload (clé non envoyée) = "tous les
         # fichiers" (comportement par défaut, None) ; présent (même vide) =
@@ -295,6 +302,7 @@ def save_dispatch_targets(id):
             label=label,
             target_service=ServiceType(service_value),
             condition_field_id=condition_field.id if condition_field else None,
+            condition_values_json=json.dumps(condition_values) if condition_values else None,
             included_file_fields_json=included_files_json,
             included_mapped_fields_json=included_mapped_json,
             included_description_fields_json=included_description_json,
@@ -381,6 +389,7 @@ def duplicate_form(id):
         db.session.add(FormDispatchTarget(
             form_definition_id=copy.id, label=t.label, target_service=t.target_service,
             condition_field_id=field_id_map.get(t.condition_field_id),
+            condition_values_json=t.condition_values_json,
             included_file_fields_json=t.included_file_fields_json,
             included_mapped_fields_json=t.included_mapped_fields_json,
             included_description_fields_json=t.included_description_fields_json,

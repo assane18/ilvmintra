@@ -1,3 +1,18 @@
+import sys
+
+# ============================================================================
+# DÉSACTIVÉ — INCIDENT DU 24/09/2026 : ce script a vidé la base de production
+# (db.drop_all() sans confirmation, contre DATABASE_URL de l'environnement
+# courant — jamais une base de dev dédiée). Il est aussi obsolète : User()
+# n'a plus de champs password/service/is_active depuis le passage à l'auth
+# LDAP. Ne pas réactiver sans un garde-fou explicite sur la cible (ex:
+# vérifier DATABASE_URL avant tout drop_all()) et une confirmation manuelle.
+# ============================================================================
+sys.exit(
+    "reset.py est désactivé depuis l'incident du 24/09/2026 (base de "
+    "production vidée par erreur). Voir le commentaire en tête de fichier."
+)
+
 import os
 import shutil
 from app import create_app, db

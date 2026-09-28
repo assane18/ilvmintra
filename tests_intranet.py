@@ -93,6 +93,16 @@ def app():
     """Crée l'application Flask pour les tests (une seule fois)."""
     _app = create_app('development')
     _app.config.from_object(TestConfig)
+    # Garde-fou irréversible (même principe que test_forms_engine.py après
+    # l'incident du 24/09/2026) : on refuse de continuer si l'URI ne pointe
+    # pas vers la sqlite en mémoire de test, quelle qu'en soit la raison —
+    # sinon db.create_all()/db.drop_all() ci-dessous s'appliqueraient à la
+    # base réellement connectée.
+    assert _app.config['SQLALCHEMY_DATABASE_URI'] == 'sqlite:///:memory:', (
+        "Refus de lancer les tests : SQLALCHEMY_DATABASE_URI ne pointe pas "
+        "vers la sqlite en mémoire de test (valeur actuelle : "
+        f"{_app.config['SQLALCHEMY_DATABASE_URI']!r})."
+    )
     os.makedirs(_app.config['UPLOAD_FOLDER'], exist_ok=True)
     with _app.app_context():
         db.create_all()
