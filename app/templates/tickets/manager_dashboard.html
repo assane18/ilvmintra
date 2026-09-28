@@ -40,8 +40,8 @@
     <div x-data="{ activeTab: 'n1' }" class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden min-h-[600px]">
 
         <!-- Tab Headers -->
-        <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950">
-            <button @click="activeTab = 'n1'"
+        <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950" role="tablist" aria-label="Files de validation">
+            <button @click="activeTab = 'n1'" role="tab" id="mgr-tab-n1" aria-controls="mgr-panel-n1" :aria-selected="activeTab === 'n1'"
                 :class="{ 'border-b-2 border-accent-500 text-accent-600 bg-white dark:bg-slate-900 dark:text-accent-400': activeTab === 'n1', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n1' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
                 Validation Équipe (N1)
@@ -50,7 +50,7 @@
                 {% endif %}
             </button>
 
-            <button @click="activeTab = 'n2'"
+            <button @click="activeTab = 'n2'" role="tab" id="mgr-tab-n2" aria-controls="mgr-panel-n2" :aria-selected="activeTab === 'n2'"
                 :class="{ 'border-b-2 border-violet-500 text-violet-600 bg-white dark:bg-slate-900 dark:text-violet-400': activeTab === 'n2', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n2' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
                 Validation Tech/Budget (N2)
@@ -59,7 +59,7 @@
                 {% endif %}
             </button>
 
-            <button @click="activeTab = 'fcpi'"
+            <button @click="activeTab = 'fcpi'" role="tab" id="mgr-tab-fcpi" aria-controls="mgr-panel-fcpi" :aria-selected="activeTab === 'fcpi'"
                 :class="{ 'border-b-2 border-pink-500 text-pink-600 bg-white dark:bg-slate-900 dark:text-pink-400': activeTab === 'fcpi', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'fcpi' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">
                 Recrutements (FCPI)
@@ -70,7 +70,7 @@
         </div>
 
         <!-- TAB N1 -->
-        <div x-show="activeTab === 'n1'" class="p-6">
+        <div x-show="activeTab === 'n1'" class="p-6" role="tabpanel" id="mgr-panel-n1" aria-labelledby="mgr-tab-n1">
             {% if tickets_n1 %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -129,7 +129,7 @@
         </div>
 
         <!-- TAB N2 -->
-        <div x-show="activeTab === 'n2'" class="p-6" style="display: none;">
+        <div x-show="activeTab === 'n2'" class="p-6" style="display: none;" role="tabpanel" id="mgr-panel-n2" aria-labelledby="mgr-tab-n2">
             {% if tickets_n2 %}
             <div class="overflow-x-auto">
                 <table class="w-full text-left border-collapse">
@@ -205,7 +205,7 @@
         </div>
 
         <!-- TAB FCPI -->
-        <div x-show="activeTab === 'fcpi'" class="p-6" style="display: none;">
+        <div x-show="activeTab === 'fcpi'" class="p-6" style="display: none;" role="tabpanel" id="mgr-panel-fcpi" aria-labelledby="mgr-tab-fcpi">
             {% if fcpi_requests %}
             <div>
                 {% for r in fcpi_requests %}
