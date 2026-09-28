@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+{#
+  Aperçu en lecture seule d'un formulaire du moteur no-code, tel que le verra
+  l'utilisateur. Page autonome (sans base.html : ni barre latérale ni menus)
+  conçue pour être affichée dans l'iframe du builder (forms_admin/edit.html),
+  mais consultable aussi seule dans un onglet.
+
+  - Réutilise exactement le rendu de la page de dépôt via l'include
+    forms/_submission_fields.html (champs conditionnels compris).
+  - Aucune soumission possible : le <form> n'a ni action ni méthode POST
+    exploitable, son submit est neutralisé et le bouton est désactivé.
+    La route serveur n'accepte de toute façon que GET.
+  - Pas de bloc « conseils avant d'envoyer », pas de brouillon automatique.
+  - Thème : le mode sombre et la couleur d'accent sont recopiés depuis la page
+    parente quand l'aperçu est dans une iframe de même origine.
+#}
+<html lang="fr" data-theme-color="teal">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aperçu — {{ form_def.name }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Même configuration Tailwind que base.html (dark mode par classe,
+        // palette accent-* pilotée par variables CSS).
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#1e293b', 950: '#020617' },
+                        accent: {
+                            50:  'rgb(var(--accent-50) / <alpha-value>)',
+                            100: 'rgb(var(--accent-100) / <alpha-value>)',
+                            400: 'rgb(var(--accent-400) / <alpha-value>)',
+                            500: 'rgb(var(--accent-500) / <alpha-value>)',
+                            600: 'rgb(var(--accent-600) / <alpha-value>)',
+                            700: 'rgb(var(--accent-700) / <alpha-value>)',
+                        }
+                    }
+                }
+            }
+        }
+        // Synchronisation du thème avec la page parente (builder) : classe
+        // « dark » et couleur d'accent. Silencieux si l'aperçu est ouvert seul.
+        (function () {
+            try {
+                var parentHtml = window.parent && window.parent !== window ? window.parent.document.documentElement : null;
+                if (!parentHtml) return;
+                if (parentHtml.classList.contains('dark')) document.documentElement.classList.add('dark');
+                var color = parentHtml.getAttribute('data-theme-color');
+                if (color) document.documentElement.setAttribute('data-theme-color', color);
+            } catch (e) { /* origine différente : on garde le thème par défaut */ }
+        })();
+    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        /* Accent teal (clair) / cyan (sombre) — valeurs identiques à base.html. */
+        :root { --accent-50: 240 253 250; --accent-100: 204 251 241; --accent-400: 45 212 191; --accent-500: 20 184 166; --accent-600: 13 148 136; --accent-700: 15 118 110; }
+        .dark { --accent-50: 8 47 73; --accent-100: 12 74 110; --accent-400: 34 211 238; --accent-500: 6 182 212; --accent-600: 8 145 178; --accent-700: 14 116 144; }
+        /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+        .flat, .flat * { border-radius: 0 !important; }
+        body { font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    </style>
+</head>
+<body class="flat bg-gray-50 dark:bg-slate-950 transition-colors duration-300">
+
+<div class="px-4 py-6">
+    <div class="bg-white dark:bg-slate-900 p-6 shadow-sm border border-gray-200 dark:border-slate-800 w-full max-w-3xl mx-auto">
+
+        <div class="mb-4 flex items-center gap-2 px-3 py-2 bg-sky-50 dark:bg-sky-500/10 border border-sky-200 dark:border-sky-900 text-sky-800 dark:text-sky-300 text-[10px] font-black uppercase tracking-widest">
+            <i data-lucide="eye" class="w-3.5 h-3.5"></i> Aperçu — aucune donnée n'est enregistrée
+        </div>
+
+        <div class="text-center mb-8">
+            <div class="w-14 h-14 flex items-center justify-center mx-auto mb-4 bg-accent-50 dark:bg-slate-800 text-accent-600 dark:text-cyan-400">
+                <i data-lucide="clipboard-list" class="w-7 h-7"></i>
+            </div>
+            <h1 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight mb-2">{{ form_def.name }}</h1>
+            {% if form_def.description %}
+            <p class="text-slate-500 dark:text-slate-400 text-sm">{{ form_def.description }}</p>
+            {% endif %}
+            {% if form_def.manager_only %}
+            <span class="inline-flex items-center gap-1 mt-2 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide bg-purple-100 dark:bg-purple-500/10 text-purple-700 dark:text-purple-400">Réservé Manager / Directeur</span>
+            {% endif %}
+        </div>
+
+        {# Formulaire neutralisé : pas d'action, submit bloqué, bouton inactif. #}
+        <form class="space-y-6" onsubmit="return false;" data-form-preview="1">
+            {% include 'forms/_submission_fields.html' %}
+
+            <button type="button" disabled aria-disabled="true"
+                class="w-full bg-slate-900 dark:bg-accent-600 text-white font-black py-3 shadow-sm flex items-center justify-center gap-2 uppercase opacity-50 cursor-not-allowed">
+                <i data-lucide="send" class="w-5 h-5"></i> Soumettre (désactivé dans l'aperçu)
+            </button>
+        </form>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/form_conditions.js') }}"></script>
+<script>lucide.createIcons();</script>
+</body>
+</html>

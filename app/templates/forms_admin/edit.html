@@ -11,9 +11,15 @@
     .input-field:focus { border-color: #14b8a6; background-color: white; }
     .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
     .dark .input-field:focus { border-color: #2dd4bf; background-color: #020617; }
+    [x-cloak] { display: none !important; }
 </style>
 
-<div class="p-6 max-w-4xl mx-auto">
+{# Panneau d'aperçu : ouvert par défaut, état mémorisé dans le navigateur. #}
+<div class="p-6 max-w-[1500px] mx-auto xl:flex xl:items-start xl:gap-6"
+     x-data="{ showPreview: (function(){ try { return localStorage.getItem('ilvm_form_builder_preview') !== '0'; } catch (e) { return true; } })() }"
+     x-init="$watch('showPreview', v => { try { localStorage.setItem('ilvm_form_builder_preview', v ? '1' : '0'); } catch (e) {} })">
+
+<div class="flex-1 min-w-0 max-w-4xl mx-auto xl:mx-0">
 
     <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
         <div>
@@ -24,6 +30,16 @@
             <a href="{{ url_for('forms_admin.list_forms') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
             </a>
+            <button type="button" @click="showPreview = !showPreview"
+                class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition"
+                :class="{ 'ring-2 ring-accent-500': showPreview }" title="Afficher ou masquer l'aperçu du formulaire">
+                <i data-lucide="eye" class="w-4 h-4"></i> <span x-text="showPreview ? 'Masquer l\'aperçu' : 'Aperçu'"></span>
+            </button>
+            <form action="{{ url_for('forms_admin.duplicate_form', id=form_def.id) }}" method="POST">
+                <button type="submit" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition" title="Créer une copie inactive de ce formulaire (champs, étapes, destinataires)">
+                    <i data-lucide="copy" class="w-4 h-4"></i> Dupliquer
+                </button>
+            </form>
             <form action="{{ url_for('forms_admin.toggle_active', id=form_def.id) }}" method="POST">
                 <button type="submit" class="px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition
                     {% if form_def.is_active %}bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-200 dark:hover:bg-orange-500/20{% else %}bg-emerald-600 text-white hover:bg-emerald-700{% endif %}">
@@ -128,7 +144,32 @@
             </button>
         </form>
     </div>
-</div>
+</div>{# /colonne builder #}
+
+    <!-- APERÇU EN DIRECT (iframe sur la route preview, rechargée après chaque enregistrement) -->
+    <aside x-show="showPreview" x-cloak class="mt-6 xl:mt-0 xl:w-[460px] xl:flex-none xl:sticky xl:top-6">
+        <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800">
+            <div class="flex justify-between items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-slate-800">
+                <h2 class="text-xs font-black text-slate-900 dark:text-white uppercase tracking-widest flex items-center gap-2">
+                    <i data-lucide="eye" class="w-4 h-4 text-accent-600 dark:text-accent-400"></i> Aperçu utilisateur
+                </h2>
+                <div class="flex items-center gap-3">
+                    <button type="button" onclick="reloadPreview()" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-[11px] uppercase flex items-center gap-1 transition" title="Recharger l'aperçu">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Rafraîchir
+                    </button>
+                    <a href="{{ url_for('forms_admin.preview_form', id=form_def.id) }}" target="_blank" rel="noopener" class="text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 font-bold text-[11px] uppercase flex items-center gap-1 transition" title="Ouvrir l'aperçu dans un nouvel onglet">
+                        <i data-lucide="external-link" class="w-3.5 h-3.5"></i> Ouvrir
+                    </a>
+                </div>
+            </div>
+            <p class="px-4 py-2 text-[11px] text-slate-400 dark:text-slate-500 border-b border-gray-200 dark:border-slate-800">
+                Rendu tel que le verra l'utilisateur, mis à jour après chaque « Enregistrer ». Vous pouvez tester les champs conditionnels : rien n'est envoyé ni enregistré.
+            </p>
+            <iframe id="formPreviewFrame" src="{{ url_for('forms_admin.preview_form', id=form_def.id) }}" title="Aperçu du formulaire {{ form_def.name }}"
+                class="w-full bg-gray-50 dark:bg-slate-950 border-0" style="height: 70vh; min-height: 480px;"></iframe>
+        </div>
+    </aside>
+</div>{# /conteneur 2 colonnes #}
 
 <!-- Ligne de champ (template) -->
 <template id="fieldRowTemplate">
@@ -623,6 +664,11 @@
         });
         document.getElementById('dispatchPayload').value = JSON.stringify(payload);
         return true;
+    }
+
+    function reloadPreview() {
+        const frame = document.getElementById('formPreviewFrame');
+        if (frame) frame.contentWindow.location.reload();
     }
 
     existingFieldsData.forEach(f => addFieldRow(f));
