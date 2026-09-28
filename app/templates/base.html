@@ -50,6 +50,9 @@
     <!-- Brouillon automatique + zone de dépôt de fichiers (mêmes formulaires, opt-in via data-recap-confirm) -->
     <script src="{{ url_for('static', filename='js/form_draft.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/file_dropzone.js') }}" defer></script>
+    <!-- Accessibilité clavier : anneau de focus, lien d'évitement, rôles ARIA, mouvement réduit -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/a11y.css') }}">
+    <script src="{{ url_for('static', filename='js/a11y.js') }}" defer></script>
 
     <style>
         /* Couleur d'accent du layout sidebar, choisie par l'utilisateur dans le panneau
@@ -229,6 +232,7 @@
     </script>
 </head>
 <body class="font-sans text-slate-900 antialiased bg-gray-50 dark:bg-slate-950 selection:bg-blue-100 selection:text-blue-900 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
+    <a href="#contenu" class="a11y-skip-link">Aller au contenu</a>
 
     <!-- Flash Messages (Notifications) -->
     <div class="fixed top-4 right-4 z-50 w-96 space-y-2 pointer-events-none">
@@ -305,7 +309,7 @@
         <div class="flex-1 flex flex-col overflow-hidden">
             <!-- TOPBAR -->
             <header class="h-16 shrink-0 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 gap-3">
-                <button id="sidebar-mobile-toggle" class="md:hidden text-slate-500 dark:text-slate-400" aria-label="Ouvrir le menu"><i data-lucide="menu" class="w-5 h-5"></i></button>
+                <button id="sidebar-mobile-toggle" class="md:hidden text-slate-500 dark:text-slate-400" aria-label="Ouvrir le menu" aria-controls="app-sidebar" aria-expanded="false"><i data-lucide="menu" class="w-5 h-5"></i></button>
 
                 <form action="{{ url_for('main.search') }}" method="GET" class="relative flex-1 max-w-md min-w-0" id="global-search" autocomplete="off">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -323,7 +327,7 @@
 
                     <!-- Notifications : mêmes id/JS que le layout navbar -->
                     <div class="relative" id="notif-container">
-                        <button onclick="toggleNotifs()" class="relative w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
+                        <button onclick="toggleNotifs()" aria-label="Notifications" aria-controls="notif-dropdown" aria-expanded="false" class="relative w-9 h-9 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400">
                             <i data-lucide="bell" class="w-4 h-4"></i>
                             <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 hidden"></span>
                         </button>
@@ -332,7 +336,7 @@
                                 <span class="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Notifications</span>
                                 <button onclick="markAllRead()" class="text-xs text-accent-600 hover:text-accent-700 dark:text-accent-400">Tout marquer lu</button>
                             </div>
-                            <div id="notif-list" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1">
+                            <div id="notif-list" aria-live="polite" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1">
                                 <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
                             </div>
                         </div>
@@ -340,7 +344,7 @@
 
                     <div class="w-px h-6 bg-gray-200 dark:bg-slate-700 mx-1"></div>
 
-                    <button id="profile-trigger" type="button" class="flex items-center gap-2.5 hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 -m-1.5 transition" title="Mon profil">
+                    <button id="profile-trigger" type="button" aria-controls="profile-panel" aria-expanded="false" class="flex items-center gap-2.5 hover:bg-gray-100 dark:hover:bg-slate-800 p-1.5 -m-1.5 transition" title="Mon profil">
                         {% if current_user.is_authenticated and current_user.avatar_photo %}
                         <img src="{{ url_for('static', filename='uploads/avatars/' + current_user.avatar_photo) }}" alt="Avatar" class="w-9 h-9 object-cover shrink-0">
                         {% else %}
@@ -357,7 +361,7 @@
             <!-- PANNEAU PROFIL (overlay glissant depuis la droite, même mécanique que le menu mobile) -->
             {% if current_user.is_authenticated %}
             <div id="profile-overlay" class="hidden fixed inset-0 bg-black/50 z-[60]"></div>
-            <aside id="profile-panel" class="fixed inset-y-0 right-0 z-[61] w-80 max-w-[90vw] bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800 shadow-2xl translate-x-full transition-transform duration-200 flex flex-col">
+            <aside id="profile-panel" role="dialog" aria-modal="true" aria-label="Mon profil" class="fixed inset-y-0 right-0 z-[61] w-80 max-w-[90vw] bg-white dark:bg-slate-900 border-l border-gray-200 dark:border-slate-800 shadow-2xl translate-x-full transition-transform duration-200 flex flex-col">
                 <div class="h-16 flex items-center justify-between px-5 border-b border-gray-200 dark:border-slate-800 shrink-0">
                     <h2 class="font-black text-slate-800 dark:text-white uppercase text-sm tracking-wide">Mon profil</h2>
                     <button id="profile-close" type="button" class="text-slate-400 hover:text-slate-700 dark:hover:text-white transition" aria-label="Fermer"><i data-lucide="x" class="w-5 h-5"></i></button>
@@ -406,7 +410,7 @@
             </aside>
             {% endif %}
 
-            <main class="flex-1 overflow-y-auto relative z-10">
+            <main id="contenu" tabindex="-1" class="flex-1 overflow-y-auto relative z-10">
     {% else %}
     <!-- ===== LAYOUT NAVBAR (existant, inchangé pour toutes les pages qui ne passent pas sidebar_layout) ===== -->
     <!-- Navigation Bar (Optionnelle, visible sauf sur Login) -->
@@ -478,7 +482,7 @@
 
             <!-- Notifications -->
             <div class="relative" id="notif-container">
-                <button onclick="toggleNotifs()" class="relative p-2 text-slate-400 hover:text-blue-600 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-400">
+                <button onclick="toggleNotifs()" aria-label="Notifications" aria-controls="notif-dropdown" aria-expanded="false" class="relative p-2 text-slate-400 hover:text-blue-600 transition rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-blue-400">
                     <i data-lucide="bell" class="w-5 h-5"></i>
                     <span id="notif-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full hidden"></span>
                 </button>
@@ -489,7 +493,7 @@
                         <span class="text-xs font-bold text-slate-500 uppercase tracking-wider dark:text-slate-300">Notifications</span>
                         <button onclick="markAllRead()" class="text-xs text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">Tout marquer lu</button>
                     </div>
-                    <div id="notif-list" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1">
+                    <div id="notif-list" aria-live="polite" class="max-h-64 overflow-y-auto scrollbar-hide p-1 space-y-1">
                         <!-- JS injectera ici -->
                         <div class="p-4 text-center text-slate-400 text-xs italic">Chargement...</div>
                     </div>
@@ -537,7 +541,7 @@
 
     <!-- Main Content -->
     <!-- Ajout de relative z-10 pour être au dessus du canvas -->
-    <main class="min-h-screen relative z-10">
+    <main id="contenu" tabindex="-1" class="min-h-screen relative z-10">
     {% endif %}
 
         {% block content %}{% endblock %}

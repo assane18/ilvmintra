@@ -51,7 +51,7 @@
             <label class="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5">Services</label>
             <div class="flex flex-wrap gap-2">
                 {% for svc in all_services %}
-                <input type="checkbox" name="services" value="{{ svc }}" id="svc-{{ loop.index }}" class="peer hidden" {% if svc in selected_services %}checked{% endif %}>
+                <input type="checkbox" name="services" value="{{ svc }}" id="svc-{{ loop.index }}" class="peer sr-only" {% if svc in selected_services %}checked{% endif %}>
                 <label for="svc-{{ loop.index }}"
                        class="cursor-pointer select-none px-3 py-1.5 text-[10px] font-bold uppercase tracking-wide border border-gray-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-accent-600 hover:border-accent-400 peer-checked:bg-accent-50 dark:peer-checked:bg-accent-500/10 peer-checked:text-accent-700 dark:peer-checked:text-accent-400 peer-checked:border-accent-400 transition">
                     {{ svc }}

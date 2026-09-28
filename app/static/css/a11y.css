@@ -1,0 +1,132 @@
+/* =============================================================================
+   Accessibilité clavier / focus visible — Intranet ILVM
+   -----------------------------------------------------------------------------
+   Chargée par base.html après les scripts statiques. Regroupe :
+     1. un anneau de focus cohérent (:focus-visible) couleur d'accent, lisible en
+        mode sombre et en contraste élevé (html[data-contrast="high"]) ;
+     2. le focus visible des radios/checkbox masqués (class="peer sr-only") dont
+        le style est porté par le <span>/<label> qui suit ;
+     3. le lien d'évitement « Aller au contenu » (visible uniquement au focus) ;
+     4. le respect de prefers-reduced-motion (animations, transitions, canvas).
+   Les !important sont volontaires : Tailwind (CDN) pose `outline-none` et des
+   `transition` un peu partout, avec la même spécificité que ces règles.
+   ============================================================================= */
+
+/* --- 1. Anneau de focus ---------------------------------------------------- */
+:root {
+    --a11y-ring: rgb(var(--accent-500));
+    --a11y-halo: #ffffff;       /* halo de contraste autour de l'anneau */
+}
+.dark {
+    --a11y-ring: rgb(var(--accent-400));
+    --a11y-halo: #020617;
+}
+
+/* Le focus « souris » (:focus sans :focus-visible) garde le rendu Tailwind ;
+   seul le focus clavier reçoit l'anneau, pour tous les éléments interactifs. */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="switch"]:focus-visible,
+[contenteditable="true"]:focus-visible {
+    outline: 3px solid var(--a11y-ring) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 2px var(--a11y-halo) !important;
+}
+
+/* Champs de saisie : l'anneau colle au champ (pas de halo, sinon il se confond
+   avec le focus:ring-2 déjà posé par Tailwind sur beaucoup de champs). */
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+    outline-offset: 0 !important;
+    box-shadow: none !important;
+}
+
+/* Contraste élevé : anneau plus épais + halo inversé pour rester lisible quel
+   que soit le fond (uni blanc / noir dans ce mode, voir base.html). */
+html[data-contrast="high"] :focus-visible {
+    outline-width: 4px !important;
+    outline-offset: 3px !important;
+    box-shadow: 0 0 0 7px var(--a11y-halo), 0 0 0 8px var(--a11y-ring) !important;
+}
+html[data-contrast="high"] input:focus-visible,
+html[data-contrast="high"] select:focus-visible,
+html[data-contrast="high"] textarea:focus-visible {
+    outline-offset: 0 !important;
+    box-shadow: none !important;
+}
+
+/* La cible du lien d'évitement (<main id="contenu" tabindex="-1">) reçoit le
+   focus programmatiquement : pas d'anneau géant autour de toute la page. */
+#contenu:focus,
+#contenu:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+/* --- 2. Radios / checkbox masqués (peer sr-only) ---------------------------- */
+/* Le style visuel est porté par le frère qui suit l'input : on lui transfère
+   l'anneau quand l'input (invisible mais focusable) a le focus clavier.
+   Couvre : pastilles e-mail du profil, niveaux d'annonce, avis satisfaction
+   (input + <span>), filtres services du tableau de bord stats (input + <label>). */
+.peer.sr-only:focus-visible + span,
+.peer.sr-only:focus-visible + label,
+.peer.sr-only:focus-visible ~ label[for] {
+    outline: 3px solid var(--a11y-ring) !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 2px var(--a11y-halo) !important;
+}
+html[data-contrast="high"] .peer.sr-only:focus-visible + span,
+html[data-contrast="high"] .peer.sr-only:focus-visible + label {
+    outline-width: 4px !important;
+    box-shadow: 0 0 0 7px var(--a11y-halo), 0 0 0 8px var(--a11y-ring) !important;
+}
+
+/* --- 3. Lien d'évitement --------------------------------------------------- */
+.a11y-skip-link {
+    position: absolute;
+    left: 0.75rem;
+    top: -100px;                 /* hors écran, mais reste dans l'ordre de tabulation */
+    z-index: 1000;
+    padding: 0.6rem 1rem;
+    background: rgb(var(--accent-600));
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    text-decoration: none;
+    transition: top 0.15s ease-out;
+}
+.a11y-skip-link:focus,
+.a11y-skip-link:focus-visible {
+    top: 0.75rem;
+    outline: 3px solid #ffffff !important;
+    outline-offset: 2px !important;
+    box-shadow: 0 0 0 5px rgb(var(--accent-600)) !important;
+}
+
+/* --- 4. Mouvement réduit --------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+    .animate-pulse, .animate-bounce, .animate-ping, .anim-greeting {
+        animation: none !important;
+        opacity: 1 !important;
+    }
+    /* Le spinner de chargement garde son sens sans tourner : on le fige. */
+    .animate-spin { animation: none !important; }
+    /* Fond animé (réseau de particules) : masqué, le JS (a11y.js) coupe la boucle. */
+    #networkCanvas { display: none !important; }
+}

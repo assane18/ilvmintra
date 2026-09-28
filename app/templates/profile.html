@@ -39,21 +39,21 @@
         </div>
 
         <!-- ONGLETS -->
-        <div class="px-6 flex gap-6 border-t border-gray-200 dark:border-slate-800 overflow-x-auto">
-            <button type="button" @click="tab='account'" :class="{active: tab==='account'}" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
+        <div class="px-6 flex gap-6 border-t border-gray-200 dark:border-slate-800 overflow-x-auto" role="tablist" aria-label="Sections du profil">
+            <button type="button" @click="tab='account'" :class="{active: tab==='account'}" role="tab" id="profile-tab-account" aria-controls="profile-panel-account" :aria-selected="tab==='account'" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
                 <i data-lucide="user" class="w-4 h-4"></i> Mon compte
             </button>
-            <button type="button" @click="tab='appearance'" :class="{active: tab==='appearance'}" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
+            <button type="button" @click="tab='appearance'" :class="{active: tab==='appearance'}" role="tab" id="profile-tab-appearance" aria-controls="appearance-tab" :aria-selected="tab==='appearance'" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
                 <i data-lucide="palette" class="w-4 h-4"></i> Apparence
             </button>
-            <button type="button" @click="tab='bug'" :class="{active: tab==='bug'}" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
+            <button type="button" @click="tab='bug'" :class="{active: tab==='bug'}" role="tab" id="profile-tab-bug" aria-controls="profile-panel-bug" :aria-selected="tab==='bug'" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
                 <i data-lucide="bug" class="w-4 h-4"></i> Signaler un bug
             </button>
         </div>
     </div>
 
     <!-- ============================ ONGLET MON COMPTE ============================ -->
-    <div x-show="tab==='account'" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div x-show="tab==='account'" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6" role="tabpanel" id="profile-panel-account" aria-labelledby="profile-tab-account">
 
         <div class="lg:col-span-2 space-y-6">
 
@@ -184,7 +184,7 @@
     </div>
 
     <!-- ============================ ONGLET APPARENCE ============================ -->
-    <div x-show="tab==='appearance'" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="appearance-tab">
+    <div x-show="tab==='appearance'" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6" id="appearance-tab" role="tabpanel" aria-labelledby="profile-tab-appearance">
 
         <div class="lg:col-span-2 space-y-6">
 
@@ -284,7 +284,7 @@
     </div>
 
     <!-- ============================ ONGLET SIGNALER UN BUG ============================ -->
-    <div x-show="tab==='bug'" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div x-show="tab==='bug'" x-cloak class="grid grid-cols-1 lg:grid-cols-3 gap-6" role="tabpanel" id="profile-panel-bug" aria-labelledby="profile-tab-bug">
 
         <form action="{{ url_for('main.profile_bug') }}" method="POST" enctype="multipart/form-data" id="bug-form"
               class="lg:col-span-2 bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm space-y-5">
