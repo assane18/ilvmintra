@@ -60,7 +60,7 @@
                     <td class="px-6 py-4"><span class="font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1">{{ item.service }}</span></td>
                     <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ item.subject }}</td>
                     <td class="px-6 py-4">
-                        <span class="inline-block px-2.5 py-1 text-[10px] font-black uppercase tracking-wide {{ item.status_class }}">
+                        <span class="inline-block px-2.5 py-1 text-[10px] font-black uppercase tracking-wide {{ item.status_class }}" title="{{ item.status_hint }}">
                             {{ item.status_label }}
                         </span>
                     </td>
@@ -69,7 +69,11 @@
                     </td>
                 </tr>
                 {% else %}
-                <tr><td colspan="6" class="p-8 text-center text-slate-400 dark:text-slate-500 italic font-bold">Aucune demande enregistrée.</td></tr>
+                <tr><td colspan="6" class="p-10 text-center">
+                    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 text-slate-300 dark:text-slate-600"></i>
+                    <p class="text-slate-500 dark:text-slate-400 font-bold">{% if search_query %}Aucune demande ne correspond à « {{ search_query }} ».{% else %}Aucune demande enregistrée.{% endif %}</p>
+                    {% if not search_query %}<a href="{{ url_for('main.user_portal') }}" class="inline-block mt-3 bg-accent-600 hover:bg-accent-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide">Créer ma première demande</a>{% endif %}
+                </td></tr>
                 {% endfor %}
             </tbody>
         </table>

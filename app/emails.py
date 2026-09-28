@@ -218,10 +218,19 @@ def send_closure_notification(ticket):
         </tr>
     </table>
     
+    <p style="margin-top:18px;"><strong>Votre avis compte</strong> — un clic suffit :</p>
+    <table border="0" cellpadding="0" cellspacing="0" style="margin: 8px 0 18px;">
+        <tr>
+            <td style="padding-right:8px;"><a href="{base_url}tickets/rate/{ticket.uid_public}/3" style="display:inline-block;padding:10px 16px;background:#059669;color:#fff;text-decoration:none;font-weight:bold;border-radius:4px;">&#128522; Satisfait</a></td>
+            <td style="padding-right:8px;"><a href="{base_url}tickets/rate/{ticket.uid_public}/2" style="display:inline-block;padding:10px 16px;background:#d97706;color:#fff;text-decoration:none;font-weight:bold;border-radius:4px;">&#128528; Moyen</a></td>
+            <td><a href="{base_url}tickets/rate/{ticket.uid_public}/1" style="display:inline-block;padding:10px 16px;background:#dc2626;color:#fff;text-decoration:none;font-weight:bold;border-radius:4px;">&#128577; Insatisfait</a></td>
+        </tr>
+    </table>
+    <p style="font-size:12px;color:#718096;">Ce n'est pas résolu ? Vous pouvez rouvrir la demande depuis le ticket pendant 7 jours.</p>
     <p>Merci de votre confiance.</p>
     """
     
-    full_html = get_outlook_friendly_html("Ticket Résolu", html_content, link, "Voir l'historique")
+    full_html = get_outlook_friendly_html("Ticket Résolu", html_content, link, "Voir le ticket")
     send_email(f"[Résolu] {ticket.title}", [ticket.author.email], "Ticket terminé.", full_html)
 
 # --- RELANCE QUOTIDIENNE TICKETS EN RETARD (ajouté 2026-09-17) ---

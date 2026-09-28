@@ -22,7 +22,7 @@
                     {% elif 'TERMINE' in ticket.status.value %}bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400
                     {% elif 'REFUSE' in ticket.status.value %}bg-red-100 dark:bg-red-500/10 text-red-700 dark:text-red-400
                     {% else %}bg-gray-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300{% endif %}">
-                    {{ ticket.status.value }}
+                    {{ ticket.status|status_label(true) }}
                 </span>
             </div>
             <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">
@@ -34,6 +34,95 @@
             <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
         </a>
     </div>
+
+    <!-- FRISE DE SUIVI "façon colis" (app/status_display.py::ticket_timeline) -->
+    {% set steps = ticket_timeline(ticket) %}
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm px-6 py-5 mb-6">
+        <div class="flex items-center justify-between mb-4 gap-4 flex-wrap">
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Suivi de la demande</p>
+            <p class="text-sm font-bold {% if ticket.status.value == 'REFUSE' %}text-red-600 dark:text-red-400{% elif ticket.status.value == 'TERMINE' %}text-emerald-600 dark:text-emerald-400{% else %}text-slate-700 dark:text-slate-200{% endif %}">{{ ticket.status|status_label }}</p>
+        </div>
+        <ol class="flex items-start">
+            {% for step in steps %}
+            <li class="flex-1 relative min-w-0">
+                {% if not loop.first %}
+                <div class="absolute top-3.5 right-1/2 left-[-50%] h-0.5 {% if step.state in ('done', 'current') %}bg-accent-500{% elif step.state == 'failed' %}bg-red-400{% else %}bg-gray-200 dark:bg-slate-700{% endif %}"></div>
+                {% endif %}
+                <div class="relative flex flex-col items-center text-center px-1">
+                    <div class="w-7 h-7 flex items-center justify-center border-2 bg-white dark:bg-slate-900 z-10
+                        {% if step.state == 'done' %}border-accent-500 bg-accent-500 text-white
+                        {% elif step.state == 'current' %}border-accent-500 text-accent-600 dark:text-accent-400 animate-pulse
+                        {% elif step.state == 'failed' %}border-red-500 bg-red-500 text-white
+                        {% else %}border-gray-300 dark:border-slate-600 text-slate-300 dark:text-slate-600{% endif %}"
+                        {% if step.state == 'done' %}style="background-color: rgb(var(--accent-500));"{% elif step.state == 'failed' %}style="background-color: #ef4444;"{% endif %}>
+                        <i data-lucide="{% if step.state == 'done' %}check{% elif step.state == 'failed' %}x{% elif step.state == 'current' %}loader{% else %}circle{% endif %}" class="w-3.5 h-3.5"></i>
+                    </div>
+                    <p class="mt-2 text-[11px] font-black uppercase tracking-wide truncate w-full
+                        {% if step.state in ('done', 'current') %}text-slate-800 dark:text-white{% elif step.state == 'failed' %}text-red-600 dark:text-red-400{% else %}text-slate-400 dark:text-slate-500{% endif %}">{{ step.label }}</p>
+                    {% if step.date %}<p class="text-[10px] text-slate-400 font-mono">{{ step.date.strftime('%d/%m %H:%M') }}</p>{% endif %}
+                    {% if step.hint %}<p class="text-[10px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5 hidden sm:block">{{ step.hint }}</p>{% endif %}
+                </div>
+            </li>
+            {% endfor %}
+        </ol>
+    </div>
+
+    {% if ticket.author_id == current_user.id and ticket.status.value == 'TERMINE' %}
+    <!-- BOUCLE QUALITÉ (demandeur, ticket terminé) : avis + "ce n'est pas résolu" -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div class="md:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6">
+            {% if ticket.satisfaction %}
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Votre avis</p>
+            <p class="text-sm font-bold text-slate-800 dark:text-white">
+                {% if ticket.satisfaction == 3 %}😊 Satisfait{% elif ticket.satisfaction == 2 %}😐 Moyen{% else %}🙁 Insatisfait{% endif %}
+                <span class="text-slate-400 font-normal"> · merci, votre retour a été transmis au service.</span>
+            </p>
+            {% if ticket.satisfaction_comment %}<p class="text-xs text-slate-500 dark:text-slate-400 mt-2 italic">« {{ ticket.satisfaction_comment }} »</p>
+            {% else %}
+            <form action="{{ url_for('tickets.rate_ticket', ticket_uid=ticket.uid_public) }}" method="POST" class="mt-3 flex gap-2">
+                <input type="hidden" name="score" value="{{ ticket.satisfaction }}">
+                <input type="text" name="comment" maxlength="2000" placeholder="Un commentaire ? (optionnel)" class="flex-1 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+                <button type="submit" class="bg-slate-900 dark:bg-accent-600 text-white px-4 text-xs font-black uppercase">Envoyer</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Votre demande est terminée — êtes-vous satisfait ?</p>
+            <p class="text-xs text-slate-400 mb-4">Un clic suffit, le commentaire est optionnel.</p>
+            <form action="{{ url_for('tickets.rate_ticket', ticket_uid=ticket.uid_public) }}" method="POST" class="space-y-3">
+                <div class="grid grid-cols-3 gap-2">
+                    {% for score, emoji, label, css in [(3, '😊', 'Satisfait', 'hover:border-emerald-500 peer-checked:border-emerald-500 peer-checked:bg-emerald-50 dark:peer-checked:bg-emerald-900/20'), (2, '😐', 'Moyen', 'hover:border-amber-500 peer-checked:border-amber-500 peer-checked:bg-amber-50 dark:peer-checked:bg-amber-900/20'), (1, '🙁', 'Insatisfait', 'hover:border-red-500 peer-checked:border-red-500 peer-checked:bg-red-50 dark:peer-checked:bg-red-900/20')] %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="score" value="{{ score }}" class="peer sr-only" required>
+                        <span class="block text-center p-3 border-2 border-gray-200 dark:border-slate-700 transition {{ css }}">
+                            <span class="block text-2xl">{{ emoji }}</span>
+                            <span class="block text-[11px] font-black uppercase text-slate-700 dark:text-slate-200 mt-1">{{ label }}</span>
+                        </span>
+                    </label>
+                    {% endfor %}
+                </div>
+                <div class="flex gap-2">
+                    <input type="text" name="comment" maxlength="2000" placeholder="Un commentaire ? (optionnel)" class="flex-1 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <button type="submit" class="bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide">Envoyer mon avis</button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6">
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Ce n'est pas résolu ?</p>
+            {% if can_reopen %}
+            <p class="text-xs text-slate-400 mb-3">Rouvrez la demande : elle repart chez le technicien avec votre explication, sans créer un nouveau ticket.</p>
+            <form action="{{ url_for('tickets.reopen_ticket', ticket_uid=ticket.uid_public) }}" method="POST" class="space-y-2">
+                <textarea name="reason" required rows="2" maxlength="2000" placeholder="Qu'est-ce qui ne fonctionne toujours pas ?" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500"></textarea>
+                <button type="submit" class="w-full border-2 border-amber-500 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-900/20 px-4 py-2 text-xs font-black uppercase tracking-wide transition flex items-center justify-center gap-2">
+                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Rouvrir la demande
+                </button>
+            </form>
+            {% else %}
+            <p class="text-xs text-slate-400">La réouverture n'est possible que pendant 7 jours après la clôture. Créez une nouvelle demande depuis le <a href="{{ url_for('main.user_portal') }}" class="text-accent-600 dark:text-accent-400 font-bold underline">portail</a>.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -194,7 +283,16 @@
                 </div>
 
                 <form method="POST" class="mt-8 relative">
-                    <textarea name="message" rows="3" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500" placeholder="Écrire un message..."></textarea>
+                    {% if canned_responses %}
+                    <div class="flex items-center gap-2 mb-2">
+                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Réponse type</label>
+                        <select id="canned-select" class="flex-1 max-w-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-xs px-2 py-1.5 text-slate-700 dark:text-slate-200">
+                            <option value="">— Choisir un modèle —</option>
+                            {% for r in canned_responses %}<option value="{{ r.body }}">{{ r.title }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <textarea name="message" id="ticket-message" rows="3" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500" placeholder="Écrire un message..."></textarea>
                     <button type="submit" class="absolute bottom-3 right-3 bg-accent-600 hover:bg-accent-700 text-white p-2 shadow-sm transition">
                         <i data-lucide="send" class="w-4 h-4"></i>
                     </button>
@@ -392,4 +490,15 @@
     </div>
 </div>
 </div>
+<script>
+(function () {
+    var sel = document.getElementById('canned-select'), ta = document.getElementById('ticket-message');
+    if (!sel || !ta) return;
+    sel.addEventListener('change', function () {
+        if (!sel.value) return;
+        ta.value = (ta.value.trim() ? ta.value.trimEnd() + '\n\n' : '') + sel.value;
+        ta.focus(); sel.value = '';
+    });
+})();
+</script>
 {% endblock %}

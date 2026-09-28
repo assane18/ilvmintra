@@ -6,6 +6,7 @@ from ldap3 import Server, Connection, ALL, SIMPLE
 from ldap3.utils.conv import escape_filter_chars
 from functools import wraps
 from sqlalchemy.exc import DataError, StatementError
+from sqlalchemy import func
 from urllib.parse import urlparse
 import unicodedata
 import msal
@@ -126,10 +127,18 @@ def provision_user_from_ad_entry(clean_user, user_entry):
     quel que soit le chemin d'entrée. Ne commit pas."""
     role, origins, alloweds = parse_ad_groups(user_entry.memberOf)
 
-    user = User.query.filter_by(username=clean_user).first()
+    # Comparaison insensible à la casse : l'AD ne distingue pas "astraore" de
+    # "ASTRAORE", mais PostgreSQL si — avant ce correctif, chaque graphie tapée
+    # au login (ou renvoyée par l'AD via le SSO) créait un compte distinct, et
+    # l'historique de la personne se retrouvait éclaté entre plusieurs comptes.
+    user = User.query.filter(func.lower(User.username) == clean_user.lower()).first()
     if not user:
         user = User(username=clean_user)
         db.session.add(user)
+    elif user.username != clean_user:
+        # Aligne la graphie stockée sur celle de l'AD (un seul compte, un seul id,
+        # quelle que soit la casse saisie au fil du temps).
+        user.username = clean_user
 
     user.fullname = str(user_entry.displayName) if user_entry.displayName else clean_user
     user.email = str(user_entry.mail) if user_entry.mail else f"{clean_user}@ilvm.lan"
@@ -157,14 +166,17 @@ def login():
             try:
                 clean_user = username.split('@')[0].split('\\')[-1]
                 search_filter = f'(sAMAccountName={clean_user})'
-                conn.search(base_dn, search_filter, attributes=['memberOf', 'displayName', 'mail'])
+                conn.search(base_dn, search_filter, attributes=['memberOf', 'displayName', 'mail', 'sAMAccountName'])
                 
                 if not conn.entries:
                     flash("Utilisateur introuvable.", "warning")
                     return render_template('auth/login.html')
                     
                 user_entry = conn.entries[0]
-                user = provision_user_from_ad_entry(clean_user, user_entry)
+                # Graphie officielle de l'AD plutôt que celle tapée par l'utilisateur
+                # ("nprenom", "NPRENOM", "NPrenom"… désignent le même compte).
+                canonical = str(user_entry.sAMAccountName) if getattr(user_entry, 'sAMAccountName', None) else clean_user
+                user = provision_user_from_ad_entry(canonical, user_entry)
 
                 try:
                     db.session.commit()

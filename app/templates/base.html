@@ -47,6 +47,9 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Récapitulatif de confirmation avant création (formulaires opt-in via data-recap-confirm) -->
     <script src="{{ url_for('static', filename='js/recap_confirm.js') }}" defer></script>
+    <!-- Brouillon automatique + zone de dépôt de fichiers (mêmes formulaires, opt-in via data-recap-confirm) -->
+    <script src="{{ url_for('static', filename='js/form_draft.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/file_dropzone.js') }}" defer></script>
 
     <style>
         /* Couleur d'accent du layout sidebar, choisie par l'utilisateur dans le panneau
@@ -299,10 +302,12 @@
             <header class="h-16 shrink-0 bg-white dark:bg-slate-950 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between px-4 md:px-6 gap-3">
                 <button id="sidebar-mobile-toggle" class="md:hidden text-slate-500 dark:text-slate-400" aria-label="Ouvrir le menu"><i data-lucide="menu" class="w-5 h-5"></i></button>
 
-                <div class="relative flex-1 max-w-md">
+                <form action="{{ url_for('main.search') }}" method="GET" class="relative flex-1 max-w-md" id="global-search" autocomplete="off">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" placeholder="Rechercher…" class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:border-accent-400 focus:bg-white dark:focus:bg-slate-900 outline-none text-sm transition">
-                </div>
+                    <input type="text" name="q" id="global-search-input" placeholder="Rechercher une demande, un formulaire…" value="{{ request.args.get('q', '') if request.endpoint == 'main.search' else '' }}"
+                           class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 focus:border-accent-400 focus:bg-white dark:focus:bg-slate-900 outline-none text-sm transition dark:text-white">
+                    <div id="global-search-results" class="hidden absolute left-0 right-0 top-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-2xl z-50 max-h-[70vh] overflow-y-auto text-sm"></div>
+                </form>
 
                 <div class="flex items-center gap-1">
                     <!-- BOUTON DARK MODE : mêmes id/JS que le layout navbar (script plus bas, inchangé) -->
@@ -606,6 +611,47 @@
             if (profileCloseBtn) profileCloseBtn.addEventListener('click', closeProfile);
             profileOverlay.addEventListener('click', closeProfile);
         }
+
+        // --- RECHERCHE GLOBALE (résultats en direct sous le champ du header) ---
+        (function () {
+            var input = document.getElementById('global-search-input');
+            var box = document.getElementById('global-search-results');
+            if (!input || !box) return;
+            var timer = null, lastQ = '';
+            function esc(s) { return String(s || '').replace(/[&<>"]/g, function (c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+            function section(title, items, render) {
+                if (!items.length) return '';
+                return '<div class="px-3 pt-2 pb-1 text-[10px] font-black uppercase tracking-widest text-slate-400 bg-gray-50 dark:bg-slate-800/60">' + title + '</div>' + items.map(render).join('');
+            }
+            function row(url, main, sub, badge, badgeClass) {
+                return '<a href="' + esc(url) + '" class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 border-b border-gray-100 dark:border-slate-800 last:border-0">' +
+                    '<div class="min-w-0 flex-1"><p class="font-bold text-slate-800 dark:text-white truncate">' + esc(main) + '</p><p class="text-[11px] text-slate-400 truncate">' + esc(sub) + '</p></div>' +
+                    (badge ? '<span class="px-2 py-0.5 text-[9px] font-black uppercase whitespace-nowrap ' + esc(badgeClass) + '">' + esc(badge) + '</span>' : '') + '</a>';
+            }
+            function render(d) {
+                var html = section('Créer une demande', d.forms, function (f) { return row(f.url, f.title, f.subtitle, '', ''); })
+                    + section('Mes demandes', d.mine, function (i) { return row(i.view_url, i.subject, i.ref + ' · ' + i.service + ' · ' + i.date, i.status_label, i.status_class); })
+                    + section('Tickets de mes services', d.tickets, function (t) { return row(t.url, t.title, t.ref + ' · ' + t.author + ' · ' + t.date, t.status_label, t.status_class); });
+                if (!html) html = '<p class="px-3 py-3 text-xs text-slate-400">Aucun résultat pour « ' + esc(d.query) + ' »</p>';
+                html += '<a href="{{ url_for('main.search') }}?q=' + encodeURIComponent(d.query) + '" class="block px-3 py-2 text-center text-[11px] font-black uppercase tracking-wide text-accent-600 dark:text-accent-400 hover:bg-gray-50 dark:hover:bg-slate-800">Tous les résultats →</a>';
+                box.innerHTML = html; box.classList.remove('hidden');
+            }
+            input.addEventListener('input', function () {
+                var q = input.value.trim();
+                clearTimeout(timer);
+                if (q.length < 2) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+                timer = setTimeout(function () {
+                    lastQ = q;
+                    fetch("{{ url_for('main.api_search') }}?q=" + encodeURIComponent(q), { credentials: 'same-origin' })
+                        .then(function (r) { return r.json(); })
+                        .then(function (d) { if (d.query === lastQ) render(d); })
+                        .catch(function () {});
+                }, 250);
+            });
+            input.addEventListener('focus', function () { if (box.innerHTML) box.classList.remove('hidden'); });
+            document.addEventListener('click', function (e) { if (!e.target.closest('#global-search')) box.classList.add('hidden'); });
+            input.addEventListener('keydown', function (e) { if (e.key === 'Escape') { box.classList.add('hidden'); input.blur(); } });
+        })();
 
         // --- GESTION DARK MODE ---
         const themeToggleBtn = document.getElementById('theme-toggle');

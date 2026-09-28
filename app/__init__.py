@@ -44,6 +44,12 @@ def create_app(config_name='default'):
     login_manager.init_app(app)
     mail.init_app(app)
 
+    # Libellés humains des statuts + frise de suivi (app/status_display.py)
+    from .status_display import status_label, ticket_timeline, is_open_status
+    app.jinja_env.filters['status_label'] = status_label
+    app.jinja_env.globals['ticket_timeline'] = ticket_timeline
+    app.jinja_env.globals['is_open_status'] = is_open_status
+
     # Enregistrement des Blueprints
     from .routes.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')

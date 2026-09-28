@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>.flat, .flat * { border-radius: 0 !important; }</style>
+
+<div class="p-6 max-w-5xl mx-auto">
+
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Recherche</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">
+                {% if query %}Résultats pour « {{ query }} »{% else %}Tapez au moins 2 caractères{% endif %}
+            </p>
+        </div>
+        <form action="{{ url_for('main.search') }}" method="GET" class="relative w-full max-w-md">
+            <input type="text" name="q" value="{{ query }}" placeholder="N° de demande, sujet, formulaire, personne…" autofocus
+                   class="w-full pl-10 pr-3 py-2.5 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm focus:ring-2 focus:ring-accent-500 outline-none dark:text-white transition">
+            <div class="absolute left-3 top-3 text-slate-400"><i data-lucide="search" class="w-4 h-4"></i></div>
+        </form>
+    </div>
+
+    {% if query|length >= 2 and not mine and not forms and not tickets %}
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-12 text-center">
+        <i data-lucide="search-x" class="w-8 h-8 mx-auto mb-3 text-slate-300 dark:text-slate-600"></i>
+        <p class="text-slate-500 dark:text-slate-400 font-bold">Aucun résultat pour « {{ query }} ».</p>
+        <p class="text-xs text-slate-400 mt-1">Essayez un numéro de demande (ex. 20260928-001), un mot du sujet ou le nom d'un formulaire.</p>
+    </div>
+    {% endif %}
+
+    {% if forms %}
+    <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Créer une demande</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
+        {% for f in forms %}
+        <a href="{{ f.url }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:border-accent-400 p-4 flex items-center gap-3 transition">
+            <i data-lucide="clipboard-list" class="w-5 h-5 text-accent-600 dark:text-accent-400 shrink-0"></i>
+            <div class="min-w-0"><p class="font-bold text-slate-800 dark:text-white truncate">{{ f.title }}</p><p class="text-xs text-slate-400 truncate">{{ f.subtitle }}</p></div>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if mine %}
+    <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Mes demandes ({{ mine|length }})</h2>
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800 mb-8">
+        {% for item in mine %}
+        <a href="{{ item.view_url }}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition">
+            <span class="font-mono text-xs text-slate-400 w-40 shrink-0">{{ item.ref }}</span>
+            <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 dark:text-white truncate">{{ item.subject }}</p><p class="text-[11px] text-slate-400">{{ item.service }} · {{ item.date.strftime('%d/%m/%Y') }}</p></div>
+            <span class="px-2 py-1 text-[10px] font-black uppercase whitespace-nowrap {{ item.status_class }}">{{ item.status_label }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if tickets %}
+    <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Tickets de mes services ({{ tickets|length }})</h2>
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm divide-y divide-gray-100 dark:divide-slate-800 mb-8">
+        {% for t in tickets %}
+        <a href="{{ t.url }}" class="flex items-center gap-4 px-5 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition">
+            <span class="font-mono text-xs text-slate-400 w-40 shrink-0">{{ t.ref }}</span>
+            <div class="min-w-0 flex-1"><p class="text-sm font-bold text-slate-800 dark:text-white truncate">{{ t.title }}</p><p class="text-[11px] text-slate-400">{{ t.author }} · {{ t.service }} · {{ t.date.strftime('%d/%m/%Y') }}</p></div>
+            <span class="px-2 py-1 text-[10px] font-black uppercase whitespace-nowrap {{ t.status_class }}">{{ t.status_label }}</span>
+        </a>
+        {% endfor %}
+    </div>
+    {% endif %}
+</div>
+</div>
+{% endblock %}

@@ -18,6 +18,33 @@
         <p class="text-slate-500 dark:text-slate-400 font-medium text-sm mt-1">Sélectionnez un service pour créer une nouvelle demande.</p>
     </div>
 
+    {% if open_items %}
+    <!-- Mes demandes en cours (en tête : on revient sur le portail surtout pour suivre) -->
+    <div class="mb-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 border-l-4 border-l-accent-500 shadow-sm">
+        <div class="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-200 dark:border-slate-800">
+            <h2 class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <i data-lucide="activity" class="w-4 h-4 text-accent-600 dark:text-accent-400"></i>
+                Mes demandes en cours
+                <span class="ml-1 px-2 py-0.5 text-[10px] font-black bg-accent-100 text-accent-700 dark:bg-accent-50 dark:text-accent-400">{{ open_count }}</span>
+            </h2>
+            <a href="{{ url_for('main.my_history') }}" class="text-xs font-bold text-accent-600 hover:text-accent-700 dark:text-accent-400 transition uppercase tracking-wide">Tout voir →</a>
+        </div>
+        <div class="divide-y divide-gray-100 dark:divide-slate-800">
+            {% for item in open_items %}
+            <a href="{{ item.view_url }}" class="flex items-center gap-4 px-6 py-3 hover:bg-gray-50 dark:hover:bg-slate-800/60 transition">
+                <span class="hidden sm:inline-block font-black text-[10px] uppercase text-slate-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 px-2 py-1 whitespace-nowrap">{{ item.service }}</span>
+                <div class="min-w-0 flex-1">
+                    <p class="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">{{ item.subject }}</p>
+                    <p class="text-[11px] text-slate-400"><span class="font-mono">{{ item.ref }}</span> · {{ item.date.strftime('%d/%m/%Y') }} · {{ item.status_hint }}</p>
+                </div>
+                <span class="px-2.5 py-1 text-[10px] font-black uppercase tracking-wide whitespace-nowrap {{ item.status_class }}">{{ item.status_label }}</span>
+                <i data-lucide="chevron-right" class="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0"></i>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
     <!-- Grille Services -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
 
@@ -201,8 +228,10 @@
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="p-8 text-center text-slate-400 dark:text-slate-500 italic font-bold">
-                            Vous n'avez pas encore fait de demande.
+                        <td colspan="5" class="p-10 text-center">
+                            <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 text-slate-300 dark:text-slate-600"></i>
+                            <p class="text-slate-500 dark:text-slate-400 font-bold">Vous n'avez pas encore fait de demande.</p>
+                            <p class="text-xs text-slate-400 mt-1">Choisissez un service ci-dessus pour créer votre première demande — vous pourrez la suivre ici.</p>
                         </td>
                     </tr>
                     {% endfor %}

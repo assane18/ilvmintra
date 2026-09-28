@@ -156,7 +156,7 @@
                             </td>
                             <td class="py-4 text-sm">{{ t.author.fullname }}</td>
                             <td class="py-4">
-                                <span class="px-2 py-1 bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-bold border border-orange-200 dark:border-orange-900">{{ t.status.value }}</span>
+                                <span class="px-2 py-1 bg-orange-100 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 text-xs font-bold border border-orange-200 dark:border-orange-900">{{ t.status|status_label(true) }}</span>
                             </td>
                             <td class="py-4 text-right pr-2">
                                 <div class="flex justify-end gap-2">

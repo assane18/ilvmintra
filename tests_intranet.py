@@ -172,6 +172,14 @@ def login(client, username='testuser', password='Test1234!'):
         sess['_user_id'] = str(uid)
         sess['_fresh'] = True
 
+    # La fixture `app` garde un app_context ambiant pour toute la session : les
+    # requêtes du test_client réutilisent donc le même `g`, où Flask-Login
+    # met current_user en cache. Sans ce reset, un 2e login() dans un même
+    # test continue d'agir avec l'identité précédente (piège déjà rencontré).
+    from flask import g, has_app_context
+    if has_app_context():
+        g.pop('_login_user', None)
+
     # Vérifier que la session est bien active
     r = client.get('/portal', follow_redirects=False)
     return r
@@ -1438,6 +1446,7 @@ class TestProfil:
         html = client.get(f'/tickets/view/{uid}').data.decode()
         assert '4512' in html and 'Bureau 7' in html
 
+
 # ===========================================================================
 #  CONNEXION SSO MICROSOFT ENTRA ID (Microsoft et l'AD sont simulés)
 # ===========================================================================
@@ -1604,6 +1613,263 @@ class TestSSOMicrosoft:
         r = client.post('/auth/login', data={'username': 'x', 'password': 'y'})
         assert r.status_code == 200
 
+
+# ===========================================================================
+#  LOT UX 2026-09-28 : statuts humains, frise, portail, recherche, avis,
+#  réouverture, conseils avant envoi, réponses types, casse identifiant
+# ===========================================================================
+
+class TestLotUX:
+
+    def _users(self, app):
+        with app.app_context():
+            make_user(username='ux_user', role=UserRole.USER, service=ServiceType.DRH, fullname='Ursule XAVIER')
+            make_user(username='ux_solver', role=UserRole.SOLVER, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+            make_user(username='ux_admin', role=UserRole.ADMIN, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+
+    def _ticket(self, app, status=TicketStatus.PENDING, author='ux_user', solver=None, title='Imprimante en panne', closed_days_ago=None):
+        with app.app_context():
+            a = User.query.filter_by(username=author).first()
+            s = User.query.filter_by(username=solver).first() if solver else None
+            t = Ticket(title=title, description='desc', author=a, solver=s, target_service=ServiceType.INFO,
+                       status=status, uid_public=f'T{Ticket.query.count()+1:03d}', category_ticket='Incident Standard',
+                       created_at=datetime.now(), service_demandeur='DRH')
+            if closed_days_ago is not None:
+                t.closed_at = datetime.now() - timedelta(days=closed_days_ago)
+            db.session.add(t); db.session.commit()
+            return t.uid_public
+
+    # --- statuts humains + frise ---
+    def test_filtre_status_label(self, app):
+        from app.status_display import status_label, ticket_timeline
+        assert status_label(TicketStatus.PENDING) == 'En attente de prise en charge'
+        assert status_label(TicketStatus.VALIDATION_N1, short=True) == 'Validation manager'
+        assert status_label('INCONNU_X') == 'Inconnu x'
+
+    def test_frise_selon_statut(self, app, db_session):
+        self._users(app)
+        from app.status_display import ticket_timeline
+        with app.app_context():
+            for status, expected in [
+                (TicketStatus.VALIDATION_N1, ['done', 'current', 'todo', 'todo', 'todo']),
+                (TicketStatus.REFUSED,       ['done', 'failed', 'todo', 'todo', 'todo']),
+                (TicketStatus.PENDING,       ['done', 'current', 'todo', 'todo']),
+                (TicketStatus.IN_PROGRESS,   ['done', 'done', 'current', 'todo']),
+                (TicketStatus.DONE,          ['done', 'done', 'done', 'done']),
+            ]:
+                uid = self._ticket(app, status=status, solver='ux_solver' if status in (TicketStatus.IN_PROGRESS, TicketStatus.DONE) else None)
+                t = Ticket.query.filter_by(uid_public=uid).first()
+                assert [st['state'] for st in ticket_timeline(t)] == expected, status
+
+    def test_detail_ticket_affiche_frise_et_libelle(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, status=TicketStatus.PENDING)
+        login(client, 'ux_user')
+        html = client.get(f'/tickets/view/{uid}').data.decode()
+        assert 'Suivi de la demande' in html and 'En attente de prise en charge' in html
+        assert 'EN_ATTENTE_TRAITEMENT' not in html
+
+    # --- portail : demandes en cours en tête ---
+    def test_portail_bloc_demandes_en_cours(self, client, db_session, app):
+        self._users(app)
+        self._ticket(app, status=TicketStatus.IN_PROGRESS, solver='ux_solver', title='Souris cassée')
+        self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', title='Vieux ticket clos', closed_days_ago=30)
+        login(client, 'ux_user')
+        html = client.get('/portal').data.decode()
+        assert 'Mes demandes en cours' in html
+        assert html.index('Souris cassée') < html.index('Grille Services')
+        assert 'Vieux ticket clos' in html  # reste dans le tableau des dernières demandes
+
+    def test_portail_sans_demande_en_cours(self, client, db_session, app):
+        self._users(app)
+        login(client, 'ux_user')
+        html = client.get('/portal').data.decode()
+        assert 'Mes demandes en cours' not in html
+        assert 'Créer' in html or 'première demande' in html
+
+    # --- recherche globale ---
+    def test_recherche_mes_demandes_et_formulaires(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, title='Ecran noir au démarrage')
+        login(client, 'ux_user')
+        r = client.get('/api/search?q=ecran')
+        d = r.get_json()
+        assert [m['ref'] for m in d['mine']] == [uid]
+        assert d['tickets'] == []  # un USER ne voit pas les tickets des services
+        assert any('Informatique' in f['title'] for f in client.get('/api/search?q=informatique').get_json()['forms'])
+        page = client.get('/search?q=ecran').data.decode()
+        assert 'Ecran noir' in page
+
+    def test_recherche_tickets_de_mon_service_solver(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, title='Clavier bloqué')
+        login(client, 'ux_solver')
+        d = client.get('/api/search?q=clavier').get_json()
+        assert [t['ref'] for t in d['tickets']] == [uid]
+        d2 = client.get('/api/search?q=Ursule').get_json()  # par nom du demandeur
+        assert [t['ref'] for t in d2['tickets']] == [uid]
+
+    def test_recherche_trop_courte(self, client, db_session, app):
+        self._users(app)
+        login(client, 'ux_user')
+        assert client.get('/api/search?q=a').get_json() == {'query': 'a', 'mine': [], 'forms': [], 'tickets': []}
+
+    # --- satisfaction ---
+    def test_avis_rapide_depuis_email(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=0)
+        login(client, 'ux_user')
+        r = client.get(f'/tickets/rate/{uid}/3')
+        assert r.status_code == 302
+        with app.app_context():
+            t = Ticket.query.filter_by(uid_public=uid).first()
+            assert t.satisfaction == 3 and t.satisfaction_at is not None
+        # Un second clic ne réécrit pas l'avis
+        client.get(f'/tickets/rate/{uid}/1')
+        with app.app_context():
+            assert Ticket.query.filter_by(uid_public=uid).first().satisfaction == 3
+
+    def test_avis_formulaire_avec_commentaire(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=1)
+        login(client, 'ux_user')
+        client.post(f'/tickets/rate/{uid}', data={'score': '1', 'comment': 'Pas résolu vraiment'})
+        with app.app_context():
+            t = Ticket.query.filter_by(uid_public=uid).first()
+            assert (t.satisfaction, t.satisfaction_comment) == (1, 'Pas résolu vraiment')
+
+    def test_avis_refuse_si_pas_auteur_ou_pas_termine(self, client, db_session, app):
+        self._users(app)
+        uid_open = self._ticket(app, status=TicketStatus.IN_PROGRESS, solver='ux_solver')
+        uid_done = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=0)
+        login(client, 'ux_user')
+        client.get(f'/tickets/rate/{uid_open}/3')
+        login(client, 'ux_solver')
+        client.get(f'/tickets/rate/{uid_done}/3')
+        with app.app_context():
+            assert Ticket.query.filter_by(uid_public=uid_open).first().satisfaction is None
+            assert Ticket.query.filter_by(uid_public=uid_done).first().satisfaction is None
+
+    def test_stats_incluent_la_satisfaction(self, client, db_session, app):
+        self._users(app)
+        for score in (3, 3, 1):
+            uid = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=0)
+            with app.app_context():
+                t = Ticket.query.filter_by(uid_public=uid).first(); t.satisfaction = score; db.session.commit()
+        login(client, 'ux_admin')
+        html = client.get('/tickets/stats?services=INFORMATIQUE').data.decode()
+        assert '3 avis' in html and '67%' in html
+
+    # --- réouverture ---
+    def test_reouverture_par_le_demandeur(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=2)
+        login(client, 'ux_user')
+        r = client.post(f'/tickets/reopen/{uid}', data={'reason': "L'imprimante bloque encore"})
+        assert r.status_code == 302
+        with app.app_context():
+            t = Ticket.query.filter_by(uid_public=uid).first()
+            assert t.status == TicketStatus.IN_PROGRESS and t.closed_at is None and t.reopen_count == 1
+            assert "rouverte" in t.messages[-1].content and "bloque encore" in t.messages[-1].content
+            solver = User.query.filter_by(username='ux_solver').first()
+            assert Notification.query.filter_by(user_id=solver.id).filter(Notification.message.like('%rouvert%')).count() == 1
+
+    def test_reouverture_sans_technicien_repasse_en_attente(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, status=TicketStatus.DONE, closed_days_ago=0)
+        login(client, 'ux_user')
+        client.post(f'/tickets/reopen/{uid}', data={'reason': 'Toujours pareil'})
+        with app.app_context():
+            assert Ticket.query.filter_by(uid_public=uid).first().status == TicketStatus.PENDING
+
+    def test_reouverture_refusee_apres_7_jours_ou_sans_motif(self, client, db_session, app):
+        self._users(app)
+        old = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=8)
+        recent = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=1)
+        login(client, 'ux_user')
+        client.post(f'/tickets/reopen/{old}', data={'reason': 'x'})
+        client.post(f'/tickets/reopen/{recent}', data={'reason': '   '})
+        with app.app_context():
+            assert Ticket.query.filter_by(uid_public=old).first().status == TicketStatus.DONE
+            assert Ticket.query.filter_by(uid_public=recent).first().status == TicketStatus.DONE
+
+    def test_reouverture_refusee_si_pas_auteur(self, client, db_session, app):
+        self._users(app)
+        uid = self._ticket(app, status=TicketStatus.DONE, solver='ux_solver', closed_days_ago=1)
+        login(client, 'ux_solver')
+        client.post(f'/tickets/reopen/{uid}', data={'reason': 'test'})
+        with app.app_context():
+            assert Ticket.query.filter_by(uid_public=uid).first().status == TicketStatus.DONE
+
+    # --- conseils avant envoi + réponses types ---
+    def test_conseils_affiches_sur_le_formulaire_legacy(self, client, db_session, app):
+        from app.models import HelpTip
+        self._users(app)
+        with app.app_context():
+            db.session.add(HelpTip(context='DAF', title='Avez-vous le devis ?', body='Un devis PDF est obligatoire.'))
+            db.session.add(HelpTip(context='DAF', title='Conseil désactivé', body='x', is_active=False))
+            db.session.commit()
+        login(client, 'ux_user')
+        html = client.get('/tickets/new/DAF').data.decode()
+        assert 'Avez-vous le devis' in html and 'Conseil désactivé' not in html
+
+    def test_reponses_types_visibles_par_le_technicien_pas_le_demandeur(self, client, db_session, app):
+        from app.models import CannedResponse
+        self._users(app)
+        with app.app_context():
+            db.session.add(CannedResponse(title='Précision poste', body='Pouvez-vous préciser le poste ?'))
+            db.session.add(CannedResponse(title='Spécifique DRH', body='x', service='DRH'))
+            db.session.commit()
+        uid = self._ticket(app, status=TicketStatus.IN_PROGRESS, solver='ux_solver')
+        login(client, 'ux_solver')
+        html = client.get(f'/tickets/view/{uid}').data.decode()
+        assert 'id="canned-select"' in html and 'Précision poste' in html and 'Spécifique DRH' not in html
+        login(client, 'ux_user')
+        assert 'id="canned-select"' not in client.get(f'/tickets/view/{uid}').data.decode()
+
+    def test_admin_contenus_aide_crud(self, client, db_session, app):
+        from app.models import HelpTip, CannedResponse
+        self._users(app)
+        login(client, 'ux_user')
+        assert client.get('/admin/help-contents').status_code in (302, 403)
+        login(client, 'ux_admin')
+        assert client.get('/admin/help-contents').status_code == 200
+        client.post('/admin/help-contents', data={'action': 'add_tip', 'context': 'info-v2', 'title': 'Redémarrer', 'body': 'Éteignez puis rallumez.', 'sort_order': '1'})
+        client.post('/admin/help-contents', data={'action': 'add_response', 'title': 'Merci', 'body': 'Merci pour votre retour.', 'service': ''})
+        with app.app_context():
+            tip = HelpTip.query.filter_by(title='Redémarrer').first(); resp = CannedResponse.query.filter_by(title='Merci').first()
+            assert tip and tip.context == 'info-v2' and resp and resp.service is None
+            tip_id, resp_id = tip.id, resp.id
+        client.post('/admin/help-contents', data={'action': 'toggle_tip', 'id': tip_id})
+        client.post('/admin/help-contents', data={'action': 'delete_response', 'id': resp_id})
+        with app.app_context():
+            assert HelpTip.query.get(tip_id).is_active is False
+            assert CannedResponse.query.get(resp_id) is None
+
+    # --- casse de l'identifiant ---
+    def test_provisioning_aligne_la_graphie_sur_l_ad(self, app, db_session):
+        """Quelle que soit la casse tapée (nprenom / NPRENOM / NPrenom), un seul
+        compte, un seul id, et le username stocké prend la graphie de l'AD."""
+        from app.routes.auth import provision_user_from_ad_entry
+        with app.app_context():
+            entry = _FakeAdEntry('NPrenom', 'Nom PRENOM', 'NPrenom@ilvm.fr', ['GU-DRH'])
+            ids = set()
+            for typed in ('nprenom', 'NPRENOM', 'Nprenom', 'NPrenom'):
+                u = provision_user_from_ad_entry(str(entry.sAMAccountName), entry); db.session.commit()
+                ids.add(u.id)
+            assert len(ids) == 1
+            assert User.query.filter(User.username.ilike('nprenom')).count() == 1
+            assert User.query.filter(User.username.ilike('nprenom')).first().username == 'NPrenom'
+
+    def test_provisioning_insensible_a_la_casse(self, app, db_session):
+        from app.routes.auth import provision_user_from_ad_entry
+        with app.app_context():
+            existing = make_user(username='astraore', role=UserRole.USER, service=ServiceType.INFO); existing_id = existing.id
+            entry = _FakeAdEntry('AsTraore', 'Assane TRAORE', 'AsTraore@ilvm.fr', ['GR-SOLVER', 'GS-INFORMATIQUE', 'GU-INFORMATIQUE'])
+            u = provision_user_from_ad_entry('ASTRAORE', entry); db.session.commit()
+            assert u.id == existing_id
+            assert User.query.filter(User.username.ilike('astraore')).count() == 1
+            assert u.role == UserRole.SOLVER
 
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)

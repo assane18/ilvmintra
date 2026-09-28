@@ -9,6 +9,7 @@ from string import Template
 from app import db
 from app.decorators import can_validate_step
 from app.models import (
+    HelpTip,
     FormDefinition, FormSubmission, FormSubmissionFile, FormFieldType,
     FormSubmissionStatus, ServiceSource, Notification, Ticket, TicketStatus,
     TICKET_FIELD_MAPPING_CHOICES,
@@ -248,6 +249,8 @@ def new_submission(slug):
     form_def = FormDefinition.query.filter_by(slug=slug).first_or_404()
     if not form_def.is_active:
         abort(404)
+    # Conseils "avant d'envoyer" gérés dans /admin/help-contents (contexte = slug)
+    help_tips = HelpTip.query.filter_by(context=slug, is_active=True).order_by(HelpTip.sort_order, HelpTip.id).all()
 
     if form_def.manager_only:
         role = str(current_user.role.value).upper()
@@ -297,7 +300,7 @@ def new_submission(slug):
         if errors:
             for e in errors:
                 flash(e, "danger")
-            return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form)
+            return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form, help_tips=help_tips)
 
         initial_index = _first_eligible_step_index(form_def, current_user, 0)
         submission = FormSubmission(
@@ -335,7 +338,7 @@ def new_submission(slug):
         db.session.commit()
         return redirect(url_for('forms.view_submission', id=submission.id))
 
-    return render_template('forms/new_submission.html', form_def=form_def, form_data={})
+    return render_template('forms/new_submission.html', form_def=form_def, form_data={}, help_tips=help_tips)
 
 
 @forms_bp.route('/submission/<int:id>')

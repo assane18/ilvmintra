@@ -2,12 +2,13 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 import os
 from werkzeug.utils import secure_filename
 from flask_login import login_required, current_user
-from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus, ServiceType, TicketStatus
+from app.models import UserRole, Ticket, FormDefinition, User, FormSubmission, FormSubmissionStatus, ServiceType, TicketStatus, HelpTip, CannedResponse
 from app import db
 from app.decorators import admin_required
 from app.health import get_liveness, get_full_health
 from app.routes.tickets import generate_ticket_uid, notify_solvers_new_ticket, get_service_emails, get_paris_time
 from app.emails import send_service_alert
+from app.status_display import status_label, is_open_status
 import json
 
 main_bp = Blueprint('main', __name__)
@@ -52,13 +53,18 @@ def index():
 def user_portal():
     # Les 15 dernières demandes de l'utilisateur (tickets + soumissions en
     # attente de validation — voir _user_history_items).
-    recent_items = _user_history_items(current_user)[:15]
+    all_items = _user_history_items(current_user)
+    # Les demandes encore en cours passent en tête de page (bloc dédié) ; le
+    # tableau "dernières demandes" garde les 10 plus récentes, toutes confondues.
+    open_items = [i for i in all_items if i['is_open']][:8]
+    recent_items = all_items[:10]
 
     active_forms = FormDefinition.query.filter_by(is_active=True)\
         .filter(FormDefinition.slug.notin_(LIVE_PILOT_SLUGS))\
         .order_by(FormDefinition.name).all()
 
-    return render_template('portal.html', user=current_user, items=recent_items, active_forms=active_forms)
+    return render_template('portal.html', user=current_user, items=recent_items, open_items=open_items,
+                           open_count=sum(1 for i in all_items if i['is_open']), active_forms=active_forms)
 
 def _ticket_status_class(status_value):
     if 'VALIDATION' in status_value:
@@ -94,8 +100,11 @@ def _user_history_items(user, search_query=''):
             'date': t.created_at,
             'service': t.target_service.value,
             'subject': t.title,
-            'status_label': t.status.value,
+            'status_value': t.status.value,
+            'status_label': status_label(t.status, short=True),
+            'status_hint': status_label(t.status),
             'status_class': _ticket_status_class(t.status.value),
+            'is_open': is_open_status(t.status),
             'view_url': url_for('tickets.view_ticket', ticket_uid=t.uid_public),
         })
 
@@ -108,24 +117,161 @@ def _user_history_items(user, search_query=''):
             if q not in sub.uid_public.lower() and q not in subject.lower():
                 continue
         if sub.status == FormSubmissionStatus.REFUSED:
-            status_label, status_class = 'REFUSÉ', 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300'
+            label, hint, css, is_open = 'Refusée', 'Demande refusée', 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300', False
         elif sub.status == FormSubmissionStatus.DONE:
-            status_label, status_class = 'TERMINÉ', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+            label, hint, css, is_open = 'Terminée', 'Demande terminée', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', False
         else:
-            status_label, status_class = 'EN ATTENTE DE VALIDATION', 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+            step = sub.current_step.label if sub.current_step else 'validation'
+            label, hint, css, is_open = 'Validation', f'En attente : {step}', 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300', True
         items.append({
             'ref': sub.uid_public,
             'date': sub.created_at,
             'service': subject,
             'subject': subject,
-            'status_label': status_label,
-            'status_class': status_class,
+            'status_value': sub.status.value,
+            'status_label': label,
+            'status_hint': hint,
+            'status_class': css,
+            'is_open': is_open,
             'view_url': url_for('forms.view_submission', id=sub.id),
         })
 
     items.sort(key=lambda i: i['date'], reverse=True)
     return items
 
+
+# ---------------------------------------------------------------------------
+#  RECHERCHE GLOBALE (champ du header) : mes demandes, formulaires du portail,
+#  et pour les rôles techniques/encadrants les tickets de leurs services.
+# ---------------------------------------------------------------------------
+
+# Tuiles codées en dur du portail (les formulaires du moteur sont lus en base)
+PORTAL_STATIC_ENTRIES = [
+    ('Informatique', 'Problème PC, Internet, Logiciel, Imprimante', 'forms.new_submission', {'slug': 'info-v2'}),
+    ('DRH', 'Contrats, RIB, Infos perso, Rendez-vous', 'forms.new_submission', {'slug': 'drh-v2'}),
+    ('DAF / Achats', 'Bons de commande, Factures, Budget', 'tickets.new_ticket', {'service_name': 'DAF'}),
+    ('Services Techniques', 'Travaux, Maintenance, Plomberie', 'forms.new_submission', {'slug': 'tech-v2'}),
+    ('Services Généraux', 'Enlèvement', 'forms.new_submission', {'slug': 'generaux-v2'}),
+    ('Dépannage Imago', 'Assistance logiciel métier', 'forms.new_submission', {'slug': 'imago-v2'}),
+    ('Bon de commande : Délégation signature', 'Commandes rapides < 400€ TTC', 'tickets.new_ticket', {'service_name': 'DAF', 'type': 'delegation'}),
+    ('Demande Matériel', 'PC, Écrans, Périphériques', 'forms.new_submission', {'slug': 'materiel-v2'}),
+    ('Agent Recruté (FCPI)', 'Création de poste, arrivées', 'fcpi.check_access', {}),
+    ('Dossier de Séjour', 'Dossier séjour, devis, PV de sécurité', 'forms.new_submission', {'slug': 'sejour-v2'}),
+    ('Publication Actualités', 'Actualité avec texte et visuels', 'forms.new_submission', {'slug': 'publication-v2'}),
+]
+
+def _global_search(user, q, limit=8):
+    q = (q or '').strip()
+    if len(q) < 2:
+        return {'mine': [], 'forms': [], 'tickets': [], 'query': q}
+    ql = q.lower()
+
+    mine = _user_history_items(user, q)[:limit]
+
+    forms = [{'title': t, 'subtitle': d, 'url': url_for(ep, **kw)}
+             for t, d, ep, kw in PORTAL_STATIC_ENTRIES if ql in t.lower() or ql in d.lower()]
+    for f in FormDefinition.query.filter(FormDefinition.is_active == True,
+                                         FormDefinition.slug.notin_(LIVE_PILOT_SLUGS),
+                                         db.or_(FormDefinition.name.ilike(f'%{q}%'), FormDefinition.description.ilike(f'%{q}%'))).all():
+        forms.append({'title': f.name, 'subtitle': f.description or 'Formulaire', 'url': url_for('forms.new_submission', slug=f.slug)})
+    forms = forms[:limit]
+
+    # Tickets des services gérés (solvers / managers / directeurs), tous pour l'admin
+    tickets = []
+    role = str(user.role.value).upper()
+    if role != 'USER':
+        tq = Ticket.query.filter(db.or_(Ticket.uid_public.ilike(f'%{q}%'), Ticket.title.ilike(f'%{q}%'),
+                                        Ticket.author.has(User.fullname.ilike(f'%{q}%'))))
+        if role != 'ADMIN':
+            allowed = user.get_allowed_services()
+            members = [s for s in ServiceType if s.value in allowed or s.name in allowed]
+            tq = tq.filter(Ticket.target_service.in_(members)) if members else tq.filter(False)
+        for t in tq.order_by(Ticket.created_at.desc()).limit(limit).all():
+            tickets.append({
+                'ref': t.uid_public, 'title': t.title, 'author': t.author.fullname if t.author else '',
+                'service': t.target_service.value, 'status_label': status_label(t.status, short=True),
+                'status_class': _ticket_status_class(t.status.value), 'date': t.created_at,
+                'url': url_for('tickets.view_ticket', ticket_uid=t.uid_public),
+            })
+    return {'mine': mine, 'forms': forms, 'tickets': tickets, 'query': q}
+
+@main_bp.route('/search')
+@login_required
+def search():
+    results = _global_search(current_user, request.args.get('q', ''), limit=30)
+    return render_template('search.html', **results)
+
+@main_bp.route('/api/search')
+@login_required
+def api_search():
+    r = _global_search(current_user, request.args.get('q', ''), limit=5)
+    def ser(items, keys):
+        out = []
+        for i in items:
+            d = {k: i.get(k) for k in keys}
+            if d.get('date'): d['date'] = d['date'].strftime('%d/%m/%Y')
+            out.append(d)
+        return out
+    return jsonify({
+        'query': r['query'],
+        'mine': ser(r['mine'], ['ref', 'subject', 'service', 'status_label', 'status_class', 'date', 'view_url']),
+        'forms': r['forms'],
+        'tickets': ser(r['tickets'], ['ref', 'title', 'author', 'service', 'status_label', 'status_class', 'date', 'url']),
+    })
+
+# ---------------------------------------------------------------------------
+#  ADMIN : contenus d'aide (conseils avant envoi + réponses types)
+# ---------------------------------------------------------------------------
+
+HELP_CONTEXTS = [
+    ('info-v2', 'Informatique'), ('drh-v2', 'DRH'), ('DAF', 'DAF / Achats'), ('tech-v2', 'Services Techniques'),
+    ('generaux-v2', 'Services Généraux'), ('imago-v2', 'Dépannage Imago'), ('materiel-v2', 'Demande Matériel'),
+    ('sejour-v2', 'Dossier de Séjour'), ('publication-v2', 'Publication Actualités'),
+]
+
+@main_bp.route('/admin/help-contents', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def admin_help_contents():
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'add_tip':
+            tip = HelpTip(context=request.form.get('context', '').strip()[:60],
+                          title=request.form.get('title', '').strip()[:150],
+                          body=request.form.get('body', '').strip(),
+                          link=request.form.get('link', '').strip()[:255] or None,
+                          sort_order=int(request.form.get('sort_order') or 0))
+            if tip.context and tip.title and tip.body:
+                db.session.add(tip); db.session.commit(); flash('Conseil ajouté.', 'success')
+            else:
+                flash('Contexte, titre et texte sont obligatoires.', 'danger')
+        elif action == 'add_response':
+            resp = CannedResponse(title=request.form.get('title', '').strip()[:100],
+                                  body=request.form.get('body', '').strip(),
+                                  service=request.form.get('service', '').strip()[:60] or None,
+                                  sort_order=int(request.form.get('sort_order') or 0))
+            if resp.title and resp.body:
+                db.session.add(resp); db.session.commit(); flash('Réponse type ajoutée.', 'success')
+            else:
+                flash('Titre et texte sont obligatoires.', 'danger')
+        elif action in ('toggle_tip', 'delete_tip', 'toggle_response', 'delete_response'):
+            model = HelpTip if action.endswith('tip') else CannedResponse
+            obj = model.query.get_or_404(int(request.form.get('id')))
+            if action.startswith('delete'):
+                db.session.delete(obj)
+            else:
+                obj.is_active = not obj.is_active
+            db.session.commit()
+        return redirect(url_for('main.admin_help_contents'))
+
+    tips = HelpTip.query.order_by(HelpTip.context, HelpTip.sort_order, HelpTip.id).all()
+    responses = CannedResponse.query.order_by(CannedResponse.service, CannedResponse.sort_order, CannedResponse.id).all()
+    context_labels = dict(HELP_CONTEXTS)
+    for f in FormDefinition.query.filter_by(is_active=True).all():
+        context_labels.setdefault(f.slug, f.name)
+    return render_template('admin_help_contents.html', tips=tips, responses=responses,
+                           contexts=sorted(context_labels.items(), key=lambda x: x[1]),
+                           services=[s.value for s in ServiceType][:14])
 
 @main_bp.route('/my_history')
 @login_required

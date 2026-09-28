@@ -190,6 +190,13 @@ class Ticket(db.Model):
     solver = db.relationship('User', foreign_keys=[solver_id], backref='assigned_tickets')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     closed_at = db.Column(db.DateTime, nullable=True)
+
+    # Boucle qualité (2026-09-28) : avis du demandeur à la clôture (1 insatisfait,
+    # 2 neutre, 3 satisfait) et nombre de réouvertures "ce n'est pas résolu".
+    satisfaction = db.Column(db.SmallInteger, nullable=True)
+    satisfaction_comment = db.Column(db.Text, nullable=True)
+    satisfaction_at = db.Column(db.DateTime, nullable=True)
+    reopen_count = db.Column(db.Integer, default=0)
     # Horodatage de la PREMIÈRE prise en charge (passage à IN_PROGRESS) — nul
     # pour les tickets historiques créés avant l'ajout de cette colonne, à
     # exclure du calcul des délais d'assignation plutôt que compté comme 0.
@@ -333,6 +340,30 @@ class Recruitment(db.Model):
     def __repr__(self):
         # IMPORTANT: Ne pas inclure de relations ici
         return f'<Recruitment {self.uid_public}>'
+
+class HelpTip(db.Model):
+    """Conseil affiché AVANT l'envoi d'une demande ("Avez-vous essayé…"),
+    ciblé par contexte : slug d'un formulaire du moteur (ex: 'info-v2') ou nom
+    de service d'une route legacy (ex: 'DAF'). Géré dans /admin/help-contents."""
+    __tablename__ = 'help_tips'
+    id = db.Column(db.Integer, primary_key=True)
+    context = db.Column(db.String(60), nullable=False, index=True)
+    title = db.Column(db.String(150), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    link = db.Column(db.String(255), nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+class CannedResponse(db.Model):
+    """Réponse type proposée aux techniciens dans le chat d'un ticket.
+    service=None => proposée sur tous les services."""
+    __tablename__ = 'canned_responses'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    service = db.Column(db.String(60), nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
 
 class TicketMessage(db.Model):
     __tablename__ = 'ticket_messages'

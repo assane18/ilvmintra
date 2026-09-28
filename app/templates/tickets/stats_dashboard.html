@@ -85,7 +85,7 @@
         </h2>
 
         <!-- KPI -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
             <div class="border border-gray-200 dark:border-slate-800 p-4">
                 <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Reçus</p>
                 <p class="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{{ s.received }}</p>
@@ -109,6 +109,16 @@
             <div class="border {{ 'border-red-300 dark:border-red-800' if s.refusal_rate >= 20 else 'border-gray-200 dark:border-slate-800' }} p-4">
                 <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Taux de refus</p>
                 <p class="text-2xl font-black tabular-nums {{ 'text-red-600 dark:text-red-400' if s.refusal_rate >= 20 else 'text-slate-900 dark:text-white' }}">{{ s.refusal_rate }}%</p>
+            </div>
+            <div class="border border-gray-200 dark:border-slate-800 p-4" title="Part d'avis « Satisfait » parmi les demandeurs ayant répondu à la clôture">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Satisfaction</p>
+                {% if s.satisfaction_count %}
+                <p class="text-2xl font-black tabular-nums {{ 'text-emerald-600 dark:text-emerald-400' if s.satisfaction_pct >= 70 else ('text-amber-600 dark:text-amber-400' if s.satisfaction_pct >= 40 else 'text-red-600 dark:text-red-400') }}">{{ s.satisfaction_pct }}%</p>
+                <p class="text-[10px] text-slate-400">{{ s.satisfaction_count }} avis · moy. {{ s.satisfaction_avg }}/3</p>
+                {% else %}
+                <p class="text-xl font-black text-slate-400">N/A</p>
+                <p class="text-[10px] text-slate-400">aucun avis</p>
+                {% endif %}
             </div>
         </div>
 

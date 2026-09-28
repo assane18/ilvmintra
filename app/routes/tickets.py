@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, redirect, url_for, flash, request, current_app, make_response, send_file
 from flask_login import login_required, current_user
-from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus
+from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessage, Materiel, Pret, Notification, User, Recruitment, RecruitmentStatus, HelpTip, CannedResponse
 from app import db
 # --- IMPORT DES FONCTIONS EMAIL (AJOUTÉ) ---
 from app.emails import send_service_alert, send_assignment_notification, send_message_notification, send_closure_notification
@@ -377,7 +377,8 @@ def new_ticket(service_name):
         flash(f'Demande {uid} enregistrée.', 'success')
         return redirect(url_for('main.user_portal'))
 
-    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation)
+    help_tips = HelpTip.query.filter_by(context=service_name, is_active=True).order_by(HelpTip.sort_order, HelpTip.id).all()
+    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation, help_tips=help_tips)
 
 
 @tickets_bp.route('/view/<string:ticket_uid>', methods=['GET', 'POST'])
@@ -496,7 +497,18 @@ def view_ticket(ticket_uid):
                 if not ticket_tags.isdisjoint(staff_competencies):
                     solvers_available.append(s)
 
-        return render_template('tickets/detail.html', 
+        # Réponses types (chat) : proposées à tout non-auteur ayant un rôle technique/encadrant
+        canned_responses = []
+        if 'USER' not in user_role or not is_author:
+            svc = ticket.target_service.value if hasattr(ticket.target_service, 'value') else str(ticket.target_service)
+            canned_responses = CannedResponse.query.filter(
+                CannedResponse.is_active == True,
+                db.or_(CannedResponse.service == None, CannedResponse.service == svc)
+            ).order_by(CannedResponse.sort_order, CannedResponse.title).all()
+        can_reopen = (is_author and ticket.status == TicketStatus.DONE and ticket.closed_at
+                      and (get_paris_time().replace(tzinfo=None) - ticket.closed_at.replace(tzinfo=None)).days < 7)
+
+        return render_template('tickets/detail.html', canned_responses=canned_responses, can_reopen=can_reopen, 
                                ticket=ticket, 
                                attached_files=attached_files, 
                                solvers_available=solvers_available,
@@ -707,6 +719,7 @@ def _empty_stats_entry():
         'close_avg_h': None, 'close_median_h': None,
         'status_counts': {}, 'refusal_rate': 0,
         'top_categories': [], 'monthly': {},
+        'satisfaction_count': 0, 'satisfaction_pct': None, 'satisfaction_avg': None,
     }
 
 
@@ -726,7 +739,7 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
         q_created = q_created.filter(Ticket.target_service.in_(scope_services))
 
     q_closed = Ticket.query.with_entities(
-        Ticket.target_service, Ticket.created_at, Ticket.closed_at,
+        Ticket.target_service, Ticket.created_at, Ticket.closed_at, Ticket.satisfaction,
     ).filter(Ticket.status == TicketStatus.DONE, Ticket.closed_at.between(window_start, window_end))
     if scope_services is not None:
         q_closed = q_closed.filter(Ticket.target_service.in_(scope_services))
@@ -753,6 +766,7 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
         status_counts = Counter(label(r.status) for r in c_rows)
         refused = status_counts.get(TicketStatus.REFUSED.value, 0)
         top_categories = Counter(r.category_ticket or 'Non renseigné' for r in c_rows).most_common(3)
+        ratings = [r.satisfaction for r in d_rows if r.satisfaction]
 
         monthly = defaultdict(lambda: {'received': 0, 'closed': 0})
         for r in created_by_service[svc]:
@@ -773,6 +787,10 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
             'refusal_rate': round(refused / len(c_rows) * 100, 1) if c_rows else 0,
             'top_categories': top_categories,
             'monthly': dict(sorted(monthly.items())),
+            # Boucle qualité : avis donnés à la clôture (1 insatisfait / 2 neutre / 3 satisfait)
+            'satisfaction_count': len(ratings),
+            'satisfaction_pct': round(sum(1 for r in ratings if r == 3) / len(ratings) * 100) if ratings else None,
+            'satisfaction_avg': round(statistics.mean(ratings), 2) if ratings else None,
         }
     return stats
 
@@ -1223,6 +1241,89 @@ def daf_director_sign(ticket_id):
     except Exception as e:
         flash(f"Erreur: {e}", "danger")
         return redirect(url_for('main.user_portal'))
+
+# ---------------------------------------------------------------------------
+#  BOUCLE QUALITÉ : avis à la clôture + réouverture par le demandeur
+# ---------------------------------------------------------------------------
+
+def _apply_rating(t, score, comment=None):
+    t.satisfaction = score
+    if comment is not None:
+        t.satisfaction_comment = comment.strip()[:2000] or None
+    t.satisfaction_at = get_paris_time()
+
+@tickets_bp.route('/rate/<ticket_uid>/<int:score>')
+@login_required
+def rate_ticket_quick(ticket_uid, score):
+    """Lien des 3 boutons de l'e-mail de clôture : enregistre l'avis en un clic
+    puis renvoie sur le ticket (où un commentaire optionnel peut être ajouté)."""
+    t = Ticket.query.filter_by(uid_public=ticket_uid).first_or_404()
+    if t.author_id != current_user.id:
+        flash("Seul le demandeur peut donner son avis sur ce ticket.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+    if t.status != TicketStatus.DONE or score not in (1, 2, 3):
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+    if t.satisfaction is None:
+        _apply_rating(t, score)
+        db.session.commit()
+        flash("Merci pour votre avis ! Vous pouvez ajouter un commentaire si vous le souhaitez.", "success")
+    return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+
+@tickets_bp.route('/rate/<ticket_uid>', methods=['POST'])
+@login_required
+def rate_ticket(ticket_uid):
+    t = Ticket.query.filter_by(uid_public=ticket_uid).first_or_404()
+    if t.author_id != current_user.id or t.status != TicketStatus.DONE:
+        flash("Avis impossible sur ce ticket.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+    try:
+        score = int(request.form.get('score', 0))
+    except ValueError:
+        score = 0
+    if score not in (1, 2, 3):
+        flash("Choisissez un niveau de satisfaction.", "warning")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+    _apply_rating(t, score, request.form.get('comment', ''))
+    db.session.commit()
+    flash("Merci, votre avis a bien été enregistré.", "success")
+    return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+
+@tickets_bp.route('/reopen/<ticket_uid>', methods=['POST'])
+@login_required
+def reopen_ticket(ticket_uid):
+    """"Ce n'est pas résolu" : le demandeur rouvre un ticket terminé depuis
+    moins de 7 jours. Il repart chez le même technicien (EN_COURS) ou, s'il
+    n'en avait plus, dans la file du service (EN_ATTENTE), avec un message
+    horodaté dans le fil et une notification — plutôt qu'un nouveau ticket
+    qui disperserait l'historique."""
+    t = Ticket.query.filter_by(uid_public=ticket_uid).first_or_404()
+    if t.author_id != current_user.id:
+        flash("Seul le demandeur peut rouvrir ce ticket.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+    if t.status != TicketStatus.DONE or not t.closed_at or \
+            (get_paris_time().replace(tzinfo=None) - t.closed_at.replace(tzinfo=None)).days >= 7:
+        flash("Ce ticket ne peut plus être rouvert (délai de 7 jours dépassé). Créez une nouvelle demande.", "warning")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+    reason = request.form.get('reason', '').strip()
+    if not reason:
+        flash("Indiquez ce qui n'est pas résolu.", "warning")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+
+    t.status = TicketStatus.IN_PROGRESS if t.solver_id else TicketStatus.PENDING
+    t.closed_at = None
+    t.reopen_count = (t.reopen_count or 0) + 1
+    t.satisfaction = None; t.satisfaction_comment = None; t.satisfaction_at = None
+    msg_content = f"🔁 Demande rouverte par le demandeur : {reason}"
+    db.session.add(TicketMessage(content=msg_content, ticket=t, author=current_user))
+
+    if t.solver:
+        create_notification(t.solver, f"Ticket rouvert : {t.uid_public}", 'warning', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+        send_message_notification(t, msg_content, t.solver)
+    else:
+        notify_solvers_new_ticket(t)
+    db.session.commit()
+    flash("Votre demande a été rouverte et le service prévenu.", "success")
+    return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
 
 @tickets_bp.route('/solver/close/<int:ticket_id>', methods=['POST'])
 @login_required
