@@ -1334,13 +1334,20 @@ def solver_dashboard():
         
         drh_enum = getattr(ServiceType, 'DRH', 'DRH') 
 
+        # DRH générique + sous-services (DRH-PAIE_CARRIERE, ...) : les tickets
+        # des sous-services portent une catégorie libre ($type_demande, ex:
+        # "Paie") et ne tomberaient dans aucune autre file.
+        def is_drh(t):
+            val = t.target_service.value if hasattr(t.target_service, 'value') else str(t.target_service)
+            return val in ('DRH', 'GS-DRH') or val.startswith('DRH-')
+
         pool_imago = [t for t in pending_tickets if str(t.target_service) == 'IMAGO' or t.target_service == ServiceType.IMAGO]
         
         pool_standard = [
             t for t in pending_tickets 
             if (not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard', 'Demande RH']) 
             and str(t.target_service) != 'IMAGO' and t.target_service != ServiceType.IMAGO
-            and t.target_service != drh_enum 
+            and not is_drh(t)
         ]
         
         pool_users = [t for t in pending_tickets if t.category_ticket == 'Nouvel Utilisateur']
@@ -1348,7 +1355,7 @@ def solver_dashboard():
 
         pool_bons = [t for t in pending_tickets if t.category_ticket in ['Bon de Commande', 'Bon de Commande (Délégation)']]
         
-        pool_drh = [t for t in pending_tickets if t.target_service == drh_enum or str(t.target_service) == 'DRH' or str(t.target_service) == 'GS-DRH']
+        pool_drh = [t for t in pending_tickets if is_drh(t)]
         
         mine = Ticket.query.filter_by(solver_id=current_user.id, status=TicketStatus.IN_PROGRESS).all()
         

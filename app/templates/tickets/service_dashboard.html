@@ -509,7 +509,9 @@
                 if (match) visibleCount++;
             });
             poolHeaders.forEach(header => {
-                const match = !selected || header.dataset.serviceHeader === selected;
+                // Le bloc "Ressources Humaines" regroupe DRH et ses sous-services (DRH-...).
+                const match = !selected || selected === header.dataset.serviceHeader
+                    || selected.startsWith(header.dataset.serviceHeader + '-');
                 header.classList.toggle('hidden', !match);
             });
             // Ne s'affiche que si un service précis est choisi et ne remonte rien —
