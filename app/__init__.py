@@ -59,6 +59,7 @@ def create_app(config_name='default'):
 
     from .routes.tickets import tickets_bp
     app.register_blueprint(tickets_bp, url_prefix='/tickets')
+    from .routes.wallboard import wallboard_bp; app.register_blueprint(wallboard_bp, url_prefix='/tickets')  # Écran mural Espace Tech
 
     from .routes.inventaire import inventaire_bp
     app.register_blueprint(inventaire_bp) 

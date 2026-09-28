@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Écran mural · Espace Tech</title>
+    {# Page autonome (n'étend pas base.html) : plein écran, sombre uniquement,
+       typographie lisible à 3 m, aucune interaction requise. Même DA « zéro
+       arrondi » que l'Espace Tech et admin_health.html. #}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>tailwind.config = { darkMode: 'class' };</script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        html, body { background: #020617; color: #e2e8f0; min-height: 100vh; }
+        .flat, .flat * { border-radius: 0 !important; }
+        .card { background: #0f172a; border: 1px solid #1e293b; }
+        .kpi-value { font-size: clamp(3rem, 6vw, 5.5rem); line-height: 1; font-weight: 800; }
+        .list-title { font-size: clamp(1.1rem, 1.6vw, 1.5rem); font-weight: 700; }
+        .list-meta { font-size: clamp(0.85rem, 1.1vw, 1.05rem); }
+        .pulse-dot { animation: pulse 2s cubic-bezier(.4,0,.6,1) infinite; }
+        @keyframes pulse { 50% { opacity: .35; } }
+        ::-webkit-scrollbar { width: 6px; } ::-webkit-scrollbar-thumb { background: #334155; }
+    </style>
+</head>
+<body class="flat">
+<div id="wallboard" class="min-h-screen flex flex-col p-6 gap-6"
+     data-url="{{ url_for('wallboard.wallboard_data', service=service) }}"
+     data-refresh="{{ refresh_seconds * 1000 }}">
+
+    <!-- En-tête -->
+    <header class="flex flex-wrap justify-between items-end gap-4">
+        <div>
+            <div class="flex items-center gap-3">
+                <i data-lucide="monitor" class="w-8 h-8 text-cyan-400"></i>
+                <h1 class="text-3xl md:text-4xl font-black uppercase tracking-tight text-white">Écran mural</h1>
+                <span class="text-3xl md:text-4xl font-black uppercase tracking-tight text-cyan-400">
+                    {{ service or 'Tous les services' }}
+                </span>
+            </div>
+            <div class="flex items-center gap-3 mt-2 text-sm uppercase tracking-widest text-slate-400">
+                <span id="status-dot" class="w-3 h-3 bg-slate-500 inline-block"></span>
+                <span>Rafraîchissement auto · {{ refresh_seconds }} s · mis à jour à <span id="last-updated" class="text-slate-200 tabular-nums">--:--:--</span></span>
+            </div>
+            <div id="error-banner" class="hidden mt-3 px-4 py-2 bg-red-950 border border-red-700 text-red-200 text-base font-bold flex items-center gap-3">
+                <i data-lucide="wifi-off" class="w-5 h-5 shrink-0"></i>
+                <span id="error-text">Mise à jour en échec — les données affichées peuvent être obsolètes.</span>
+            </div>
+        </div>
+
+        <div class="flex flex-wrap items-end gap-4">
+            <!-- Sélecteur de service optionnel (recharge la page avec ?service=…) -->
+            <label class="flex flex-col gap-1 text-[11px] uppercase tracking-widest text-slate-400">
+                Service
+                <select id="service-select" class="bg-slate-900 border border-slate-700 text-slate-100 text-base px-3 py-2 min-w-[14rem]">
+                    <option value="" {% if not service %}selected{% endif %}>Tous les services autorisés</option>
+                    {% for opt in service_options %}
+                    <option value="{{ opt.value }}" {% if opt.value == service %}selected{% endif %}>{{ opt.label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button id="fullscreen-btn" type="button"
+                    class="flex items-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 text-sm font-bold uppercase tracking-wide transition">
+                <i data-lucide="maximize" class="w-5 h-5"></i> Plein écran
+            </button>
+            <div class="text-right">
+                <div id="clock" class="text-4xl md:text-5xl font-black text-white tabular-nums">--:--:--</div>
+                <div id="clock-date" class="text-xs text-slate-400 uppercase tracking-widest"></div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Compteurs -->
+    <section class="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <div class="card p-6 flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-sm uppercase tracking-widest text-slate-400"><i data-lucide="inbox" class="w-5 h-5 text-cyan-400"></i> En attente de prise en charge</div>
+            <div id="kpi-pending" class="kpi-value text-white">–</div>
+        </div>
+        <div class="card p-6 flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-sm uppercase tracking-widest text-slate-400"><i data-lucide="wrench" class="w-5 h-5 text-cyan-400"></i> En cours</div>
+            <div id="kpi-in-progress" class="kpi-value text-white">–</div>
+        </div>
+        <div id="kpi-late-card" class="card p-6 flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-sm uppercase tracking-widest text-slate-400"><i data-lucide="alert-triangle" class="w-5 h-5 text-red-400"></i> En retard (&gt; {{ late_threshold_hours }} h)</div>
+            <div id="kpi-late" class="kpi-value text-white">–</div>
+        </div>
+        <div class="card p-6 flex flex-col gap-2">
+            <div class="flex items-center gap-2 text-sm uppercase tracking-widest text-slate-400"><i data-lucide="check-circle-2" class="w-5 h-5 text-emerald-400"></i> Clôturés aujourd'hui</div>
+            <div id="kpi-closed-today" class="kpi-value text-white">–</div>
+        </div>
+    </section>
+
+    <!-- Colonnes -->
+    <section class="grid grid-cols-1 xl:grid-cols-12 gap-4 flex-1 min-h-0">
+
+        <!-- À prendre en charge -->
+        <div class="card xl:col-span-5 flex flex-col min-h-0">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+                <h2 class="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2"><i data-lucide="inbox" class="w-5 h-5 text-cyan-400"></i> À prendre en charge</h2>
+                <span id="pending-count" class="text-lg font-black text-cyan-400 tabular-nums">–</span>
+            </div>
+            <div id="pending-list" class="flex-1 overflow-y-auto divide-y divide-slate-800"></div>
+        </div>
+
+        <!-- En cours par technicien -->
+        <div class="card xl:col-span-4 flex flex-col min-h-0">
+            <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800">
+                <h2 class="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2"><i data-lucide="users" class="w-5 h-5 text-cyan-400"></i> En cours par technicien</h2>
+                <span id="in-progress-count" class="text-lg font-black text-cyan-400 tabular-nums">–</span>
+            </div>
+            <div id="in-progress-list" class="flex-1 overflow-y-auto divide-y divide-slate-800"></div>
+        </div>
+
+        <!-- Dernières activités -->
+        <div class="card xl:col-span-3 flex flex-col min-h-0">
+            <div class="px-5 py-4 border-b border-slate-800">
+                <h2 class="text-lg font-black uppercase tracking-wider text-white flex items-center gap-2"><i data-lucide="activity" class="w-5 h-5 text-cyan-400"></i> Dernières activités</h2>
+            </div>
+            <div id="recent-list" class="flex-1 overflow-y-auto divide-y divide-slate-800"></div>
+        </div>
+    </section>
+</div>
+
+<script>
+(function () {
+    const root = document.getElementById('wallboard');
+    const DATA_URL = root.dataset.url;
+    const REFRESH_MS = parseInt(root.dataset.refresh, 10) || 30000;
+    let lastSuccess = null;
+
+    // --- Horloge ---
+    function tickClock() {
+        const now = new Date();
+        document.getElementById('clock').textContent = now.toLocaleTimeString('fr-FR');
+        document.getElementById('clock-date').textContent = now.toLocaleDateString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // --- Sélecteur de service & plein écran ---
+    document.getElementById('service-select').addEventListener('change', function () {
+        const url = new URL(window.location.href);
+        if (this.value) url.searchParams.set('service', this.value); else url.searchParams.delete('service');
+        window.location.href = url.toString();
+    });
+    document.getElementById('fullscreen-btn').addEventListener('click', function () {
+        if (document.fullscreenElement) { document.exitFullscreen(); }
+        else if (document.documentElement.requestFullscreen) { document.documentElement.requestFullscreen(); }
+    });
+    document.addEventListener('fullscreenchange', function () {
+        const btn = document.getElementById('fullscreen-btn');
+        btn.innerHTML = document.fullscreenElement
+            ? '<i data-lucide="minimize" class="w-5 h-5"></i> Quitter'
+            : '<i data-lucide="maximize" class="w-5 h-5"></i> Plein écran';
+        if (window.lucide) lucide.createIcons();
+    });
+
+    // --- Rendu ---
+    function esc(s) {
+        return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function fmtTime(iso) {
+        return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    }
+    function lateBadge(t) {
+        // Statut = icône + libellé, jamais la couleur seule.
+        return t.late ? '<span class="inline-flex items-center gap-1 px-2 py-1 bg-red-600 text-white text-sm font-black uppercase tracking-wide"><i data-lucide="alert-triangle" class="w-4 h-4"></i> En retard</span>' : '';
+    }
+    function pendingRow(t) {
+        return `<div class="px-5 py-4 flex flex-col gap-1 ${t.late ? 'border-l-4 border-red-600' : 'border-l-4 border-transparent'}">
+            <div class="flex items-start justify-between gap-3">
+                <div class="list-title text-white leading-tight">${esc(t.title)}</div>
+                ${lateBadge(t)}
+            </div>
+            <div class="list-meta flex flex-wrap items-center gap-x-4 gap-y-1 text-slate-400">
+                <span class="font-mono text-cyan-300">${esc(t.uid)}</span>
+                <span class="text-slate-200 font-bold">${esc(t.service)}</span>
+                <span><i data-lucide="user" class="w-4 h-4 inline -mt-0.5"></i> ${esc(t.requester)}</span>
+                <span class="${t.late ? 'text-red-300 font-bold' : ''}"><i data-lucide="clock" class="w-4 h-4 inline -mt-0.5"></i> ${esc(t.age_label)}</span>
+            </div>
+        </div>`;
+    }
+    function solverGroup(g) {
+        const items = g.tickets.map(t => `<li class="flex items-center justify-between gap-3 list-meta">
+                <span class="truncate text-slate-200"><span class="font-mono text-cyan-300 mr-2">${esc(t.uid)}</span>${esc(t.title)}</span>
+                <span class="shrink-0 ${t.late ? 'text-red-300 font-bold' : 'text-slate-400'}">${esc(t.age_label)}${t.late ? ' <i data-lucide="alert-triangle" class="w-4 h-4 inline -mt-0.5"></i>' : ''}</span>
+            </li>`).join('');
+        return `<div class="px-5 py-4">
+            <div class="flex items-center justify-between mb-2">
+                <div class="list-title text-white flex items-center gap-2"><i data-lucide="user-cog" class="w-5 h-5 text-cyan-400"></i> ${esc(g.solver)}</div>
+                <div class="flex items-center gap-2">
+                    ${g.late ? `<span class="inline-flex items-center gap-1 text-red-300 font-bold text-sm"><i data-lucide="alert-triangle" class="w-4 h-4"></i> ${g.late}</span>` : ''}
+                    <span class="px-3 py-1 bg-slate-800 text-white font-black text-lg tabular-nums">${g.count}</span>
+                </div>
+            </div>
+            <ul class="flex flex-col gap-1">${items}</ul>
+        </div>`;
+    }
+    function recentRow(e) {
+        const taken = e.kind === 'taken';
+        return `<div class="px-5 py-4 flex gap-3">
+            <i data-lucide="${taken ? 'user-check' : 'check-circle-2'}" class="w-6 h-6 shrink-0 ${taken ? 'text-cyan-400' : 'text-emerald-400'}"></i>
+            <div class="min-w-0 flex-1">
+                <div class="flex items-center justify-between gap-2 list-meta">
+                    <span class="font-bold uppercase tracking-wide ${taken ? 'text-cyan-300' : 'text-emerald-300'}">${esc(e.label)}</span>
+                    <span class="text-slate-400 tabular-nums">${fmtTime(e.at)}</span>
+                </div>
+                <div class="text-slate-100 font-bold truncate">${esc(e.ticket.title)}</div>
+                <div class="list-meta text-slate-400"><span class="font-mono text-cyan-300 mr-2">${esc(e.ticket.uid)}</span>${esc(e.ticket.solver || '')}</div>
+            </div>
+        </div>`;
+    }
+    function empty(text, icon) {
+        return `<div class="h-full flex flex-col items-center justify-center gap-3 py-12 text-slate-500"><i data-lucide="${icon}" class="w-12 h-12"></i><span class="text-lg font-bold uppercase tracking-widest">${text}</span></div>`;
+    }
+
+    function render(d) {
+        const c = d.counters;
+        document.getElementById('kpi-pending').textContent = c.pending;
+        document.getElementById('kpi-in-progress').textContent = c.in_progress;
+        document.getElementById('kpi-late').textContent = c.late;
+        document.getElementById('kpi-closed-today').textContent = c.closed_today;
+        document.getElementById('kpi-late').className = 'kpi-value ' + (c.late > 0 ? 'text-red-400' : 'text-white');
+        document.getElementById('kpi-late-card').className = 'card p-6 flex flex-col gap-2 ' + (c.late > 0 ? 'border-red-700' : '');
+
+        document.getElementById('pending-count').textContent = c.pending;
+        document.getElementById('in-progress-count').textContent = c.in_progress;
+        document.getElementById('pending-list').innerHTML = d.pending.length ? d.pending.map(pendingRow).join('') : empty('Aucun ticket en attente', 'coffee');
+        document.getElementById('in-progress-list').innerHTML = d.in_progress_by_solver.length ? d.in_progress_by_solver.map(solverGroup).join('') : empty('Aucun ticket en cours', 'moon');
+        document.getElementById('recent-list').innerHTML = d.recent.length ? d.recent.map(recentRow).join('') : empty('Aucune activité récente', 'history');
+
+        document.getElementById('last-updated').textContent = new Date(d.generated_at).toLocaleTimeString('fr-FR');
+        if (window.lucide) lucide.createIcons();
+    }
+
+    function setOk(ok) {
+        const dot = document.getElementById('status-dot');
+        const banner = document.getElementById('error-banner');
+        if (ok) {
+            dot.className = 'w-3 h-3 bg-emerald-500 inline-block pulse-dot';
+            banner.classList.add('hidden');
+        } else {
+            dot.className = 'w-3 h-3 bg-red-500 inline-block pulse-dot';
+            document.getElementById('error-text').textContent = lastSuccess
+                ? `Mise à jour en échec — dernières données valides à ${lastSuccess.toLocaleTimeString('fr-FR')}. Nouvelle tentative dans ${Math.round(REFRESH_MS / 1000)} s.`
+                : 'Impossible de charger les données (session expirée ?). Nouvelle tentative automatique.';
+            banner.classList.remove('hidden');
+            if (window.lucide) lucide.createIcons();
+        }
+    }
+
+    async function refresh() {
+        try {
+            const res = await fetch(DATA_URL, { cache: 'no-store', credentials: 'same-origin' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const d = await res.json();
+            render(d);
+            lastSuccess = new Date();
+            setOk(true);
+        } catch (e) {
+            setOk(false);
+        }
+    }
+
+    if (window.lucide) lucide.createIcons();
+    refresh();
+    setInterval(refresh, REFRESH_MS);
+})();
+</script>
+</body>
+</html>
