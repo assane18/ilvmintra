@@ -25,21 +25,19 @@ wallboard_bp = Blueprint('wallboard', __name__)
 
 WALLBOARD_ROLES = ['SOLVER', 'MANAGER', 'DIRECTEUR', 'ADMIN']
 
-# Seuil « en retard » actuel (même règle que Ticket.is_stale : 24 h). Isolé ici
-# pour brancher ensuite le calcul sur le SLA (sla_label / sla_remaining_hours,
-# pas encore disponibles dans cette branche) sans toucher au reste.
-LATE_THRESHOLD_HOURS = 24
+# Seuil affiché dans l'en-tête du compteur « hors délai » : le calcul réel suit
+# le SLA par service/catégorie (Ticket.is_stale, voir app/sla.py) ; cette valeur
+# n'est que le défaut documentaire quand aucune règle ne s'applique.
+from app.sla import DEFAULT_SLA_HOURS as LATE_THRESHOLD_HOURS
 
 _SERVICE_NAME_TO_VALUE = {s.name: s.value for s in ServiceType}
 _SERVICE_VALUES = {s.value for s in ServiceType}
 
 
 def is_late(ticket):
-    """Un ticket est « en retard » s'il attend encore un technicien (PENDING /
-    IN_PROGRESS) depuis plus de LATE_THRESHOLD_HOURS. Point d'entrée unique à
-    remplacer par la règle SLA quand elle existera."""
-    return (ticket.status in (TicketStatus.PENDING, TicketStatus.IN_PROGRESS)
-            and ticket.age_hours > LATE_THRESHOLD_HOURS)
+    """Un ticket est « hors délai » s'il attend encore un technicien (PENDING /
+    IN_PROGRESS) au-delà de son délai cible (SLA par service/catégorie)."""
+    return bool(ticket.is_stale)
 
 
 def _canon_service(token):
