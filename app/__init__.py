@@ -64,6 +64,7 @@ def create_app(config_name='default'):
     from .routes.tech_extras import tech_extras_bp; app.register_blueprint(tech_extras_bp, url_prefix='/tickets')  # Lot 6 : notes internes, PJ chat, doublons, planning
     from .routes.audit import audit_bp; app.register_blueprint(audit_bp)  # Lot 8 : journal d'audit, rapports mensuels, RGPD (/admin/*)
     from .routes.delegations import delegations_bp; app.register_blueprint(delegations_bp, url_prefix='/delegations')  # Lot 7 : délégations / demande pour autrui
+    from .routes.rdv import rdv_bp; app.register_blueprint(rdv_bp, url_prefix='/tickets')  # Rendez-vous sur ticket (proposition / réponse / rappel)
 
     from .routes.inventaire import inventaire_bp
     app.register_blueprint(inventaire_bp) 

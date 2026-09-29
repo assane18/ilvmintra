@@ -1068,3 +1068,47 @@ class ValidationDelegation(db.Model):
 
     def __repr__(self):
         return f'<ValidationDelegation {self.delegator_id}->{self.delegate_id}>'
+
+
+# --- Rendez-vous sur ticket (proposition / acceptation / disponibilités / rappel) ---
+
+class Appointment(db.Model):
+    """Un créneau de rendez-vous proposé sur un ticket (DRH, Informatique, Imago…).
+    Cycle : proposed (attente du demandeur) -> accepted | refused | counter
+    (le demandeur propose ses disponibilités) ; cancelled = annulé par l'équipe.
+    `direct=True` = fixé sans confirmation (le demandeur est seulement informé).
+    Le RDV accepté est recopié dans Ticket.rdv_date (planning, écran mural)."""
+    __tablename__ = 'appointments'
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=False, index=True)
+    proposed_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    starts_at = db.Column(db.DateTime, nullable=False)
+    status = db.Column(db.String(12), default='proposed', nullable=False, index=True)
+    message = db.Column(db.Text, nullable=True)            # mot de l'équipe avec la proposition
+    response_comment = db.Column(db.Text, nullable=True)   # commentaire du demandeur (refus / dispo)
+    slots_json = db.Column(db.Text, nullable=True)         # disponibilités proposées par le demandeur (liste ISO)
+    direct = db.Column(db.Boolean, default=False)
+    responded_at = db.Column(db.DateTime, nullable=True)
+    reminder_sent_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    ticket = db.relationship('Ticket', backref=db.backref('appointments', order_by='Appointment.created_at'))
+    proposed_by = db.relationship('User', foreign_keys=[proposed_by_id])
+
+    STATUS_LABELS = {
+        'proposed': 'Proposé, en attente de votre réponse',
+        'accepted': 'Confirmé',
+        'refused': 'Refusé',
+        'counter': 'Disponibilités transmises',
+        'cancelled': 'Annulé',
+    }
+
+    def get_slots(self):
+        try:
+            return [datetime.fromisoformat(x) for x in json.loads(self.slots_json or '[]')]
+        except (ValueError, TypeError):
+            return []
+
+    @property
+    def label(self):
+        return self.STATUS_LABELS.get(self.status, self.status)

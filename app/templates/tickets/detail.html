@@ -67,6 +67,10 @@
         </ol>
     </div>
 
+    {% if (ticket.author_id == current_user.id or ticket.created_by_id == current_user.id) and ticket.status.value not in ('TERMINE', 'REFUSE') %}
+    {% include 'tickets/_rdv_demandeur.html' %}
+    {% endif %}
+
     {% if ticket.author_id == current_user.id and ticket.status.value == 'TERMINE' %}
     <!-- BOUCLE QUALITÉ (demandeur, ticket terminé) : avis + "ce n'est pas résolu" -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
@@ -335,6 +339,11 @@
                     {% endif %}
                 </h3>
 
+                {% if ticket.status.value not in ('TERMINE', 'REFUSE') %}
+                    {# Rendez-vous : proposition / fixation / annulation par toute l'équipe du service, même avant prise en charge #}
+                    {% include 'tickets/_planning_rdv.html' %}
+                {% endif %}
+
                 {% if not ticket.solver and ticket.status.value not in ['TERMINE', 'REFUSE'] %}
                     <div class="bg-slate-800 p-4 border border-slate-700 space-y-3">
                         <p class="text-sm text-slate-300 text-center">Ticket en attente d'attribution.</p>
@@ -398,9 +407,6 @@
                     </div>
 
                     {% if ticket.solver_id == current_user.id and ticket.status.value != 'TERMINE' %}
-
-                        {# Lot 6 : date d'intervention (planning) pour tout ticket assigné #}
-                        {% include 'tickets/_planning_rdv.html' %}
 
                         {% if ticket.target_service.value == 'DAF' %}
                             <div class="bg-slate-800 p-4 border border-slate-700 space-y-4">

@@ -440,3 +440,26 @@ def send_weekly_manager_digest(user, data):
     n = len(pending) + len(subs)
     subject = f"[Intranet] {n} demande(s) attendent votre validation" if n else f"[Intranet] Récap hebdomadaire — {len(data['stale'])} ticket(s) en retard"
     send_email(subject, [user.email], "Récap hebdomadaire", full_html, kind='digest')
+
+
+# --- RENDEZ-VOUS SUR TICKET (app/routes/rdv.py) ---
+def send_rdv_email(recipient, subject, intro_html, ticket, buttons=None, kind='important', recipients_emails=None):
+    """E-mail générique du circuit de rendez-vous. `recipient` = User (ou None
+    avec `recipients_emails`). `buttons` = liste de (libellé, url, couleur) rendus
+    en boutons Outlook-friendly (accepter / disponibilités / refuser)."""
+    emails = recipients_emails or ([recipient.email] if recipient and recipient.email else [])
+    if not emails:
+        return
+    base_url = current_app.config.get('BASE_URL', '').rstrip('/')
+    link = f"{base_url}/tickets/view/{ticket.uid_public}#rdv"
+    who = f"Bonjour {recipient.fullname or recipient.username}," if recipient else "Bonjour,"
+    btns = ""
+    if buttons:
+        cells = "".join(
+            f'<td style="padding-right:8px;"><a href="{url}" style="display:inline-block;padding:10px 16px;background:{color};'
+            f'color:#fff;text-decoration:none;font-weight:bold;border-radius:4px;">{label}</a></td>'
+            for label, url, color in buttons)
+        btns = f'<table border="0" cellpadding="0" cellspacing="0" style="margin: 8px 0 18px;"><tr>{cells}</tr></table>'
+    html_content = f"<p>{who}</p>{intro_html}{btns}"
+    full_html = get_outlook_friendly_html("Rendez-vous", html_content, link, "Voir le ticket")
+    send_email(subject, emails, subject, full_html, kind=kind)

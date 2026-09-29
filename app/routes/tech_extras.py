@@ -462,6 +462,16 @@ def planning_week(user, ref=None, solver_id=None):
         q = q.filter(Ticket.solver_id == solver_id)
     tickets = q.order_by(Ticket.rdv_date.asc()).all()
 
+    # Rendez-vous proposés (pas encore confirmés par le demandeur) : affichés en pointillé.
+    from app.models import Appointment
+    pq = Appointment.query.join(Ticket, Appointment.ticket_id == Ticket.id).filter(
+        Appointment.status == 'proposed', Appointment.starts_at >= start, Appointment.starts_at < end)
+    if allowed is not None:
+        pq = pq.filter(Ticket.target_service.in_(members)) if members else pq.filter(False)
+    if solver_id:
+        pq = pq.filter(Ticket.solver_id == solver_id)
+    proposals = pq.order_by(Appointment.starts_at.asc()).all()
+
     days = []
     for i in range(7):
         day = start + timedelta(days=i)
@@ -469,6 +479,7 @@ def planning_week(user, ref=None, solver_id=None):
             'date': day,
             'is_today': day.date() == datetime.now().date(),
             'tickets': [t for t in tickets if t.rdv_date.date() == day.date()],
+            'proposals': [a for a in proposals if a.starts_at.date() == day.date()],
         })
     solvers = {}
     for t in tickets:

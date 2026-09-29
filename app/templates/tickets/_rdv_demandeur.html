@@ -1,0 +1,53 @@
+{# Rendez-vous sur ticket — bloc DEMANDEUR (tickets/detail.html, sous la frise),
+   affiché quand un rendez-vous est proposé ou confirmé sur SA demande. #}
+{% set rdv = current_appointment(ticket) %}
+{% if rdv %}
+<div id="rdv" class="mb-6 border-l-4 shadow-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800
+    {% if rdv.status == 'proposed' %}border-l-amber-500{% elif rdv.status == 'accepted' %}border-l-emerald-500{% else %}border-l-blue-500{% endif %}" x-data="{ mode: '' }">
+    <div class="p-6">
+        {% if rdv.status == 'accepted' %}
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Rendez-vous confirmé</p>
+        <p class="text-lg font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-2"><i data-lucide="calendar-check" class="w-5 h-5"></i> {{ rdv.starts_at.strftime('%A %d %B %Y à %H:%M')|capitalize }}</p>
+        {% if rdv.message %}<p class="text-sm text-slate-600 dark:text-slate-300 mt-2">{{ rdv.message }}</p>{% endif %}
+        <p class="text-[11px] text-slate-400 mt-2">Un rappel vous sera envoyé le jour même à 9h. Empêchement ? Écrivez-le dans le fil du ticket : le service vous reproposera une date.</p>
+
+        {% elif rdv.status == 'counter' %}
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Vos disponibilités sont transmises</p>
+        <p class="text-sm text-slate-700 dark:text-slate-200">Le service va retenir un de vos créneaux ou vous proposer une autre date : {% for s in rdv.get_slots() %}<span class="font-bold">{{ s.strftime('%d/%m à %H:%M') }}</span>{% if not loop.last %}, {% endif %}{% endfor %}.</p>
+
+        {% else %}
+        <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Le service vous propose un rendez-vous</p>
+        <p class="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><i data-lucide="calendar-clock" class="w-5 h-5 text-amber-500"></i> {{ rdv.starts_at.strftime('%A %d %B %Y à %H:%M')|capitalize }}</p>
+        {% if rdv.message %}<p class="text-sm text-slate-600 dark:text-slate-300 mt-2">{{ rdv.message }}</p>{% endif %}
+        <p class="text-[11px] text-slate-400 mt-1">Proposé par {{ rdv.proposed_by.fullname if rdv.proposed_by else 'le service' }}. Merci de répondre :</p>
+
+        <div class="flex flex-wrap gap-2 mt-4">
+            <form action="{{ url_for('rdv.respond', ticket_id=ticket.id) }}" method="POST">
+                <input type="hidden" name="action" value="accept">
+                <button type="submit" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-2"><i data-lucide="check" class="w-4 h-4"></i> J'accepte</button>
+            </form>
+            <button type="button" @click="mode = (mode === 'counter' ? '' : 'counter')" class="border-2 border-blue-500 text-blue-700 dark:text-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-4 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-2"><i data-lucide="calendar-search" class="w-4 h-4"></i> Proposer mes disponibilités</button>
+            <button type="button" @click="mode = (mode === 'refuse' ? '' : 'refuse')" class="border-2 border-red-400 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 text-xs font-black uppercase tracking-wide flex items-center gap-2"><i data-lucide="x" class="w-4 h-4"></i> Je refuse</button>
+        </div>
+
+        <form x-show="mode === 'counter'" x-cloak action="{{ url_for('rdv.respond', ticket_id=ticket.id) }}" method="POST" class="mt-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 space-y-3">
+            <input type="hidden" name="action" value="counter">
+            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Jusqu'à 3 créneaux qui vous conviennent</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {% for i in (1, 2, 3) %}
+                <input type="datetime-local" name="slot{{ i }}" {% if i == 1 %}required{% endif %} class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+                {% endfor %}
+            </div>
+            <input type="text" name="comment" maxlength="2000" placeholder="Précision (optionnel) : « plutôt le matin », « pas le mercredi »…" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide">Envoyer mes disponibilités</button>
+        </form>
+
+        <form x-show="mode === 'refuse'" x-cloak action="{{ url_for('rdv.respond', ticket_id=ticket.id) }}" method="POST" class="mt-4 bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 space-y-3">
+            <input type="hidden" name="action" value="refuse">
+            <input type="text" name="comment" maxlength="2000" placeholder="Motif (optionnel)" class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+            <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 text-xs font-black uppercase tracking-wide">Confirmer le refus</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

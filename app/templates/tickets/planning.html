@@ -63,15 +63,28 @@
                     <p class="text-slate-500 dark:text-slate-400 truncate"><i data-lucide="user" class="w-3 h-3 inline"></i> {{ (t.author.fullname or t.author.username) if t.author else t.author_name }}{% if t.lieu_installation %} · {{ t.lieu_installation }}{% endif %}</p>
                     <p class="text-slate-500 dark:text-slate-400 truncate"><i data-lucide="wrench" class="w-3 h-3 inline"></i> {{ (t.solver.fullname or t.solver.username) if t.solver else 'Non affecté' }}</p>
                 </a>
-                {% else %}
-                <p class="text-[10px] text-slate-400 text-center py-6">—</p>
                 {% endfor %}
+                {% for a in d.proposals %}
+                <a href="{{ url_for('tickets.view_ticket', ticket_uid=a.ticket.uid_public) }}"
+                   class="block p-2 border-2 border-dashed border-amber-400 dark:border-amber-600 bg-amber-50/60 dark:bg-amber-900/10 text-xs transition hover:border-amber-500"
+                   data-ticket="{{ a.ticket.uid_public }}" title="Proposé, en attente du demandeur">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-black text-slate-900 dark:text-white">{{ a.starts_at.strftime('%H:%M') }}</span>
+                        <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 bg-amber-100 dark:bg-amber-500/10 text-amber-700 dark:text-amber-300">À confirmer</span>
+                    </div>
+                    <p class="font-bold text-slate-700 dark:text-slate-200 truncate mt-1">#{{ a.ticket.uid_public }} · {{ a.ticket.title }}</p>
+                    <p class="text-slate-500 dark:text-slate-400 truncate"><i data-lucide="user" class="w-3 h-3 inline"></i> {{ (a.ticket.author.fullname or a.ticket.author.username) if a.ticket.author else 'Anonymisé' }}</p>
+                </a>
+                {% endfor %}
+                {% if not d.tickets and not d.proposals %}
+                <p class="text-[10px] text-slate-400 text-center py-6">—</p>
+                {% endif %}
             </div>
         </section>
         {% endfor %}
     </div>
 
-    <p class="text-[10px] text-slate-400">La date d'intervention se fixe depuis la fiche d'un ticket assigné (colonne « Espace technique » → Intervention). Périmètre : services autorisés de votre compte.</p>
+    <p class="text-[10px] text-slate-400">Les rendez-vous se proposent depuis la fiche d'un ticket (colonne « Espace technique » → Rendez-vous) ; en pointillé : proposés, en attente du demandeur. Périmètre : services autorisés de votre compte.</p>
 </div>
 </div>
 {% endblock %}
