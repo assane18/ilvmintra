@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Rapport d'activité — {{ month_label }}</title>
+<style>
+    /* Gabarit imprimable (WeasyPrint) : sobre, noir sur blanc, A4 portrait. */
+    @page { size: A4; margin: 16mm 14mm 18mm 14mm;
+            @bottom-center { content: "Intranet ILVM — rapport d'activité {{ month_label }} — page " counter(page) " / " counter(pages);
+                             font-family: Helvetica, Arial, sans-serif; font-size: 8pt; color: #64748b; } }
+    body { font-family: Helvetica, Arial, sans-serif; font-size: 10pt; color: #1e293b; margin: 0; }
+    header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 14px; }
+    header img { height: 42px; }
+    header h1 { font-size: 17pt; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; }
+    header p { margin: 2px 0 0; color: #64748b; font-size: 9pt; }
+    h2 { font-size: 11.5pt; text-transform: uppercase; letter-spacing: 0.8px; color: #334155; border-left: 4px solid #2563eb; padding-left: 8px; margin: 18px 0 8px; }
+    .kpis { display: flex; gap: 10px; margin-bottom: 6px; }
+    .kpi { flex: 1; border: 1px solid #e2e8f0; padding: 8px 10px; }
+    .kpi .v { font-size: 16pt; font-weight: bold; }
+    .kpi .l { font-size: 8pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    th { text-align: left; background: #f1f5f9; color: #475569; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 6px; border-bottom: 1.5px solid #cbd5e1; }
+    td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    tr.total td { font-weight: bold; background: #f8fafc; border-top: 1.5px solid #cbd5e1; }
+    .muted { color: #94a3b8; }
+    .small { font-size: 8pt; color: #64748b; }
+    .chart { margin-top: 4px; }
+    .note { font-size: 8pt; color: #64748b; margin-top: 14px; border-top: 1px solid #e2e8f0; padding-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+    <div>
+        <h1>Rapport d'activité</h1>
+        <p>Intranet ILVM — demandes et tickets — <strong>{{ month_label }}</strong></p>
+    </div>
+    {% if logo %}<img src="{{ logo }}" alt="ILVM">{% endif %}
+</header>
+
+<h2>Vue d'ensemble du mois</h2>
+<div class="kpis">
+    <div class="kpi"><div class="v">{{ totals.received }}</div><div class="l">Demandes reçues</div></div>
+    <div class="kpi"><div class="v">{{ totals.closed }}</div><div class="l">Demandes clôturées</div></div>
+    <div class="kpi"><div class="v">{{ totals.refused }}</div><div class="l">Refus</div></div>
+    <div class="kpi"><div class="v">{% if totals.satisfaction_pct is not none %}{{ totals.satisfaction_pct }} %{% else %}<span class="muted">—</span>{% endif %}</div><div class="l">Satisfaits ({{ totals.rated }} avis)</div></div>
+</div>
+<p class="small">Période : du {{ period_start.strftime('%d/%m/%Y') }} au {{ period_end.strftime('%d/%m/%Y') }}. « Reçues » = créées dans le mois ; « clôturées » = terminées dans le mois (y compris des demandes plus anciennes).</p>
+
+<h2>Détail par service</h2>
+{% if services %}
+<table>
+    <thead>
+        <tr>
+            <th>Service</th>
+            <th class="num">Reçues</th>
+            <th class="num">Clôturées</th>
+            <th class="num">Prise en charge (moy.)</th>
+            <th class="num">Clôture (moy.)</th>
+            <th class="num">Taux de refus</th>
+            <th class="num">Satisfaction</th>
+            <th>Principales catégories</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for svc in services %}{% set s = stats[svc] %}
+        <tr>
+            <td><strong>{{ svc }}</strong></td>
+            <td class="num">{{ s.received }}</td>
+            <td class="num">{{ s.closed }}</td>
+            <td class="num">{% if s.assign_avg_h is not none %}{{ s.assign_avg_h }} h{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="num">{% if s.close_avg_h is not none %}{{ s.close_avg_h }} h{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="num">{{ s.refusal_rate }} %</td>
+            <td class="num">{% if s.satisfaction_pct is not none %}{{ s.satisfaction_pct }} % <span class="small">({{ s.satisfaction_count }})</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+            <td class="small">{% for cat, n in s.top_categories %}{{ cat }} ({{ n }}){% if not loop.last %}, {% endif %}{% endfor %}</td>
+        </tr>
+    {% endfor %}
+        <tr class="total">
+            <td>Total</td>
+            <td class="num">{{ totals.received }}</td>
+            <td class="num">{{ totals.closed }}</td>
+            <td class="num" colspan="2"></td>
+            <td class="num">{% if totals.received %}{{ (totals.refused / totals.received * 100)|round(1) }} %{% else %}—{% endif %}</td>
+            <td class="num">{% if totals.satisfaction_pct is not none %}{{ totals.satisfaction_pct }} %{% else %}—{% endif %}</td>
+            <td></td>
+        </tr>
+    </tbody>
+</table>
+{% else %}
+<p class="muted">Aucune demande reçue ni clôturée sur ce mois.</p>
+{% endif %}
+
+<h2>Évolution sur 12 mois (tous services)</h2>
+<div class="chart">{{ chart_svg|safe }}</div>
+<table style="margin-top:6px;">
+    <thead><tr><th>Mois</th>{% for p in series %}<th class="num">{{ p.key[5:] }}/{{ p.key[2:4] }}</th>{% endfor %}</tr></thead>
+    <tbody>
+        <tr><td>Reçues</td>{% for p in series %}<td class="num">{{ p.received }}</td>{% endfor %}</tr>
+        <tr><td>Clôturées</td>{% for p in series %}<td class="num">{{ p.closed }}</td>{% endfor %}</tr>
+    </tbody>
+</table>
+
+<p class="note">Généré automatiquement le {{ generated_at.strftime('%d/%m/%Y à %H:%M') }} par l'Intranet ILVM (délais exprimés en heures calendaires ; satisfaction = part d'avis « satisfait » parmi les avis donnés à la clôture).</p>
+</body>
+</html>

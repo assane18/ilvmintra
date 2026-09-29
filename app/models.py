@@ -924,3 +924,26 @@ class Notification(db.Model):
             'is_read': self.is_read,
             'timestamp': self.timestamp.isoformat() + 'Z'
         }
+
+
+# --- Lot 8 : journal d'audit (reporting et conformité) ---
+class AuditLog(db.Model):
+    """Une ligne par action sensible (validation, refus, clôture, affectation,
+    connexion, gestion des comptes/formulaires, purge RGPD…). Alimentée
+    uniquement via app/audit.py::log_action, qui ne fait jamais échouer
+    l'action tracée. `username` est une copie : la ligne reste lisible même si
+    le compte est supprimé plus tard (user_id passe alors à NULL)."""
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    username = db.Column(db.String(64), nullable=True)
+    action = db.Column(db.String(40), nullable=False, index=True)   # ex: ticket.validate, auth.login_failed
+    target_type = db.Column(db.String(40), nullable=True)            # ex: Ticket, FormSubmission, User
+    target_id = db.Column(db.Integer, nullable=True, index=True)
+    target_ref = db.Column(db.String(100), nullable=True)            # uid lisible (uid_public, username, slug)
+    details = db.Column(db.String(500), nullable=True)
+    ip = db.Column(db.String(45), nullable=True)
+
+    def __repr__(self):
+        return f'<AuditLog {self.action} {self.target_ref}>'

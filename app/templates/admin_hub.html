@@ -78,6 +78,31 @@
             <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Contenus d'aide</h3>
             <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Conseils « avant d'envoyer » affichés sur les formulaires, et réponses types des techniciens.</p>
         </a>
+
+        {# Lot 8 : reporting et conformité #}
+        <a href="{{ url_for('audit.audit_log') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4 text-slate-700 dark:text-cyan-400">
+                <i data-lucide="scroll-text" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Journal d'audit</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Qui a validé, refusé, clôturé, affecté ou s'est connecté, et quand. Filtres et export CSV.</p>
+        </a>
+
+        <a href="{{ url_for('audit.rapports') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-violet-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-violet-600 dark:text-cyan-400">
+                <i data-lucide="file-bar-chart" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Rapports mensuels</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">PDF d'activité par service, généré chaque mois et envoyé aux directeurs ; génération à la demande.</p>
+        </a>
+
+        <a href="{{ url_for('audit.rgpd') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-rose-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-rose-600 dark:text-cyan-400">
+                <i data-lucide="shield-off" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Archivage et purge RGPD</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Anonymisation des demandes anciennes, suppression des pièces sensibles, notifications et comptes inactifs — plan puis exécution confirmée.</p>
+        </a>
     </div>
 
     <!-- Section : Accès rapides -->

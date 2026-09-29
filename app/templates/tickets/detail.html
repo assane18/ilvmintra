@@ -485,6 +485,7 @@
                 {% endif %}
             </div>
             {% endif %}
+            {% if can_manage_ticket %}{% include 'tickets/_audit_history.html' %}{% endif %}{# Lot 8 : historique (journal d'audit), équipe uniquement #}
 
         </div>
     </div>

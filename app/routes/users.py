@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request
 from flask_login import login_required, current_user
 from app.models import User, UserRole, ServiceType
 from app import db
+from app.audit import log_action  # Lot 8 : journal d'audit
 
 users_bp = Blueprint('users', __name__)
 
@@ -56,6 +57,7 @@ def edit_user(id):
         # On ne vide pas forcément l'origine si on veut garder l'historique, mais ici on reset tout
         # user.set_origin_services([]) 
         
+    log_action('user.update', user, details=f"rôle {role_value}, service {service_value}")
     db.session.commit()
     flash(f'Utilisateur {user.fullname} mis à jour.', 'success')
     return redirect(url_for('users.list_users'))
@@ -70,6 +72,7 @@ def delete_user(id):
     
     if user.id != current_user.id:
         db.session.delete(user)
+        log_action('user.delete', user)
         db.session.commit()
         flash('Utilisateur supprimé.', 'success')
     else:

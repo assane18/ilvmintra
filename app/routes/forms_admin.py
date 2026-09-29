@@ -4,6 +4,7 @@ import json
 import re
 
 from app import db
+from app.audit import log_action  # Lot 8 : journal d'audit
 from app.decorators import admin_required
 from app.models import (
     FormDefinition, FormField, FormWorkflowStep, FormFieldType,
@@ -347,6 +348,7 @@ def toggle_active(id):
             flash("Impossible d'activer un formulaire sans champ.", "danger")
             return redirect(url_for('forms_admin.edit_form', id=id))
     form_def.is_active = not form_def.is_active
+    log_action('form.activate' if form_def.is_active else 'form.deactivate', form_def)
     db.session.commit()
     flash(f"Formulaire {'activé' if form_def.is_active else 'désactivé'}.", "success")
     return redirect(url_for('forms_admin.list_forms'))
@@ -433,6 +435,7 @@ def delete_form(id):
         flash("Impossible de supprimer un formulaire ayant déjà des soumissions. Désactivez-le plutôt.", "danger")
         return redirect(url_for('forms_admin.list_forms'))
     db.session.delete(form_def)
+    log_action('form.delete', form_def)
     db.session.commit()
     flash("Formulaire supprimé.", "success")
     return redirect(url_for('forms_admin.list_forms'))

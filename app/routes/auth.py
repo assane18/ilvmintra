@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, redirect, url_for, flash, request,
 from flask_login import login_user, logout_user, login_required, current_user
 from app.models import User, UserRole, ServiceType
 from app import db
+from app.audit import log_action  # Lot 8 : journal d'audit
 from ldap3 import Server, Connection, ALL, SIMPLE
 from ldap3.utils.conv import escape_filter_chars
 from functools import wraps
@@ -135,6 +136,7 @@ def provision_user_from_ad_entry(clean_user, user_entry):
     if not user:
         user = User(username=clean_user)
         db.session.add(user)
+        log_action('user.create', user, user=user, details='provisionné depuis l\'annuaire AD')
     elif user.username != clean_user:
         # Aligne la graphie stockée sur celle de l'AD (un seul compte, un seul id,
         # quelle que soit la casse saisie au fil du temps).
@@ -187,12 +189,14 @@ def login():
                     return render_template('auth/login.html')
 
                 login_user(user)
+                log_action('auth.login', user, user=user, commit=True)
                 return redirect(url_for('main.user_portal')) 
                 
             except Exception as e:
                 flash(f"Erreur technique : {e}", "danger")
                 print(f"ERREUR CONNEXION: {e}")
         else:
+            log_action('auth.login_failed', None, details=f"{(username or '')[:64]} : {error_msg}", commit=True)
             flash(f"Échec connexion : {error_msg}", "danger")
 
     return render_template('auth/login.html')
@@ -328,6 +332,7 @@ def microsoft_callback():
         return redirect(url_for('auth.login'))
 
     login_user(user)
+    log_action('auth.sso_login', user, user=user, details=upn, commit=True)
     current_app.logger.info(f"SSO: connexion de {clean_user} via {upn}")
     return redirect(next_url or url_for('main.user_portal'))
 

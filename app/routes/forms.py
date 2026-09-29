@@ -15,6 +15,7 @@ from app.models import (
     TICKET_FIELD_MAPPING_CHOICES,
 )
 from app.emails import send_form_step_alert, send_form_refused_notification, send_service_alert
+from app.audit import log_action  # Lot 8 : journal d'audit
 
 forms_bp = Blueprint('forms', __name__, url_prefix='/forms')
 
@@ -372,6 +373,7 @@ def advance_submission(submission, user):
     en lot du tableau de bord manager (tickets.manager_batch_validate)."""
     submission.last_validated_at = datetime.now()
     submission.validated_by_id = user.id
+    log_action('submission.validate', submission, user=user, details=f"étape {submission.current_step_index + 1}")
     next_index = _first_eligible_step_index(submission.form, submission.author, submission.current_step_index + 1)
     if next_index < len(submission.form.steps):
         submission.current_step_index = next_index
@@ -399,6 +401,7 @@ def validate_submission(id, action):
         submission.status = FormSubmissionStatus.REFUSED
         reason = request.form.get('refusal_reason', 'Refusé.')
         submission.refusal_reason = f"Refusé par {current_user.fullname} : {reason}"
+        log_action('submission.refuse', submission, details=reason)
         db.session.add(Notification(
             user=submission.author,
             message=f"Votre formulaire {submission.uid_public} a été refusé.",

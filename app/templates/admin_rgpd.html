@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300" x-data="{ c1: '', c2: '' }">
+<style>
+    .flat, .flat * { border-radius: 0 !important; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; outline: none; color: #1e293b; font-size: 0.875rem; }
+    .input-field:focus { border-color: rgb(var(--accent-500)); background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+</style>
+
+<div class="p-6 max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight flex items-center gap-3">
+                <i data-lucide="shield-off" class="w-6 h-6 text-accent-600 dark:text-accent-400"></i> Archivage et purge RGPD
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Plan calculé à l'instant, au {{ plan.now.strftime('%d/%m/%Y %H:%M') }} — rien n'est modifié tant que la purge n'est pas confirmée</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Administration
+        </a>
+    </div>
+
+    <!-- Règles + compteurs -->
+    <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm mb-6">
+        <div class="px-5 py-3 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
+            <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Règles en vigueur (app/rgpd.py)</span>
+            <span class="text-xs font-black {% if total_ops %}text-amber-600 dark:text-amber-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">{{ total_ops }} opération{{ 's' if total_ops != 1 else '' }} prévue{{ 's' if total_ops != 1 else '' }}</span>
+        </div>
+        <table class="w-full text-left text-sm">
+            <thead>
+                <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                    <th class="px-5 py-3">Règle</th>
+                    <th class="px-5 py-3">Délai</th>
+                    <th class="px-5 py-3 text-right">À traiter</th>
+                </tr>
+            </thead>
+            <tbody class="text-slate-700 dark:text-slate-300">
+                {% for r in plan.rules %}
+                <tr class="border-b border-gray-100 dark:border-slate-800">
+                    <td class="px-5 py-3 font-bold">{{ r.label }} <span class="block text-[10px] font-mono text-slate-400">{{ r.code }}</span></td>
+                    <td class="px-5 py-3 text-xs">{{ r.delay }}</td>
+                    <td class="px-5 py-3 text-right font-black tabular-nums {% if plan.counts[r.code] %}text-amber-600 dark:text-amber-400{% else %}text-slate-400{% endif %}">{{ plan.counts[r.code] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <!-- Aperçu -->
+        <div class="xl:col-span-3 space-y-4">
+            {% for r in plan.rules if preview.get(r.code) %}
+            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
+                <div class="px-5 py-3 border-b border-gray-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400">{{ r.label }} — {{ preview[r.code]|length }}</div>
+                <ul class="divide-y divide-gray-100 dark:divide-slate-800 text-xs max-h-64 overflow-y-auto">
+                    {% for op in preview[r.code][:100] %}
+                    <li class="px-5 py-2 flex justify-between gap-4">
+                        <span class="font-bold font-mono text-slate-700 dark:text-slate-200">{{ op.target_ref or op.target_id }}</span>
+                        <span class="text-slate-500 dark:text-slate-400 text-right">{{ op.detail }}</span>
+                    </li>
+                    {% endfor %}
+                    {% if preview[r.code]|length > 100 %}<li class="px-5 py-2 text-slate-400 italic">… et {{ preview[r.code]|length - 100 }} de plus</li>{% endif %}
+                </ul>
+            </div>
+            {% else %}
+            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-8 text-center text-slate-400 text-sm">
+                <i data-lucide="check-circle-2" class="w-8 h-8 mx-auto mb-2 text-emerald-500"></i>
+                Rien à purger aujourd'hui : toutes les données sont dans les délais de conservation.
+            </div>
+            {% endfor %}
+
+            {% if last_purges %}
+            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
+                <div class="px-5 py-3 border-b border-gray-200 dark:border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400">Dernières purges (journal d'audit)</div>
+                <ul class="divide-y divide-gray-100 dark:divide-slate-800 text-xs">
+                    {% for p in last_purges %}
+                    <li class="px-5 py-2 flex justify-between gap-4">
+                        <span class="font-mono text-slate-500">{{ p.timestamp.strftime('%d/%m/%Y %H:%M') }}</span>
+                        <span class="font-bold">{{ p.username or 'cron' }}</span>
+                        <span class="text-slate-500 dark:text-slate-400">{{ p.details }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Exécution -->
+        <form method="POST" class="xl:col-span-2 bg-white dark:bg-slate-900 border-2 border-red-200 dark:border-red-900 shadow-sm p-6 space-y-3 self-start">
+            <h2 class="text-xs font-black text-red-600 dark:text-red-400 uppercase tracking-widest mb-1 flex items-center gap-2"><i data-lucide="alert-triangle" class="w-4 h-4"></i> Exécuter la purge</h2>
+            <p class="text-xs text-slate-600 dark:text-slate-300">Applique <strong>exactement</strong> le plan ci-contre : anonymisation, suppression de fichiers, de notifications et de comptes. <strong>Irréversible</strong> (les sauvegardes quotidiennes restent le seul recours). Une entrée d'audit et un journal <code class="font-mono">{{ log_dir }}/rgpd_AAAA-MM-JJ.log</code> sont écrits.</p>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tapez PURGER</label>
+                <input type="text" name="confirm1" x-model="c1" autocomplete="off" class="input-field" placeholder="PURGER">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tapez PURGER une seconde fois</label>
+                <input type="text" name="confirm2" x-model="c2" autocomplete="off" class="input-field" placeholder="PURGER">
+            </div>
+            <button type="submit" :disabled="c1 !== 'PURGER' || c2 !== 'PURGER' || {{ 'true' if not total_ops else 'false' }}"
+                class="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white font-black px-5 py-2.5 text-xs uppercase tracking-widest transition flex items-center justify-center gap-2">
+                <i data-lucide="trash-2" class="w-4 h-4"></i> Exécuter la purge ({{ total_ops }})
+            </button>
+            <p class="text-[10px] text-slate-400 border-t border-gray-100 dark:border-slate-800 pt-3">En ligne de commande : <code class="font-mono">scripts/purge_rgpd.py</code> affiche le plan (simulation par défaut) ; <code class="font-mono">--apply</code> exécute. Cron mensuel documenté dans le script, non installé.</p>
+        </form>
+    </div>
+</div>
+</div>
+{% endblock %}
