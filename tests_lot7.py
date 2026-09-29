@@ -739,3 +739,15 @@ class TestRefaireDemande:
             assert redo_url_for_ticket(daf) == '/tickets/new/DAF?from=20260901-009&type=delegation'
             form.is_active = False; db.session.commit()
             assert redo_url_for_submission(s) is None
+
+
+def test_script_du_selecteur_precede_le_composant(client, db_session, app):
+    """Alpine est chargé sans defer et initialise les composants pendant l'analyse
+    de la page : lot7Picker doit être défini AVANT le <div x-data="lot7Picker(…)">
+    (bug constaté en prod le 2026-09-29 : champ « Qui valide à ma place ? » absent)."""
+    with app.app_context():
+        make_user(username='p_mgr', role=UserRole.MANAGER, service=ServiceType.DRH, allowed_services=[ServiceType.DRH])
+    login(client, 'p_mgr')
+    html = client.get('/profile').data.decode()
+    assert 'window.lot7Picker' in html and 'x-data="lot7Picker(' in html
+    assert html.index('window.lot7Picker') < html.index('x-data="lot7Picker(')

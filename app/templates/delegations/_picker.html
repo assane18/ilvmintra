@@ -7,6 +7,29 @@
     - picker_selected    : User déjà choisi (re-affichage après erreur), optionnel
   Le composant Alpine `lot7Picker` est défini une seule fois par page (garde window.).
 #}
+{# Le script est placé AVANT le composant : Alpine (chargé sans defer dans base.html)
+   initialise les éléments au fil de l'analyse HTML, la fonction doit donc déjà exister. #}
+<script>
+    window.lot7Picker = window.lot7Picker || function (cfg) {
+        return {
+            q: '', results: [], searched: false, selected: cfg.selected || null,
+            async search() {
+                this.searched = false;
+                const q = this.q.trim();
+                if (q.length < 2) { this.results = []; return; }
+                try {
+                    const res = await fetch(cfg.url + '?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(cfg.scope || 'all'), { credentials: 'same-origin' });
+                    this.results = res.ok ? await res.json() : [];
+                } catch (e) {
+                    this.results = [];
+                }
+                this.searched = true;
+            },
+            pick(u) { this.selected = u; this.q = ''; this.results = []; },
+            clear() { this.selected = null; this.q = ''; this.results = []; this.searched = false; }
+        };
+    };
+</script>
 <div x-data="lot7Picker({ url: '{{ url_for('delegations.users_search') }}', scope: '{{ picker_scope or 'all' }}', selected: {% if picker_selected %}{{ {'id': picker_selected.id, 'fullname': picker_selected.fullname or picker_selected.username, 'service': picker_selected.service, 'role': picker_selected.role.value}|tojson }}{% else %}null{% endif %} })"
      class="lot7-picker">
     <input type="hidden" name="{{ picker_name }}" :value="selected ? selected.id : ''">
@@ -44,24 +67,4 @@
     </template>
 </div>
 
-<script>
-    window.lot7Picker = window.lot7Picker || function (cfg) {
-        return {
-            q: '', results: [], searched: false, selected: cfg.selected || null,
-            async search() {
-                this.searched = false;
-                const q = this.q.trim();
-                if (q.length < 2) { this.results = []; return; }
-                try {
-                    const res = await fetch(cfg.url + '?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(cfg.scope || 'all'), { credentials: 'same-origin' });
-                    this.results = res.ok ? await res.json() : [];
-                } catch (e) {
-                    this.results = [];
-                }
-                this.searched = true;
-            },
-            pick(u) { this.selected = u; this.q = ''; this.results = []; },
-            clear() { this.selected = null; this.q = ''; this.results = []; this.searched = false; }
-        };
-    };
-</script>
+
