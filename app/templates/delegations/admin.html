@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+    .flat, .flat * { border-radius: 0 !important; }
+</style>
+{% set state_labels = {'active': ('En cours', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'),
+                       'upcoming': ('À venir', 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'),
+                       'expired': ('Terminée', 'bg-gray-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'),
+                       'cancelled': ('Annulée', 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300')} %}
+
+<div class="p-6 max-w-6xl mx-auto">
+
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Délégations de validation</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Qui valide à la place de qui — vue administrateur</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Administration
+        </a>
+    </div>
+
+    <div class="flex gap-2 mb-4">
+        <a href="{{ url_for('delegations.admin_list', show='current') }}" class="px-4 py-2 text-xs font-black uppercase tracking-wide border {% if show == 'current' %}bg-slate-900 text-white border-slate-900 dark:bg-accent-600 dark:border-accent-600{% else %}bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-gray-200 dark:border-slate-800{% endif %}">En cours et à venir</a>
+        <a href="{{ url_for('delegations.admin_list', show='all') }}" class="px-4 py-2 text-xs font-black uppercase tracking-wide border {% if show == 'all' %}bg-slate-900 text-white border-slate-900 dark:bg-accent-600 dark:border-accent-600{% else %}bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-gray-200 dark:border-slate-800{% endif %}">Toutes (historique)</a>
+    </div>
+
+    <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden">
+        <table class="w-full text-left text-sm">
+            <thead>
+                <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                    <th class="px-6 py-4">Délégant</th>
+                    <th class="px-6 py-4">Délégué</th>
+                    <th class="px-6 py-4 hidden md:table-cell">Période</th>
+                    <th class="px-6 py-4 hidden lg:table-cell">Motif</th>
+                    <th class="px-6 py-4">État</th>
+                    <th class="px-6 py-4 text-right"></th>
+                </tr>
+            </thead>
+            <tbody class="text-slate-700 dark:text-slate-300">
+                {% for d in delegations %}
+                {% set st = d.state(now) %}
+                <tr class="border-b border-gray-200 dark:border-slate-800 hover:bg-gray-50 dark:hover:bg-slate-800/50 transition">
+                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ d.delegator.fullname or d.delegator.username }}<span class="block text-[10px] font-normal text-slate-400 uppercase">{{ d.delegator.role.value }} · {{ d.delegator.service }}</span></td>
+                    <td class="px-6 py-4 font-bold text-slate-900 dark:text-white">{{ d.delegate.fullname or d.delegate.username }}<span class="block text-[10px] font-normal text-slate-400 uppercase">{{ d.delegate.role.value }} · {{ d.delegate.service }}</span></td>
+                    <td class="px-6 py-4 text-xs font-bold hidden md:table-cell">{{ d.starts_at.strftime('%d/%m/%Y') }} → {{ d.ends_at.strftime('%d/%m/%Y') }}</td>
+                    <td class="px-6 py-4 text-xs hidden lg:table-cell">{{ d.reason or '—' }}</td>
+                    <td class="px-6 py-4"><span class="inline-block px-2.5 py-1 text-[10px] font-black uppercase tracking-wide {{ state_labels[st][1] }}">{{ state_labels[st][0] }}</span></td>
+                    <td class="px-6 py-4 text-right">
+                        {% if st in ('active', 'upcoming') %}
+                        <form action="{{ url_for('delegations.cancel', delegation_id=d.id) }}" method="POST" class="inline">
+                            <input type="hidden" name="next" value="admin">
+                            <button type="submit" class="text-red-500 hover:text-red-700 font-bold uppercase text-xs">Annuler</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="p-10 text-center">
+                    <i data-lucide="inbox" class="w-8 h-8 mx-auto mb-3 text-slate-300 dark:text-slate-600"></i>
+                    <p class="text-slate-500 dark:text-slate-400 font-bold">Aucune délégation {% if show == 'current' %}en cours ou à venir{% endif %}.</p>
+                </td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="text-[11px] text-slate-400 mt-3">Les délégations sont déclarées par les managers et directeurs depuis leur profil (Mon compte → Mes délégations de validation). Une délégation expirée n'a plus aucun effet.</p>
+</div>
+</div>
+{% endblock %}

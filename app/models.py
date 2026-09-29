@@ -245,6 +245,11 @@ class Ticket(db.Model):
     daf_rib_file = db.Column(db.String(255), nullable=True)
     daf_solver_file = db.Column(db.String(255), nullable=True)
     daf_signed_file = db.Column(db.String(255), nullable=True)
+    # Lot 7 — demande faite AU NOM de quelqu'un d'autre : `author` reste la
+    # personne concernée (elle voit la demande dans son portail et reçoit les
+    # notifications), `created_by` garde la personne qui a réellement saisi.
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
 
     # --- Lot 6 : tickets liés / fusion de doublons ---
     # Un ticket « doublon » pointe vers son ticket maître ; le maître expose
@@ -874,6 +879,10 @@ class FormSubmission(db.Model):
     # Liste d'ids JSON, même convention que DossierSejour.child_tickets_ids.
     ticket_ids_json = db.Column(db.Text, default='[]')
 
+    # Lot 7 — demande faite au nom de quelqu'un d'autre (voir Ticket.created_by).
+    created_by_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=True)
+    created_by = db.relationship('User', foreign_keys=[created_by_id])
+
     files = db.relationship('FormSubmissionFile', backref='submission', cascade='all, delete-orphan')
 
     def get_data(self):
@@ -1016,3 +1025,46 @@ class AuditLog(db.Model):
 
     def __repr__(self):
         return f'<AuditLog {self.action} {self.target_ref}>'
+
+
+# --- Lot 7 : Organisation des demandes (délégation de validation) ---
+
+class ValidationDelegation(db.Model):
+    """« X valide à ma place du … au … » : pendant la période, le délégué
+    (`delegate`) voit et peut valider tout ce que le délégant (`delegator`)
+    pourrait valider, en plus de ses propres droits (app/delegation.py).
+    Déclarée par le délégant depuis /profile, annulable par lui ou un ADMIN
+    (/delegations/admin). `is_active = False` = annulée."""
+    __tablename__ = 'validation_delegations'
+    id = db.Column(db.Integer, primary_key=True)
+    delegator_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    delegate_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    starts_at = db.Column(db.DateTime, nullable=False)
+    ends_at = db.Column(db.DateTime, nullable=False)
+    reason = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    delegator = db.relationship('User', foreign_keys=[delegator_id], backref='delegations_given')
+    delegate = db.relationship('User', foreign_keys=[delegate_id], backref='delegations_received')
+
+    def is_current(self, now=None):
+        """Délégation en vigueur à l'instant `now` (active et dans la période)."""
+        now = now or datetime.now()
+        if self.is_active is False:  # None = pas encore flushé, défaut actif
+            return False
+        return self.starts_at <= now <= self.ends_at
+
+    def state(self, now=None):
+        """Libellé d'état : active | upcoming | expired | cancelled."""
+        now = now or datetime.now()
+        if self.is_active is False:
+            return 'cancelled'
+        if now < self.starts_at:
+            return 'upcoming'
+        if now > self.ends_at:
+            return 'expired'
+        return 'active'
+
+    def __repr__(self):
+        return f'<ValidationDelegation {self.delegator_id}->{self.delegate_id}>'

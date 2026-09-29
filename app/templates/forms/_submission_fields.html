@@ -61,7 +61,7 @@
 
         {% elif field.field_type.value == 'CHECKBOX' %}
         <label class="flex items-center gap-2 text-sm font-bold text-slate-600 dark:text-slate-300">
-            <input type="checkbox" name="{{ field.name }}" class="w-4 h-4"> {{ field.label }}{% if field.is_required %} *{% endif %}
+            <input type="checkbox" name="{{ field.name }}" class="w-4 h-4" {% if form_data.get(field.name) %}checked{% endif %}> {{ field.label }}{% if field.is_required %} *{% endif %}
         </label>
 
         {% elif field.field_type.value == 'FILE' %}

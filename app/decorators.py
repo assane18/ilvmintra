@@ -14,6 +14,16 @@ def admin_required(f):
 
 
 def can_validate_step(user, step, submission):
+    """Éligibilité à la validation d'une étape, pour l'utilisateur lui-même OU
+    pour l'un des délégants dont il tient une délégation active (Lot 7,
+    app/delegation.py) — jamais par délégation sur sa propre demande."""
+    from app.delegation import check_as_identities
+    return check_as_identities(user, submission,
+                               lambda identity: _can_validate_step_as(identity, step, submission),
+                               author_id=submission.author_id)
+
+
+def _can_validate_step_as(user, step, submission):
     """Un utilisateur peut valider une étape s'il est ADMIN, ou s'il correspond
     au rôle et au service attendus par l'étape.
 

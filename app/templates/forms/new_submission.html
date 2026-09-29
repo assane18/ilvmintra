@@ -45,7 +45,16 @@
         </div>
     </div>
     {% endif %}
+    {% if request.args.get('from') and form_data %}
+    <div class="mb-6 bg-accent-50 dark:bg-slate-800 border border-accent-200 dark:border-slate-700 px-5 py-3 flex items-start gap-3">
+        <i data-lucide="copy" class="w-4 h-4 text-accent-600 dark:text-accent-400 mt-0.5"></i>
+        <p class="text-xs text-slate-700 dark:text-slate-200">Formulaire pré-rempli à partir d'une de vos demandes précédentes. Vérifiez et ajustez avant de soumettre — les pièces jointes ne sont pas reprises.</p>
+    </div>
+    {% endif %}
     <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="{{ form_def.name }}">
+        <!-- Lot 7 : demande au nom de quelqu'un d'autre -->
+        {% include 'delegations/_on_behalf_block.html' %}
+
         {% include 'forms/_submission_fields.html' %}
 
         <button type="submit" class="w-full bg-slate-900 hover:bg-slate-800 dark:bg-accent-600 dark:hover:bg-accent-700 text-white font-black py-3 shadow-sm transition flex items-center justify-center gap-2 uppercase">

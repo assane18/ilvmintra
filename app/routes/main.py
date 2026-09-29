@@ -91,6 +91,7 @@ def _user_history_items(user, search_query=''):
     qu'aucune étape n'a été validée — contrairement à l'ancien système qui
     créait le ticket dès la soumission (statut "en attente"). Utilisé par le
     portail (aperçu limité) et par /my_history (liste complète filtrable)."""
+    from app.delegation import redo_url_for_ticket, redo_url_for_submission  # Lot 7
     ticket_query = Ticket.query.filter_by(author_id=user.id)
     if search_query:
         ticket_query = ticket_query.filter(
@@ -113,6 +114,7 @@ def _user_history_items(user, search_query=''):
             'status_class': _ticket_status_class(t.status.value),
             'is_open': is_open_status(t.status),
             'view_url': url_for('tickets.view_ticket', ticket_uid=t.uid_public),
+            'redo_url': redo_url_for_ticket(t),  # Lot 7 : « Refaire cette demande »
         })
 
     for sub in FormSubmission.query.filter_by(author_id=user.id).all():
@@ -141,6 +143,7 @@ def _user_history_items(user, search_query=''):
             'status_class': css,
             'is_open': is_open,
             'view_url': url_for('forms.view_submission', id=sub.id),
+            'redo_url': redo_url_for_submission(sub),  # Lot 7 : « Refaire cette demande »
         })
 
     items.sort(key=lambda i: i['date'], reverse=True)

@@ -258,7 +258,22 @@ def new_submission(slug):
         if not ('MANAGER' in role or 'DIRECTEUR' in role or 'ADMIN' in role):
             return render_template('errors/catdance.html'), 403
 
+    # Lot 7 : demande faite au nom de quelqu'un d'autre / refaire une demande
+    from app.delegation import (resolve_on_behalf, is_manager_like, notify_on_behalf_created,
+                                submission_prefill)
+
     if request.method == 'POST':
+        # L'auteur devient la personne concernée (elle voit la demande dans son
+        # portail, reçoit les notifications, et les étapes EMITTER visent SON
+        # service) ; le créateur réel est gardé dans created_by. Un formulaire
+        # réservé aux managers ne peut pas être déposé au nom d'un non-habilité.
+        beneficiary = resolve_on_behalf(current_user, request.form)
+        if beneficiary and form_def.manager_only and not is_manager_like(beneficiary):
+            flash(f"{beneficiary.fullname or beneficiary.username} n'est pas habilité(e) à ce formulaire : impossible de le déposer en son nom.", "danger")
+            return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form,
+                                   help_tips=help_tips, on_behalf=beneficiary), 403
+        author = beneficiary or current_user
+
         today_str = datetime.now().strftime('%Y%m%d')
         count = FormSubmission.query.filter(
             FormSubmission.uid_public.like(f"FRM-{slug}-{today_str}%")
@@ -301,13 +316,14 @@ def new_submission(slug):
         if errors:
             for e in errors:
                 flash(e, "danger")
-            return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form, help_tips=help_tips)
+            return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form, help_tips=help_tips, on_behalf=beneficiary)
 
-        initial_index = _first_eligible_step_index(form_def, current_user, 0)
+        initial_index = _first_eligible_step_index(form_def, author, 0)
         submission = FormSubmission(
             uid_public=uid,
             form_definition_id=form_def.id,
-            author=current_user,
+            author=author,
+            created_by_id=current_user.id if beneficiary else None,
             current_step_index=initial_index,
             status=FormSubmissionStatus.IN_PROGRESS,
         )
@@ -336,10 +352,17 @@ def new_submission(slug):
             _finalize_submission(submission)
             flash(f"Formulaire soumis ({uid}). Aucune validation requise, transmis directement.", "success")
 
+        if beneficiary:
+            notify_on_behalf_created(beneficiary, current_user, uid, url_for('forms.view_submission', id=submission.id))
+
         db.session.commit()
         return redirect(url_for('forms.view_submission', id=submission.id))
 
-    return render_template('forms/new_submission.html', form_def=form_def, form_data={}, help_tips=help_tips)
+    # « Refaire cette demande » : ?from=<id> pré-remplit avec une de mes soumissions (hors fichiers)
+    form_data = submission_prefill(request.args.get('from'), current_user, form_def)
+    if request.args.get('from') and form_data is None:
+        flash("Impossible de pré-remplir : demande introuvable ou qui ne vous appartient pas.", "warning")
+    return render_template('forms/new_submission.html', form_def=form_def, form_data=form_data or {}, help_tips=help_tips)
 
 
 @forms_bp.route('/submission/<int:id>')

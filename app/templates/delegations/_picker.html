@@ -1,0 +1,67 @@
+{#
+  Lot 7 — sélecteur d'agent avec autocomplétion (GET /delegations/users/search).
+  Variables (via {% with %}) :
+    - picker_name        : nom du champ caché posté (ex: 'on_behalf_of_id', 'delegate_id')
+    - picker_scope       : 'all' (tout l'annuaire) ou 'validators' (MANAGER/DIRECTEUR/ADMIN)
+    - picker_placeholder : texte d'aide du champ de recherche
+    - picker_selected    : User déjà choisi (re-affichage après erreur), optionnel
+  Le composant Alpine `lot7Picker` est défini une seule fois par page (garde window.).
+#}
+<div x-data="lot7Picker({ url: '{{ url_for('delegations.users_search') }}', scope: '{{ picker_scope or 'all' }}', selected: {% if picker_selected %}{{ {'id': picker_selected.id, 'fullname': picker_selected.fullname or picker_selected.username, 'service': picker_selected.service, 'role': picker_selected.role.value}|tojson }}{% else %}null{% endif %} })"
+     class="lot7-picker">
+    <input type="hidden" name="{{ picker_name }}" :value="selected ? selected.id : ''">
+
+    <template x-if="!selected">
+        <div class="relative">
+            <input type="text" x-model="q" @input.debounce.250ms="search()" @keydown.escape.prevent="results = []"
+                   @keydown.enter.prevent="results.length && pick(results[0])" autocomplete="off"
+                   placeholder="{{ picker_placeholder or 'Nom ou identifiant (2 lettres minimum)' }}"
+                   aria-label="{{ picker_placeholder or 'Rechercher un agent' }}"
+                   class="w-full bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 px-4 py-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+            <ul x-show="results.length" x-cloak
+                class="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-lg max-h-64 overflow-auto divide-y divide-gray-100 dark:divide-slate-800">
+                <template x-for="u in results" :key="u.id">
+                    <li>
+                        <button type="button" @click="pick(u)" class="w-full text-left px-4 py-2.5 hover:bg-accent-50 dark:hover:bg-slate-800 transition flex items-center justify-between gap-3">
+                            <span class="text-sm font-bold text-slate-800 dark:text-white" x-text="u.fullname"></span>
+                            <span class="text-[11px] font-bold uppercase text-slate-400 whitespace-nowrap" x-text="u.service + ' · ' + u.role"></span>
+                        </button>
+                    </li>
+                </template>
+            </ul>
+            <p x-show="searched && q.length >= 2 && !results.length" x-cloak class="text-xs text-slate-400 mt-1">Aucun agent trouvé.</p>
+        </div>
+    </template>
+
+    <template x-if="selected">
+        <div class="flex items-center justify-between gap-3 bg-white dark:bg-slate-900 border border-accent-300 dark:border-accent-700 px-4 py-2.5">
+            <div class="min-w-0">
+                <p class="text-sm font-bold text-slate-800 dark:text-white truncate" x-text="selected.fullname"></p>
+                <p class="text-[11px] font-bold uppercase text-slate-400" x-text="selected.service + ' · ' + selected.role"></p>
+            </div>
+            <button type="button" @click="clear()" class="text-xs font-bold text-red-500 hover:text-red-700 hover:underline whitespace-nowrap">Retirer</button>
+        </div>
+    </template>
+</div>
+
+<script>
+    window.lot7Picker = window.lot7Picker || function (cfg) {
+        return {
+            q: '', results: [], searched: false, selected: cfg.selected || null,
+            async search() {
+                this.searched = false;
+                const q = this.q.trim();
+                if (q.length < 2) { this.results = []; return; }
+                try {
+                    const res = await fetch(cfg.url + '?q=' + encodeURIComponent(q) + '&scope=' + encodeURIComponent(cfg.scope || 'all'), { credentials: 'same-origin' });
+                    this.results = res.ok ? await res.json() : [];
+                } catch (e) {
+                    this.results = [];
+                }
+                this.searched = true;
+            },
+            pick(u) { this.selected = u; this.q = ''; this.results = []; },
+            clear() { this.selected = null; this.q = ''; this.results = []; this.searched = false; }
+        };
+    };
+</script>

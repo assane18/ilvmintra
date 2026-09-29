@@ -153,6 +153,21 @@ def new_ticket(service_name):
     user_origins = current_user.get_origin_services()
 
     if request.method == 'POST':
+        # Lot 7 : demande faite AU NOM de quelqu'un d'autre (app/delegation.py).
+        # L'auteur devient la personne concernée (son service d'origine et son
+        # rôle pilotent le circuit de validation) ; le créateur réel est gardé
+        # dans created_by. Un bénéficiaire non habilité ne peut pas recevoir une
+        # demande réservée aux managers (Matériel, délégation de signature DAF).
+        from app.delegation import resolve_on_behalf, is_manager_like, notify_on_behalf_created
+        beneficiary = resolve_on_behalf(current_user, request.form)
+        if beneficiary and (service_name.upper() == 'MATERIEL' or is_delegation) and not is_manager_like(beneficiary):
+            flash(f"{beneficiary.fullname or beneficiary.username} n'est pas habilité(e) à faire cette demande : impossible de la déposer en son nom.", "danger")
+            return redirect(request.url)
+        requester = beneficiary or current_user
+        if beneficiary:
+            role = str(beneficiary.role.value).upper()
+            user_origins = beneficiary.get_origin_services()
+
         category = request.form.get('category_ticket', 'Standard')
         title = request.form.get('title')
         description = request.form.get('description')
@@ -187,7 +202,7 @@ def new_ticket(service_name):
             category = 'Dépannage Imago'
 
         # ... (Reste de la logique hostname/origin inchangée) ...
-        selected_origin = request.form.get('selected_origin')
+        selected_origin = request.form.get('selected_origin') if not beneficiary else None
         if not selected_origin:
             selected_origin = user_origins[0] if user_origins else "INCONNU"
             
@@ -313,7 +328,8 @@ def new_ticket(service_name):
         t = Ticket(
             title=title,
             description=description,
-            author=current_user,
+            author=requester,
+            created_by_id=current_user.id if beneficiary else None,
             target_service=service_enum,
             status=status,
             uid_public=uid,
@@ -375,11 +391,20 @@ def new_ticket(service_name):
         elif status == TicketStatus.PENDING:
             notify_solvers_new_ticket(t)
 
+        if beneficiary:
+            notify_on_behalf_created(beneficiary, current_user, uid, url_for('tickets.view_ticket', ticket_uid=uid))
+        db.session.commit()  # Lot 7 : persiste les notifications ajoutées après le commit du ticket
+
         flash(f'Demande {uid} enregistrée.', 'success')
         return redirect(url_for('main.user_portal'))
 
     help_tips = HelpTip.query.filter_by(context=service_name, is_active=True).order_by(HelpTip.sort_order, HelpTip.id).all()
-    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation, help_tips=help_tips)
+    # Lot 7 : « Refaire cette demande » — pré-remplissage depuis un de mes tickets (?from=<uid>)
+    from app.delegation import ticket_prefill
+    prefill = ticket_prefill(request.args.get('from'), current_user)
+    if request.args.get('from') and not prefill:
+        flash("Impossible de pré-remplir : demande introuvable ou qui ne vous appartient pas.", "warning")
+    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation, help_tips=help_tips, prefill=prefill)
 
 
 @tickets_bp.route('/view/<string:ticket_uid>', methods=['GET', 'POST'])
@@ -555,42 +580,54 @@ def manager_dashboard():
             if 'SOLVER' in role_str: return redirect(url_for('tickets.solver_dashboard'))
             return render_template('errors/catdance.html'), 403
         
-        my_origins = current_user.get_origin_services() 
-        raw_targets = current_user.get_allowed_services()
-        
         valid_service_names = [s.name for s in ServiceType] 
         valid_service_values = [s.value for s in ServiceType]
-        
-        my_targets = []
-        if raw_targets:
-            for t in raw_targets:
-                if t == 'GS-DRH': my_targets.append('DRH') 
-                elif t in valid_service_names: my_targets.append(t)
-                elif t in valid_service_values: my_targets.append(t)
-        
-        tickets_n1 = []
-        if my_origins: 
-            tickets_n1 = Ticket.query.filter(
-                Ticket.status == TicketStatus.VALIDATION_N1,
-                Ticket.service_demandeur.in_(my_origins),
-                Ticket.author_id != current_user.id
-            ).all()
 
-        tickets_n2 = []
-        if my_targets:
-            try:
-                base_query = Ticket.query.filter(Ticket.target_service.in_(my_targets))
-                
-                if 'DAF' in my_targets:
-                    if 'DIRECTEUR' in role_str:
-                        candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE])).all()
-                    else: 
-                        candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.VALIDATION_DAF_MANAGER])).all()
-                else:
-                    candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
-                tickets_n2 = candidates
-            except Exception as e:
-                tickets_n2 = []
+        # Lot 7 : on boucle sur moi + mes délégants actifs (app/delegation.py) —
+        # le délégué voit tout ce que chaque délégant verrait ici, sans doublon.
+        # `my_targets` (utilisé plus bas pour les tickets en retard) reste celui
+        # de l'utilisateur connecté.
+        from app.delegation import effective_validators
+        tickets_n1, tickets_n2, my_targets = [], [], []
+        seen_n1, seen_n2 = set(), set()
+        for identity in effective_validators(current_user):
+            my_origins = identity.get_origin_services()
+            raw_targets = identity.get_allowed_services()
+            identity_role = safe_role_str(identity)
+
+            identity_targets = []
+            if raw_targets:
+                for t in raw_targets:
+                    if t == 'GS-DRH': identity_targets.append('DRH') 
+                    elif t in valid_service_names: identity_targets.append(t)
+                    elif t in valid_service_values: identity_targets.append(t)
+            if identity.id == current_user.id:
+                my_targets = identity_targets
+
+            if my_origins: 
+                for t in Ticket.query.filter(
+                        Ticket.status == TicketStatus.VALIDATION_N1,
+                        Ticket.service_demandeur.in_(my_origins),
+                        Ticket.author_id != current_user.id).all():
+                    if t.id not in seen_n1:
+                        seen_n1.add(t.id); tickets_n1.append(t)
+
+            if identity_targets:
+                try:
+                    base_query = Ticket.query.filter(Ticket.target_service.in_(identity_targets))
+                    
+                    if 'DAF' in identity_targets:
+                        if 'DIRECTEUR' in identity_role:
+                            candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.DAF_SIGNATURE])).all()
+                        else: 
+                            candidates = base_query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.VALIDATION_DAF_MANAGER])).all()
+                    else:
+                        candidates = base_query.filter(Ticket.status == TicketStatus.VALIDATION_N2).all()
+                    for t in candidates:
+                        if t.id not in seen_n2 and (identity.id == current_user.id or t.author_id != current_user.id):
+                            seen_n2.add(t.id); tickets_n2.append(t)
+                except Exception as e:
+                    pass
 
         fcpi_requests = []
         user_services = current_user.get_allowed_services()
@@ -1090,6 +1127,16 @@ def export_stats():
 
 
 def _can_validate_ticket(user, t):
+    """Éligibilité pour l'utilisateur lui-même OU pour l'un des délégants dont
+    il tient une délégation active (Lot 7, app/delegation.py) — jamais par
+    délégation sur son propre ticket. Le délégant emprunté est mémorisé sur `t`
+    pour la trace « validé par X pour le compte de Y »."""
+    from app.delegation import check_as_identities
+    return check_as_identities(user, t, lambda identity: _can_validate_ticket_as(identity, t),
+                               author_id=t.author_id)
+
+
+def _can_validate_ticket_as(user, t):
     """Réplique l'éligibilité utilisée pour peupler manager_dashboard()
     (tickets_n1/tickets_n2) — qui jusqu'ici ne filtrait que l'AFFICHAGE, sans
     équivalent côté serveur dans manager_action(). Un appel direct à l'URL
