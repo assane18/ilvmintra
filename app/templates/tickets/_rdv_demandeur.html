@@ -7,7 +7,7 @@
     <div class="p-6">
         {% if rdv.status == 'accepted' %}
         <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Rendez-vous confirmé</p>
-        <p class="text-lg font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-2"><i data-lucide="calendar-check" class="w-5 h-5"></i> {{ rdv.starts_at.strftime('%A %d %B %Y à %H:%M')|capitalize }}</p>
+        <p class="text-lg font-black text-emerald-700 dark:text-emerald-300 flex items-center gap-2"><i data-lucide="calendar-check" class="w-5 h-5"></i> {{ date_fr(rdv.starts_at) }}</p>
         {% if rdv.message %}<p class="text-sm text-slate-600 dark:text-slate-300 mt-2">{{ rdv.message }}</p>{% endif %}
         <p class="text-[11px] text-slate-400 mt-2">Un rappel vous sera envoyé le jour même à 9h. Empêchement ? Écrivez-le dans le fil du ticket : le service vous reproposera une date.</p>
 
@@ -17,7 +17,7 @@
 
         {% else %}
         <p class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Le service vous propose un rendez-vous</p>
-        <p class="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><i data-lucide="calendar-clock" class="w-5 h-5 text-amber-500"></i> {{ rdv.starts_at.strftime('%A %d %B %Y à %H:%M')|capitalize }}</p>
+        <p class="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2"><i data-lucide="calendar-clock" class="w-5 h-5 text-amber-500"></i> {{ date_fr(rdv.starts_at) }}</p>
         {% if rdv.message %}<p class="text-sm text-slate-600 dark:text-slate-300 mt-2">{{ rdv.message }}</p>{% endif %}
         <p class="text-[11px] text-slate-400 mt-1">Proposé par {{ rdv.proposed_by.fullname if rdv.proposed_by else 'le service' }}. Merci de répondre :</p>
 

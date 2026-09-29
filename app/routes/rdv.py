@@ -26,9 +26,21 @@ from app.routes.tech_extras import can_manage
 rdv_bp = Blueprint('rdv', __name__)
 
 
+_JOURS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
+_MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+
+
+def date_fr(dt, with_time=True):
+    """« Vendredi 2 octobre 2026 à 10:30 » — sans dépendre de la locale du serveur."""
+    if not dt:
+        return ''
+    txt = f"{_JOURS[dt.weekday()].capitalize()} {dt.day} {_MOIS[dt.month - 1]} {dt.year}"
+    return f"{txt} à {dt.strftime('%H:%M')}" if with_time else txt
+
+
 @rdv_bp.app_context_processor
 def _rdv_context():
-    return {'current_appointment': current_appointment}
+    return {'current_appointment': current_appointment, 'date_fr': date_fr}
 
 _CLOSED = (TicketStatus.DONE, TicketStatus.REFUSED)
 _OPEN_APPOINTMENT = ('proposed', 'accepted', 'counter')
