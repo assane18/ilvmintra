@@ -58,3 +58,30 @@ def seed_default_rules():
         db.session.add(SlaRule(service=svc, category=cat, hours=hours))
     db.session.commit()
     return len(SLA_DEFAULTS)
+
+
+def hours_from_rules(rules, category=None):
+    """Même arbitrage que sla_hours_for, mais sur une liste de règles déjà
+    chargées (service donné) : catégorie exacte > service seul > défaut."""
+    if category:
+        for r in rules:
+            if r.category and r.category.strip().lower() == category.strip().lower():
+                return r.hours
+    for r in rules:
+        if not r.category:
+            return r.hours
+    return DEFAULT_SLA_HOURS
+
+
+def sla_resolver():
+    """Charge TOUTES les règles actives une seule fois et renvoie une fonction
+    (service, category) -> heures. À utiliser dans les boucles (statistiques,
+    export Excel) pour éviter une requête SlaRule par ticket (N+1)."""
+    from app.models import SlaRule
+    by_service = {}
+    for r in SlaRule.query.filter(SlaRule.is_active == True).all():
+        by_service.setdefault(r.service, []).append(r)
+
+    def resolve(service, category=None):
+        return hours_from_rules(by_service.get(_service_value(service), []), category)
+    return resolve

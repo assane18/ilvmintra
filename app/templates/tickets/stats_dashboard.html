@@ -85,7 +85,7 @@
         </h2>
 
         <!-- KPI -->
-        <div class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-4 mb-6">
             <div class="border border-gray-200 dark:border-slate-800 p-4">
                 <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Reçus</p>
                 <p class="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{{ s.received }}</p>
@@ -120,6 +120,17 @@
                 <p class="text-[10px] text-slate-400">aucun avis</p>
                 {% endif %}
             </div>
+            <!-- Lot 5 : respect des délais cibles (SLA) — vert ≥ 90 %, ambre ≥ 70 %, rouge sinon -->
+            <div class="border {{ 'border-red-300 dark:border-red-800' if s.sla_rate is not none and s.sla_rate < 70 else 'border-gray-200 dark:border-slate-800' }} p-4" title="Part des tickets clôturés dans leur délai cible (SLA service/catégorie, page Délais cibles)">
+                <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">Respect des délais</p>
+                {% if s.sla_rate is not none %}
+                <p class="text-2xl font-black tabular-nums {{ 'text-emerald-600 dark:text-emerald-400' if s.sla_rate >= 90 else ('text-amber-600 dark:text-amber-400' if s.sla_rate >= 70 else 'text-red-600 dark:text-red-400') }}" data-testid="sla-rate">{{ s.sla_rate }}%</p>
+                <p class="text-[10px] text-slate-400">{{ s.sla_on_time }} dans le délai · {{ s.sla_late }} hors délai</p>
+                {% else %}
+                <p class="text-xl font-black text-slate-400">N/A</p>
+                <p class="text-[10px] text-slate-400">aucune clôture</p>
+                {% endif %}
+            </div>
         </div>
 
         <div class="border border-gray-200 dark:border-slate-800 p-4 mb-6">
@@ -130,6 +141,12 @@
             </p>
             {% else %}
             <p class="text-xs text-slate-400 italic">—</p>
+            {% endif %}
+            {% if s.sla_late %}
+            <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest mt-3 mb-1">Catégories hors délai</p>
+            <p class="text-xs font-bold text-red-700 dark:text-red-400">
+                {% for cat, count in s.sla_top_late_categories %}{{ cat }} <span class="text-slate-400">({{ count }})</span>{% if not loop.last %} <span class="text-slate-300 mx-1">·</span> {% endif %}{% endfor %}
+            </p>
             {% endif %}
         </div>
 
@@ -145,6 +162,13 @@
                 <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 text-center">Évolution mensuelle (reçus / clôturés)</h3>
                 <div class="h-48">
                     <canvas id="monthlyChart_{{ loop.index }}"></canvas>
+                </div>
+            </div>
+            <!-- Lot 5 : évolution mensuelle du taux de respect des délais -->
+            <div class="border border-gray-200 dark:border-slate-800 p-4 lg:col-span-3">
+                <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-3 text-center">Respect des délais cibles — taux mensuel (%)</h3>
+                <div class="h-40">
+                    <canvas id="slaChart_{{ loop.index }}"></canvas>
                 </div>
             </div>
         </div>
@@ -199,6 +223,33 @@
                         x: { ticks: { font: { size: 9 } }, grid: { display: false } }
                     },
                     plugins: { legend: { position: 'bottom', labels: { boxWidth: 8, font: { size: 9 } } } }
+                }
+            });
+        }
+
+        // Lot 5 : courbe mensuelle du taux de respect des délais (null = aucun ticket clôturé ce mois)
+        const slaCtx = document.getElementById('slaChart_' + idx);
+        if (slaCtx) {
+            const months = Object.keys(s.monthly);
+            const rates = months.map(m => s.monthly[m].sla_rate);
+            new Chart(slaCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: months,
+                    datasets: [{
+                        label: 'Dans le délai (%)', data: rates, spanGaps: true,
+                        borderColor: '#8b5cf6', backgroundColor: 'rgba(139, 92, 246, 0.12)', fill: true,
+                        tension: 0.25, pointRadius: 3,
+                        pointBackgroundColor: rates.map(r => r === null ? '#cbd5e1' : (r >= 90 ? '#10b981' : (r >= 70 ? '#f59e0b' : '#ef4444'))),
+                    }]
+                },
+                options: {
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, max: 100, ticks: { font: { size: 9 }, callback: v => v + '%' } },
+                        x: { ticks: { font: { size: 9 } }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
                 }
             });
         }

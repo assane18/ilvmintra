@@ -924,3 +924,40 @@ class Notification(db.Model):
             'is_read': self.is_read,
             'timestamp': self.timestamp.isoformat() + 'Z'
         }
+
+
+# --- Lot 5 : délais et pilotage (paramètres applicatifs + trace d'escalade) ---
+
+class AppSetting(db.Model):
+    """Paramètre applicatif simple clé/valeur (texte), modifiable sur
+    /admin/pilotage. Les valeurs par défaut et les accesseurs typés sont dans
+    app/pilotage.py (get_setting / set_setting)."""
+    __tablename__ = 'app_settings'
+    key = db.Column(db.String(60), primary_key=True)
+    value = db.Column(db.String(255), nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<AppSetting {self.key}={self.value!r}>'
+
+
+class EscalationTrace(db.Model):
+    """Trace d'un e-mail d'escalade envoyé (scripts/escalade_validations.py) :
+    un enregistrement par (demande, niveau, jour) — c'est l'anti-doublon qui
+    garantit qu'un même niveau n'est pas renvoyé deux fois le même jour pour
+    la même demande."""
+    __tablename__ = 'escalation_traces'
+    id = db.Column(db.Integer, primary_key=True)
+    item_type = db.Column(db.String(20), nullable=False)      # 'ticket' | 'submission'
+    item_id = db.Column(db.Integer, nullable=False)
+    level = db.Column(db.String(20), nullable=False)          # 'rappel' | 'directeur'
+    sent_on = db.Column(db.Date, nullable=False, index=True)  # jour d'envoi
+    recipients = db.Column(db.Text, nullable=True)            # e-mails, séparés par des virgules
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.UniqueConstraint('item_type', 'item_id', 'level', 'sent_on', name='uq_escalation_trace_day'),
+    )
+
+    def __repr__(self):
+        return f'<EscalationTrace {self.item_type}#{self.item_id} {self.level} {self.sent_on}>'

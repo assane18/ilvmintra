@@ -747,6 +747,8 @@ def _empty_stats_entry():
         'status_counts': {}, 'refusal_rate': 0,
         'top_categories': [], 'monthly': {},
         'satisfaction_count': 0, 'satisfaction_pct': None, 'satisfaction_avg': None,
+        # Lot 5 : respect des délais cibles (SLA) sur les tickets clôturés
+        'sla_rate': None, 'sla_on_time': 0, 'sla_late': 0, 'sla_top_late_categories': [],
     }
 
 
@@ -767,12 +769,22 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
 
     q_closed = Ticket.query.with_entities(
         Ticket.target_service, Ticket.created_at, Ticket.closed_at, Ticket.satisfaction,
+        Ticket.category_ticket,
     ).filter(Ticket.status == TicketStatus.DONE, Ticket.closed_at.between(window_start, window_end))
     if scope_services is not None:
         q_closed = q_closed.filter(Ticket.target_service.in_(scope_services))
 
     def label(v):
         return v.value if hasattr(v, 'value') else str(v)
+
+    # Lot 5 : règles SLA chargées UNE fois (pas une requête par ticket) ; un
+    # ticket est « dans le délai » si closed_at - created_at <= délai cible
+    # (service + catégorie, app/sla.py).
+    from app.sla import sla_resolver
+    sla_for = sla_resolver()
+
+    def on_time(r, svc):
+        return (r.closed_at - r.created_at).total_seconds() / 3600 <= sla_for(svc, r.category_ticket)
 
     created_by_service = defaultdict(list)
     for row in q_created.all():
@@ -795,13 +807,24 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
         top_categories = Counter(r.category_ticket or 'Non renseigné' for r in c_rows).most_common(3)
         ratings = [r.satisfaction for r in d_rows if r.satisfaction]
 
-        monthly = defaultdict(lambda: {'received': 0, 'closed': 0})
+        # Lot 5 : respect des délais (tickets clôturés de la période)
+        sla_flags = [(r, on_time(r, svc)) for r in d_rows]
+        sla_on_time = sum(1 for _, ok in sla_flags if ok)
+        sla_late_rows = [r for r, ok in sla_flags if not ok]
+        sla_top_late = Counter(r.category_ticket or 'Non renseigné' for r in sla_late_rows).most_common(3)
+
+        monthly = defaultdict(lambda: {'received': 0, 'closed': 0, 'sla_on_time': 0, 'sla_late': 0, 'sla_rate': None})
         for r in created_by_service[svc]:
             if monthly_start <= r.created_at <= monthly_end:
                 monthly[r.created_at.strftime('%Y-%m')]['received'] += 1
         for r in closed_by_service[svc]:
             if monthly_start <= r.closed_at <= monthly_end:
-                monthly[r.closed_at.strftime('%Y-%m')]['closed'] += 1
+                m = monthly[r.closed_at.strftime('%Y-%m')]
+                m['closed'] += 1
+                m['sla_on_time' if on_time(r, svc) else 'sla_late'] += 1
+        for m in monthly.values():
+            if m['closed']:
+                m['sla_rate'] = round(m['sla_on_time'] / m['closed'] * 100, 1)
 
         stats[svc] = {
             'received': len(c_rows),
@@ -818,6 +841,11 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
             'satisfaction_count': len(ratings),
             'satisfaction_pct': round(sum(1 for r in ratings if r == 3) / len(ratings) * 100) if ratings else None,
             'satisfaction_avg': round(statistics.mean(ratings), 2) if ratings else None,
+            # Lot 5 : respect des délais cibles (SLA)
+            'sla_rate': round(sla_on_time / len(d_rows) * 100, 1) if d_rows else None,
+            'sla_on_time': sla_on_time,
+            'sla_late': len(sla_late_rows),
+            'sla_top_late_categories': sla_top_late,
         }
     return stats
 
@@ -965,6 +993,7 @@ def export_stats():
     for svc in export_services:
         s = stats.get(svc, _empty_stats_entry())
         top_cats = s['top_categories'] + [('', '')] * 3
+        late_cats = s['sla_top_late_categories'] + [('', '')] * 3
         summary_rows.append({
             'Service': svc,
             'Periode': f"{period_start.strftime('%Y-%m-%d')} au {period_end.strftime('%Y-%m-%d')}",
@@ -976,6 +1005,11 @@ def export_stats():
             'Delai_Median_Cloture_h': s['close_median_h'],
             'Taux_Refus_%': s['refusal_rate'],
             'Top_Categorie_1': top_cats[0][0], 'Top_Categorie_2': top_cats[1][0], 'Top_Categorie_3': top_cats[2][0],
+            # Lot 5 : respect des délais cibles
+            'Taux_Respect_Delais_%': s['sla_rate'],
+            'Tickets_Dans_Delai': s['sla_on_time'],
+            'Tickets_Hors_Delai': s['sla_late'],
+            'Top_Hors_Delai_1': late_cats[0][0], 'Top_Hors_Delai_2': late_cats[1][0], 'Top_Hors_Delai_3': late_cats[2][0],
         })
     df_summary = pd.DataFrame(summary_rows)
 
@@ -987,6 +1021,7 @@ def export_stats():
             monthly_rows.append({
                 'Service': svc, 'Mois': month,
                 'Tickets_Recus': vals['received'], 'Tickets_Clotures': vals['closed'],
+                'Tickets_Hors_Delai': vals.get('sla_late', 0), 'Taux_Respect_Delais_%': vals.get('sla_rate'),
             })
     df_monthly = pd.DataFrame(monthly_rows)
 
@@ -999,10 +1034,13 @@ def export_stats():
         )
     ).all()
 
+    from app.sla import sla_resolver
+    sla_for = sla_resolver()  # Lot 5 : règles chargées une fois pour tout le détail
     detail_by_service = defaultdict(list)
     for t in detail_tickets:
         assign_delay = round((t.assigned_at - t.created_at).total_seconds() / 3600, 1) if t.assigned_at else None
         close_delay = round((t.closed_at - t.created_at).total_seconds() / 3600, 1) if t.closed_at else None
+        sla_target = sla_for(t.target_service, t.category_ticket)
         detail_by_service[t.get_safe_target_service()].append({
             'Reference': t.uid_public,
             'Date_Creation': t.created_at.strftime('%Y-%m-%d %H:%M'),
@@ -1010,6 +1048,8 @@ def export_stats():
             'Delai_Assignation_h': assign_delay,
             'Date_Cloture': t.closed_at.strftime('%Y-%m-%d %H:%M') if t.closed_at else '',
             'Delai_Cloture_h': close_delay,
+            'Delai_Cible_h': sla_target,
+            'Dans_Delai': ('' if close_delay is None else ('Oui' if close_delay <= sla_target else 'Non')),
             'Statut': t.get_safe_status(),
             'Categorie': t.category_ticket,
             'Titre': t.title,

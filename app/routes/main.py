@@ -68,9 +68,10 @@ def user_portal():
     announcements = [a for a in Announcement.query.filter_by(is_active=True).order_by(Announcement.created_at.desc()).all()
                      if a.is_visible()]
 
+    from app.pilotage import portal_health_notice  # Lot 5 : bandeau d'état (cache 60 s, jamais bloquant)
     return render_template('portal.html', user=current_user, items=recent_items, open_items=open_items,
                            open_count=sum(1 for i in all_items if i['is_open']), active_forms=active_forms,
-                           announcements=announcements)
+                           announcements=announcements, health_notice=portal_health_notice())
 
 def _ticket_status_class(status_value):
     if 'VALIDATION' in status_value:
