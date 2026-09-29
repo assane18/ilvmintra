@@ -442,6 +442,7 @@
                 {% endif %}
             </div>
             {% endif %}
+            {% if can_manage_ticket %}{% include 'tickets/_audit_history.html' %}{% endif %}{# Lot 8 : historique (journal d'audit), équipe uniquement #}
 
             {# Lot 6 : tickets liés / doublons (équipe : lier, détacher ; demandeur : info) #}
             {% include 'tickets/_linked_tickets.html' %}

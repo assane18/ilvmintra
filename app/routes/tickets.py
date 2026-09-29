@@ -4,6 +4,7 @@ from app.models import Ticket, ServiceType, TicketStatus, UserRole, TicketMessag
 from app import db
 # --- IMPORT DES FONCTIONS EMAIL (AJOUTÉ) ---
 from app.emails import send_service_alert, send_assignment_notification, send_message_notification, send_closure_notification
+from app.audit import log_action  # Lot 8 : journal d'audit
 # -------------------------------------------
 from datetime import datetime, timedelta
 import pytz
@@ -1134,6 +1135,7 @@ def _validate_ticket(t, user):
 
     t.validated_at = get_paris_time()
     t.validated_by_id = user.id
+    log_action('ticket.validate', t, user=user, details=f"-> {t.get_safe_status()}")
 
 def _batch_eligible(t):
     """Validation en lot : uniquement les validations standard N1/N2 hors DAF
@@ -1191,6 +1193,7 @@ def manager_action(ticket_id, action):
                 t.status = TicketStatus.IN_PROGRESS 
             else:
                 t.status = TicketStatus.REFUSED
+            log_action('ticket.refuse', t, details=reason)
 
         db.session.commit()
         return redirect(url_for('tickets.manager_dashboard'))
@@ -1238,6 +1241,7 @@ def take_ticket(ticket_id):
         t.status = TicketStatus.IN_PROGRESS
         if not t.assigned_at:
             t.assigned_at = get_paris_time()
+        log_action('ticket.assign', t, details=f"pris en charge par {current_user.fullname}")
         create_notification(t.author, f"Pris en charge par {current_user.fullname}", 'success', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
         
         # --- EMAIL NOTIFICATION (AJOUTÉ) ---
@@ -1345,6 +1349,7 @@ def _apply_rating(t, score, comment=None):
     if comment is not None:
         t.satisfaction_comment = comment.strip()[:2000] or None
     t.satisfaction_at = get_paris_time()
+    log_action('ticket.rate', t, details=f"note {score}/3")
 
 @tickets_bp.route('/rate/<ticket_uid>/<int:score>')
 @login_required
@@ -1406,6 +1411,7 @@ def reopen_ticket(ticket_uid):
     t.status = TicketStatus.IN_PROGRESS if t.solver_id else TicketStatus.PENDING
     t.closed_at = None
     t.reopen_count = (t.reopen_count or 0) + 1
+    log_action('ticket.reopen', t, details=reason)
     t.satisfaction = None; t.satisfaction_comment = None; t.satisfaction_at = None
     msg_content = f"🔁 Demande rouverte par le demandeur : {reason}"
     db.session.add(TicketMessage(content=msg_content, ticket=t, author=current_user))
@@ -1435,6 +1441,7 @@ def close_ticket(ticket_id):
 
         t.status = TicketStatus.DONE
         t.closed_at = get_paris_time()
+        log_action('ticket.close', t)
 
         # --- Lot 6 : clôture en cascade des doublons rattachés (même horodatage,
         # message système, notification + e-mail à chaque demandeur) ---
@@ -1756,6 +1763,7 @@ def assign_ticket(ticket_id):
             t.status = TicketStatus.IN_PROGRESS
             if not t.assigned_at:
                 t.assigned_at = get_paris_time()
+            log_action('ticket.assign', t, details=f"pris en charge par {current_user.fullname}")
 
             # --- EMAIL ASSIGNATION (AJOUTÉ) ---
             send_assignment_notification(t, current_user)
@@ -1776,6 +1784,7 @@ def assign_ticket(ticket_id):
                 t.status = TicketStatus.IN_PROGRESS
                 if not t.assigned_at:
                     t.assigned_at = get_paris_time()
+                log_action('ticket.assign', t, details=f"assigné à {u.fullname}")
                 create_notification(u, f"Ticket {t.uid_public} assigné par {current_user.fullname}.", 'info', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
                 
                 # --- EMAIL ASSIGNATION (AJOUTÉ) ---
@@ -1818,6 +1827,7 @@ def transfer_ticket(ticket_id):
     t.target_service = new_service
     t.solver_id = None
     t.status = TicketStatus.PENDING
+    log_action('ticket.transfer', t, details=f"{old_service_label} -> {new_service.value}")
     db.session.commit()
 
     # Notifie le nouveau service comme s'il s'agissait d'un nouveau ticket

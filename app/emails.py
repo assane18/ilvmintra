@@ -122,7 +122,9 @@ def filter_recipients_by_preference(recipients, kind):
         kept.append(r)
     return kept
 
-def send_email(subject, recipients, text_body, html_body, kind='important'):
+def send_email(subject, recipients, text_body, html_body, kind='important', attachments=None):
+    """`attachments` (optionnel, lot 8) : liste de tuples (nom, mimetype, bytes)
+    joints tels quels au message — ex. le rapport mensuel PDF."""
     recipients = filter_recipients_by_preference(recipients, kind)
     if not recipients:
         return
@@ -148,6 +150,11 @@ def send_email(subject, recipients, text_body, html_body, kind='important'):
     except Exception as e:
         print(f"⚠️ Attention : Impossible d'attacher le logo (Fichier manquant ?). Erreur : {e}")
     # -------------------------------------------------------------
+    for name, mimetype, data in (attachments or []):
+        try:
+            msg.attach(name, mimetype, data)
+        except Exception as e:
+            print(f"⚠️ Pièce jointe {name} ignorée : {e}")
 
     app = current_app._get_current_object()
     Thread(target=send_async_email, args=(app, msg)).start()
