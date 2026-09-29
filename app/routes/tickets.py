@@ -577,7 +577,9 @@ def set_rdv(ticket_id):
 def manager_dashboard():
     try:
         role_str = safe_role_str(current_user)
-        if not ('MANAGER' in role_str or 'DIRECTEUR' in role_str or 'ADMIN' in role_str):
+        from app.delegation import effective_validators
+        has_delegation = len(effective_validators(current_user)) > 1  # délégué d'un manager absent, quel que soit son rôle
+        if not ('MANAGER' in role_str or 'DIRECTEUR' in role_str or 'ADMIN' in role_str or has_delegation):
             if 'SOLVER' in role_str: return redirect(url_for('tickets.solver_dashboard'))
             return render_template('errors/catdance.html'), 403
         

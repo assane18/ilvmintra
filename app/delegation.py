@@ -32,7 +32,7 @@ from app.models import (FormSubmission, FormSubmissionStatus, FormFieldType, Not
                         ValidationDelegation)
 
 # Rôles pouvant recevoir une délégation (le délégué) — jamais USER/SOLVER.
-DELEGATE_ROLES = (UserRole.MANAGER, UserRole.DIRECTEUR, UserRole.ADMIN)
+DELEGATE_ROLES = tuple(UserRole)  # tout utilisateur peut recevoir une délégation (il agit alors avec les droits du délégant)
 # Rôles pouvant déclarer une délégation (le délégant).
 DELEGATOR_ROLES = (UserRole.MANAGER, UserRole.DIRECTEUR, UserRole.ADMIN)
 
@@ -281,7 +281,7 @@ def delegation_error(delegator, delegate, starts_at, ends_at):
     if delegate.id == delegator.id:
         return "Vous ne pouvez pas vous déléguer la validation à vous-même."
     if delegate.role not in DELEGATE_ROLES:
-        return "Le délégué doit être Manager, Directeur ou Administrateur."
+        return "Ce compte ne peut pas recevoir de délégation."
     if not starts_at or not ends_at:
         return "Indiquez les dates de début et de fin."
     if ends_at < starts_at:

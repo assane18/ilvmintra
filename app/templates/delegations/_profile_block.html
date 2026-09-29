@@ -62,7 +62,7 @@
         <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Nouvelle délégation</p>
         <div>
             <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Qui valide à ma place ?</label>
-            {% with picker_name='delegate_id', picker_scope='validators', picker_selected=None, picker_placeholder='Nom du manager / directeur (2 lettres minimum)' %}
+            {% with picker_name='delegate_id', picker_scope='all', picker_selected=None, picker_placeholder="Nom de l'agent (2 lettres minimum)" %}
                 {% include 'delegations/_picker.html' %}
             {% endwith %}
         </div>

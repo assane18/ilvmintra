@@ -237,14 +237,15 @@ class TestDelegationLogique:
         assert s == datetime(2030, 1, 1) and e == datetime(2030, 1, 10, 23, 59, 59)
 
         assert create_delegation(mgr_fj, mgr_fj, s, e)[1]          # à soi-même
-        assert create_delegation(mgr_fj, agent, s, e)[1]           # vers un USER
-        assert create_delegation(mgr_fj, solver, s, e)[1]          # vers un SOLVER
         assert create_delegation(agent, mgr_fj, s, e)[1]           # un USER ne délègue pas
+        # Tout utilisateur peut RECEVOIR une délégation (décision du 2026-09-29)
+        assert create_delegation(mgr_fj, agent, s, e)[1] is None    # vers un USER : OK
+        assert create_delegation(mgr_fj, solver, s, e)[1] is None   # vers un SOLVER : OK
         assert create_delegation(mgr_fj, mgr_mas, e, s)[1]         # fin avant début
         assert create_delegation(mgr_fj, mgr_mas, *parse_period('2020-01-01', '2020-01-02'))[1]  # déjà terminée
         assert parse_period('n/a', '2030-01-01') == (None, None)
         assert create_delegation(mgr_fj, mgr_mas, None, None)[1]
-        assert ValidationDelegation.query.count() == 0
+        assert ValidationDelegation.query.count() == 2   # les deux délégations valides (USER, SOLVER) ci-dessus
 
         d, err = create_delegation(mgr_fj, mgr_mas, s, e, reason='Congés')
         db.session.commit()
@@ -433,8 +434,8 @@ class TestDelegationRoutes:
 
         today = datetime.now().strftime('%Y-%m-%d')
         later = (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
-        # Interdictions : soi-même, un USER, dates inversées
-        for data in ({'delegate_id': mgr_fj.id}, {'delegate_id': agent.id},
+        # Interdictions : soi-même, dates inversées
+        for data in ({'delegate_id': mgr_fj.id},
                      {'delegate_id': mgr_mas.id, 'starts_at': later, 'ends_at': today}):
             payload = {'starts_at': today, 'ends_at': later}; payload.update(data)
             client.post('/delegations/new', data=payload, follow_redirects=True)
@@ -508,7 +509,7 @@ class TestDelegationRoutes:
         rows = client.get('/delegations/users/search?q=a&scope=validators').get_json()
         assert rows == []                                             # 2 caractères minimum
         rows = client.get('/delegations/users/search?q=age&scope=validators').get_json()
-        assert all(x['username'] != 'agent_fj' for x in rows)         # USER exclu du périmètre validateurs
+        assert any(x['username'] == 'agent_fj' for x in rows)         # tout utilisateur peut être délégué (2026-09-29)
         rows = client.get('/delegations/users/search?q=age').get_json()
         assert any(x['username'] == 'agent_fj' for x in rows)
 
@@ -751,3 +752,26 @@ def test_script_du_selecteur_precede_le_composant(client, db_session, app):
     html = client.get('/profile').data.decode()
     assert 'window.lot7Picker' in html and 'x-data="lot7Picker(' in html
     assert html.index('window.lot7Picker') < html.index('x-data="lot7Picker(')
+
+
+def test_delegue_simple_utilisateur_accede_a_la_validation(client, db_session, app):
+    """Un USER délégué par un manager absent ouvre le tableau Validation et y voit
+    (et peut valider) les demandes N1 du service du délégant."""
+    from app.delegation import create_delegation, parse_period
+    with app.app_context():
+        mgr = make_user(UserRole.MANAGER, username='d_mgr', fullname='Manager FJ', service=ServiceType.FJ, allowed_services=[ServiceType.FJ])
+        agent = make_user(UserRole.USER, username='d_agent', fullname='Agent Simple', service=ServiceType.SG)
+        demandeur = make_user(UserRole.USER, username='d_dem', fullname='Demandeur FJ', service=ServiceType.FJ)
+        t = Ticket(title='A valider par delegation', description='d', author=demandeur, target_service=ServiceType.INFO,
+                   status=TicketStatus.VALIDATION_N1, uid_public='DLG-001', category_ticket='Incident Standard',
+                   created_at=datetime.now(), service_demandeur=ServiceType.FJ.value)
+        db.session.add(t); db.session.commit()
+        s, e = parse_period(datetime.now().strftime('%Y-%m-%d'), (datetime.now() + timedelta(days=3)).strftime('%Y-%m-%d'))
+        d, err = create_delegation(mgr, agent, s, e); assert err is None
+        db.session.commit(); tid = t.id
+    login(client, 'd_agent')
+    r = client.get('/tickets/manager/dashboard')
+    assert r.status_code == 200 and b'A valider par delegation' in r.data
+    client.post('/tickets/manager/batch_validate', data={'ticket_ids': [str(tid)]})
+    with app.app_context():
+        assert Ticket.query.get(tid).status == TicketStatus.VALIDATION_N2
