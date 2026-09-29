@@ -264,39 +264,10 @@
 
             <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Activités & Messages</h3>
-                <div class="space-y-6">
-                    {% for msg in ticket.messages %}
-                    <div class="flex gap-4 {% if msg.author_id == current_user.id %}flex-row-reverse{% endif %}">
-                        <div class="w-8 h-8 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 flex items-center justify-center font-bold text-xs shrink-0">
-                            {{ (msg.author.fullname or msg.author.username)[0] }}
-                        </div>
-                        <div class="max-w-[80%]">
-                            <div class="bg-gray-50 dark:bg-slate-950 p-4 border border-gray-200 dark:border-slate-800 text-sm">
-                                <p class="text-slate-800 dark:text-slate-200">{{ msg.content|replace('\n', '<br>')|safe }}</p>
-                            </div>
-                            <p class="text-[10px] text-slate-400 mt-1 px-2 {% if msg.author_id == current_user.id %}text-right{% endif %}">
-                                {{ msg.author.fullname }} • {{ msg.timestamp.strftime('%d/%m à %H:%M') }}
-                            </p>
-                        </div>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <form method="POST" class="mt-8 relative">
-                    {% if canned_responses %}
-                    <div class="flex items-center gap-2 mb-2">
-                        <label class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Réponse type</label>
-                        <select id="canned-select" class="flex-1 max-w-sm bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-xs px-2 py-1.5 text-slate-700 dark:text-slate-200">
-                            <option value="">— Choisir un modèle —</option>
-                            {% for r in canned_responses %}<option value="{{ r.body }}">{{ r.title }}</option>{% endfor %}
-                        </select>
-                    </div>
-                    {% endif %}
-                    <textarea name="message" id="ticket-message" rows="3" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-800 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500" placeholder="Écrire un message..."></textarea>
-                    <button type="submit" class="absolute bottom-3 right-3 bg-accent-600 hover:bg-accent-700 text-white p-2 shadow-sm transition">
-                        <i data-lucide="send" class="w-4 h-4"></i>
-                    </button>
-                </form>
+                {# Lot 6 : fil de messages (notes internes filtrées, pièces jointes)
+                   et formulaire (note interne, PJ, diffusion aux doublons). #}
+                {% include 'tickets/_chat_messages.html' %}
+                {% include 'tickets/_chat_form.html' %}
             </div>
         </div>
 
@@ -413,6 +384,9 @@
 
                     {% if ticket.solver_id == current_user.id and ticket.status.value != 'TERMINE' %}
 
+                        {# Lot 6 : date d'intervention (planning) pour tout ticket assigné #}
+                        {% include 'tickets/_planning_rdv.html' %}
+
                         {% if ticket.target_service.value == 'DAF' %}
                             <div class="bg-slate-800 p-4 border border-slate-700 space-y-4">
                                 <h4 class="text-xs font-bold text-slate-300 uppercase flex items-center gap-2">
@@ -440,25 +414,8 @@
                                     <i data-lucide="layers" class="w-4 h-4"></i> Actions Imago
                                 </h4>
 
-                                {% if ticket.rdv_date %}
-                                <div class="bg-indigo-900/30 border border-indigo-700 p-3">
-                                    <p class="text-xs text-indigo-300 font-bold flex items-center gap-2">
-                                        <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i>
-                                        RDV fixé : {{ ticket.rdv_date.strftime('%d/%m/%Y à %H:%M') }}
-                                    </p>
-                                </div>
-                                {% else %}
-                                <form action="{{ url_for('tickets.set_rdv', ticket_id=ticket.id) }}" method="POST" class="space-y-1">
-                                    <label class="text-[10px] text-slate-400 uppercase font-bold">Proposer un RDV</label>
-                                    <div class="flex gap-2">
-                                        <input type="datetime-local" name="rdv_date" required
-                                            class="flex-1 bg-slate-900 border border-slate-600 text-xs px-3 py-2 text-white focus:outline-none focus:border-indigo-500">
-                                        <button type="submit" class="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 transition" title="Proposer RDV">
-                                            <i data-lucide="calendar-plus" class="w-4 h-4"></i>
-                                        </button>
-                                    </div>
-                                </form>
-                                {% endif %}
+                                {# Lot 6 : le RDV Imago passe par le planning d'intervention
+                                   généralisé (partiel ci-dessus, tous services). #}
 
                                 <form action="{{ url_for('tickets.close_ticket', ticket_id=ticket.id) }}" method="POST">
                                     <button type="submit" onclick="return confirm('Confirmer la clôture — problème résolu ?')"
@@ -485,6 +442,9 @@
                 {% endif %}
             </div>
             {% endif %}
+
+            {# Lot 6 : tickets liés / doublons (équipe : lier, détacher ; demandeur : info) #}
+            {% include 'tickets/_linked_tickets.html' %}
 
         </div>
     </div>

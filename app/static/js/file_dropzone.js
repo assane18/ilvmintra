@@ -5,7 +5,9 @@
  * les fichiers choisis (nom, taille), permet d'en retirer un, et rappelle la
  * taille maximale acceptée par le serveur (MAX_CONTENT_LENGTH = 20 Mo).
  * L'input d'origine reste dans le formulaire (masqué) : la soumission est
- * inchangée côté serveur.
+ * inchangée côté serveur. S'applique aussi à tout <input type="file"
+ * data-dropzone> hors formulaire de création (chat des tickets, lot 6), et
+ * expose window.enhanceFileDropzone(input) pour une activation manuelle.
  */
 (function () {
     var MAX_MB = 20;
@@ -106,6 +108,10 @@
 
     document.addEventListener('DOMContentLoaded', function () {
         if (!window.DataTransfer) return; // navigateur trop ancien : input natif conservé
-        document.querySelectorAll('form[data-recap-confirm] input[type="file"]').forEach(enhance);
+        // Formulaires de création (récap) + tout input marqué data-dropzone
+        // (ex. pièces jointes du chat d'un ticket, sans récapitulatif).
+        document.querySelectorAll('form[data-recap-confirm] input[type="file"], input[type="file"][data-dropzone]').forEach(enhance);
     });
+    // Activation manuelle (contenu injecté après le chargement).
+    window.enhanceFileDropzone = enhance;
 })();
