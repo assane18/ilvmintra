@@ -84,7 +84,7 @@
                             {% if ticket.new_user_fullname and 'Manuel' in ticket.description %}
                                 <span class="text-accent-600 dark:text-accent-400">{{ ticket.new_user_fullname }}</span>
                             {% else %}
-                                {{ ticket.author.fullname }}
+                                {{ ticket.author.fullname if ticket.author else 'Anonymisé' }}
                             {% endif %}
                         </td>
                         <td class="px-6 py-4">

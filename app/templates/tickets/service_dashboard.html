@@ -115,9 +115,9 @@
                             <div class="flex justify-between items-center mt-3">
                                 <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium">
                                     <div class="w-6 h-6 bg-gray-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-600 dark:text-slate-300">
-                                        {{ ticket.author.fullname[:1] }}
+                                        {{ (ticket.author.fullname[:1] if ticket.author else '?') }}
                                     </div>
-                                    {{ ticket.author.fullname }}
+                                    {{ ticket.author.fullname if ticket.author else 'Anonymisé' }}
                                     {% if ticket.tel_demandeur %}<span class="text-slate-300">|</span> <i data-lucide="phone" class="w-3 h-3"></i> {{ ticket.tel_demandeur }}{% endif %}
                                 </div>
 

@@ -2190,6 +2190,77 @@ class TestLot3:
             sub = FormSubmission.query.get(sid)
             assert sub.status == FormSubmissionStatus.DONE and sub.validated_by_id is not None and sub.last_validated_at is not None
 
+
+# ===========================================================================
+#  RETOUCHES APRÈS LOTS 5-8 (2026-09-29) : notes internes visibles par le
+#  manager du service, ticket anonymisé, audit des validations DAF
+# ===========================================================================
+
+class TestRetouchesLots:
+
+    def _users(self, app):
+        with app.app_context():
+            make_user(username='r_user', role=UserRole.USER, service=ServiceType.DRH)
+            make_user(username='r_manager_drh', role=UserRole.MANAGER, service=ServiceType.DRH, allowed_services=[ServiceType.DRH])
+            make_user(username='r_manager_sg', role=UserRole.MANAGER, service=ServiceType.SG, allowed_services=[ServiceType.SG])
+            make_user(username='r_solver', role=UserRole.SOLVER, service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+            make_user(username='r_daf_mgr', role=UserRole.MANAGER, service=ServiceType.DAF, allowed_services=[ServiceType.DAF])
+            make_user(username='r_daf_dir', role=UserRole.DIRECTEUR, service=ServiceType.DAF, allowed_services=[ServiceType.DAF])
+
+    def _ticket(self, app, status=TicketStatus.IN_PROGRESS, service=ServiceType.INFO, author='r_user', solver='r_solver'):
+        with app.app_context():
+            a = User.query.filter_by(username=author).first()
+            s = User.query.filter_by(username=solver).first() if solver else None
+            t = Ticket(title='Retouche', description='d', author=a, solver=s, target_service=service, status=status,
+                       uid_public=f'R-{Ticket.query.count()+1:03d}', category_ticket='Incident Standard',
+                       created_at=datetime.now(), service_demandeur='DRH')
+            db.session.add(t); db.session.commit(); return t.id, t.uid_public
+
+    def test_note_interne_visible_par_le_manager_du_service_d_origine(self, client, db_session, app):
+        self._users(app)
+        tid, uid = self._ticket(app)
+        with app.app_context():
+            solver = User.query.filter_by(username='r_solver').first()
+            db.session.add(TicketMessage(content='NOTE-SECRETE-EQUIPE', ticket_id=tid, author=solver, is_internal=True))
+            db.session.commit()
+        login(client, 'r_manager_drh')   # manager du service d'origine du demandeur (DRH)
+        html = client.get(f'/tickets/view/{uid}').data.decode()
+        assert 'NOTE-SECRETE-EQUIPE' in html
+        assert 'name="is_internal"' not in html   # lecture seule : il n'écrit pas de note
+        login(client, 'r_manager_sg')    # manager d'un autre service : rien
+        assert 'NOTE-SECRETE-EQUIPE' not in client.get(f'/tickets/view/{uid}').data.decode()
+        login(client, 'r_user')          # le demandeur : rien
+        assert 'NOTE-SECRETE-EQUIPE' not in client.get(f'/tickets/view/{uid}').data.decode()
+
+    def test_detail_ticket_anonymise_ne_plante_pas(self, client, db_session, app):
+        self._users(app)
+        tid, uid = self._ticket(app, status=TicketStatus.DONE)
+        with app.app_context():
+            t = Ticket.query.get(tid); t.author_id = None; t.title = '[Anonymisé]'; t.closed_at = datetime.now(); db.session.commit()
+        login(client, 'r_solver')
+        r = client.get(f'/tickets/view/{uid}')
+        assert r.status_code == 200 and 'Demandeur anonymisé' in r.data.decode()
+        assert client.get('/tickets/solver/dashboard').status_code == 200
+
+    def test_audit_des_validations_daf(self, client, db_session, app):
+        from app.models import AuditLog
+        self._users(app)
+        tid, uid = self._ticket(app, status=TicketStatus.VALIDATION_DAF_MANAGER, service=ServiceType.DAF, solver=None)
+        login(client, 'r_daf_mgr')
+        client.post(f'/tickets/manager/daf_validate/{tid}')
+        with app.app_context():
+            t = Ticket.query.get(tid)
+            assert t.status == TicketStatus.DAF_SIGNATURE and t.validated_by_id is not None
+            assert AuditLog.query.filter_by(action='ticket.validate', target_ref=uid).count() == 1
+        login(client, 'r_daf_dir')
+        client.post(f'/tickets/director/daf_sign/{tid}', data={'daf_signed_file': (io.BytesIO(b'%PDF-1.4 fake'), 'bon_signe.pdf')}, content_type='multipart/form-data')
+        with app.app_context():
+            t = Ticket.query.get(tid)
+            assert t.status == TicketStatus.DONE
+            assert AuditLog.query.filter_by(action='ticket.close', target_ref=uid).count() == 1
+            import shutil
+            shutil.rmtree(os.path.join(app.root_path, 'static', 'uploads', 'tickets', uid), ignore_errors=True)
+
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================

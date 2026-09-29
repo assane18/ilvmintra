@@ -275,6 +275,7 @@
 
             <div class="bg-white dark:bg-slate-900 p-6 shadow-sm border border-gray-200 dark:border-slate-800">
                 <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Demandeur</h3>
+                {% if ticket.author %}
                 <div class="flex items-center gap-3 mb-4">
                     <div class="w-10 h-10 bg-gray-100 dark:bg-slate-800 flex items-center justify-center font-bold text-slate-500">{{ (ticket.author.fullname or ticket.author.username)[0] }}</div>
                     <div>
@@ -282,20 +283,30 @@
                         <p class="text-xs text-slate-400">{{ ticket.author.email }}</p>
                     </div>
                 </div>
+                {% else %}
+                {# Ticket anonymisé par la purge RGPD : plus de demandeur rattaché #}
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 bg-gray-100 dark:bg-slate-800 flex items-center justify-center text-slate-400"><i data-lucide="user-x" class="w-4 h-4"></i></div>
+                    <div>
+                        <p class="text-sm font-bold text-slate-500 dark:text-slate-400">Demandeur anonymisé</p>
+                        <p class="text-xs text-slate-400">Données personnelles supprimées (archivage RGPD)</p>
+                    </div>
+                </div>
+                {% endif %}
                 <div class="space-y-3 pt-3 border-t border-gray-200 dark:border-slate-800">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-400">Service</span>
                         <span class="font-bold dark:text-white">{{ ticket.service_demandeur }}</span>
                     </div>
                     {# Téléphone saisi sur le ticket, sinon celui renseigné par l'auteur dans son profil #}
-                    {% set author_phone = ticket.tel_demandeur or ticket.author.phone %}
+                    {% set author_phone = ticket.tel_demandeur or (ticket.author.phone if ticket.author else None) %}
                     {% if author_phone %}
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-400">Téléphone</span>
                         <span class="font-bold dark:text-white">{{ author_phone }}</span>
                     </div>
                     {% endif %}
-                    {% if ticket.author.office %}
+                    {% if ticket.author and ticket.author.office %}
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-400">Bureau</span>
                         <span class="font-bold dark:text-white">{{ ticket.author.office }}</span>

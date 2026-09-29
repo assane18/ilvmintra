@@ -1,6 +1,6 @@
 {# Lot 6 — Fil « Activités & Messages » de tickets/detail.html.
    Variables attendues : ticket, can_manage_ticket (définit qui voit les notes internes). #}
-{% set can_see_internal = can_manage_ticket %}
+{% set can_see_internal = can_see_internal if can_see_internal is defined else can_manage_ticket %}
 <div class="space-y-6">
     {% for msg in ticket.messages %}
     {% if not msg.is_internal or can_see_internal %}

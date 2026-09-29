@@ -498,11 +498,22 @@ def view_ticket(ticket_uid):
         can_reopen = (is_author and ticket.status == TicketStatus.DONE and ticket.closed_at
                       and (get_paris_time().replace(tzinfo=None) - ticket.closed_at.replace(tzinfo=None)).days < 7)
 
+        # Notes internes : lisibles par l'équipe compétente (can_manage_ticket) ET par
+        # les managers/directeurs du service d'origine du demandeur ou du service
+        # cible (décision utilisateur 2026-09-29) — l'écriture reste réservée à l'équipe.
+        can_see_internal = can_manage_ticket
+        if not can_see_internal and ('MANAGER' in user_role or 'DIRECTEUR' in user_role):
+            _origins = current_user.get_origin_services() or []
+            _allowed = current_user.get_allowed_services() or []
+            _target = ticket.target_service
+            _target_vals = {getattr(_target, 'value', str(_target)), getattr(_target, 'name', str(_target))}
+            can_see_internal = (ticket.service_demandeur in _origins) or bool(_target_vals & set(_allowed))
+
         return render_template('tickets/detail.html', canned_responses=canned_responses, can_reopen=can_reopen, 
                                ticket=ticket, 
                                attached_files=attached_files, 
                                solvers_available=solvers_available,
-                               can_manage_ticket=can_manage_ticket)
+                               can_manage_ticket=can_manage_ticket, can_see_internal=can_see_internal)
 
     except Exception as e:
         flash(f"Erreur : {str(e)}", "danger")
@@ -1214,6 +1225,8 @@ def manager_daf_validate(ticket_id):
              return redirect(url_for('tickets.manager_dashboard'))
 
         t.status = TicketStatus.DAF_SIGNATURE
+        t.validated_at = get_paris_time(); t.validated_by_id = current_user.id
+        log_action('ticket.validate', t, details="validation Manager DAF -> signature Directeur")
         db.session.commit()
         flash("Validé par Manager DAF. En attente signature Directeur.", "success")
         return redirect(url_for('tickets.manager_dashboard'))
@@ -1317,6 +1330,7 @@ def daf_director_sign(ticket_id):
                 t.daf_signed_file = filename
                 t.status = TicketStatus.DONE
                 t.closed_at = get_paris_time()
+                log_action('ticket.close', t, details="bon de commande signé par le Directeur DAF")
 
                 # Notifier le gestionnaire (solver) que le bon signé est disponible
                 if t.solver:
