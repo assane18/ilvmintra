@@ -2122,6 +2122,22 @@ class TestLot3:
         assert 'En attente &gt; 48 h' in html
         assert 'Valider la sélection' in html
 
+    def test_boutons_du_tableau_manager_ne_soumettent_pas_le_lot(self, client, db_session, app):
+        """Les onglets / Refuser / Signer sont dans le <form> de validation en
+        lot : sans type="button", un clic soumettait une sélection vide
+        (« Aucune demande validée ») — bug constaté en prod le 2026-09-29."""
+        import re
+        self._users(app)
+        self._ticket(app, TicketStatus.VALIDATION_N1, title='A')
+        self._ticket(app, TicketStatus.VALIDATION_N2, title='B')
+        login(client, 'l3_manager')
+        html = client.get('/tickets/manager/dashboard').data.decode()
+        form = html[html.index('manager/batch_validate'):]
+        form = form[:form.index('</form>')]
+        untyped = [b for b in re.findall(r'<button[^>]*>', form) if 'type=' not in b]
+        assert untyped == [], untyped
+        assert form.count('type="submit"') == 1
+
     def test_validation_en_lot(self, client, db_session, app):
         self._users(app)
         a = self._ticket(app, TicketStatus.VALIDATION_N1, title='A')
