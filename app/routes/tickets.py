@@ -420,6 +420,7 @@ def view_ticket(ticket_uid):
         can_view = False
         if 'ADMIN' in user_role: can_view = True
         elif ticket.author_id == current_user.id: can_view = True
+        elif ticket.created_by_id == current_user.id: can_view = True  # Lot 7 : créateur réel d'une demande faite pour autrui
         elif 'SOLVER' in user_role and target_svc in current_user.get_allowed_services(): can_view = True
         elif 'MANAGER' in user_role or 'DIRECTEUR' in user_role:
             if ticket.service_demandeur in current_user.get_origin_services(): can_view = True

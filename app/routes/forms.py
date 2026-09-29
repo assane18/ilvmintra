@@ -369,7 +369,7 @@ def new_submission(slug):
 @login_required
 def view_submission(id):
     submission = FormSubmission.query.get_or_404(id)
-    is_author = submission.author_id == current_user.id
+    is_author = submission.author_id == current_user.id or submission.created_by_id == current_user.id  # Lot 7 : créateur réel inclus
     is_validator = (
         submission.status == FormSubmissionStatus.IN_PROGRESS
         and submission.current_step is not None
