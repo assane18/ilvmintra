@@ -45,3 +45,4 @@ urllib3==2.6.3
 Werkzeug==3.1.4
 xlrd==2.0.2
 msal==1.39.0
+weasyprint==70.0
