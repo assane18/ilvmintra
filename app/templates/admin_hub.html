@@ -63,6 +63,14 @@
             <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Délai de traitement attendu par service et catégorie : échéances sur les cartes, retards, relances.</p>
         </a>
 
+        <a href="{{ url_for('pilotage.admin_pilotage') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
+            <div class="w-11 h-11 bg-violet-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-violet-600 dark:text-cyan-400">
+                <i data-lucide="gauge" class="w-5 h-5"></i>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-slate-200 mb-1">Pilotage</h3>
+            <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Seuils d'escalade des validations en souffrance, alerte de sauvegarde, bandeau d'état du portail.</p>
+        </a>
+
         <a href="{{ url_for('main.announcements_manage') }}" class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors group">
             <div class="w-11 h-11 bg-sky-50 dark:bg-slate-800 flex items-center justify-center mb-4 text-sky-600 dark:text-cyan-400">
                 <i data-lucide="megaphone" class="w-5 h-5"></i>

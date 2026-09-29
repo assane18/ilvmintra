@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>
+    .flat, .flat * { border-radius: 0 !important; }
+    .input-field { width: 100%; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 0.6rem; outline: none; color: #1e293b; font-size: 0.875rem; }
+    .input-field:focus { border-color: rgb(var(--accent-500)); background-color: white; }
+    .dark .input-field { background-color: #0f172a; border-color: #334155; color: #f1f5f9; }
+</style>
+
+<div class="p-6 max-w-6xl mx-auto">
+    <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tight">Pilotage</h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-xs mt-1 uppercase tracking-wide">Escalade des validations, alerte de sauvegarde, bandeau d'état du portail</p>
+        </div>
+        <a href="{{ url_for('main.admin_dashboard') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour Administration
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+        <!-- Paramètres -->
+        <form method="POST" class="xl:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 space-y-4 self-start">
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Seuils d'escalade des validations</h2>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Script quotidien (8h10) : au-delà de N1 jours d'attente, rappel aux validateurs ; au-delà de N2 jours, e-mail « escaladé » aux Directeurs du service, manager en copie. Un même niveau n'est jamais renvoyé deux fois le même jour pour la même demande. 0 = désactivé.</p>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{{ labels['escalade_rappel_jours'] }}</label>
+                <input type="number" name="escalade_rappel_jours" min="0" max="365" value="{{ settings['escalade_rappel_jours'] }}" required class="input-field">
+            </div>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{{ labels['escalade_directeur_jours'] }}</label>
+                <input type="number" name="escalade_directeur_jours" min="0" max="365" value="{{ settings['escalade_directeur_jours'] }}" required class="input-field">
+            </div>
+
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest pt-3 border-t border-gray-100 dark:border-slate-800">Sauvegarde</h2>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400">Vérification quotidienne (7h) : dernières sauvegardes locales de moins de 26 h et non vides, copie présente sur le partage réseau, espace libre suffisant. En cas d'anomalie, un e-mail groupé est envoyé aux administrateurs.</p>
+            <div>
+                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{{ labels['sauvegarde_espace_min_go'] }}</label>
+                <input type="number" name="sauvegarde_espace_min_go" min="0" max="10000" value="{{ settings['sauvegarde_espace_min_go'] }}" required class="input-field">
+            </div>
+
+            <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest pt-3 border-t border-gray-100 dark:border-slate-800">Bandeau d'état du portail</h2>
+            <label class="flex items-start gap-3 cursor-pointer">
+                <input type="checkbox" name="bandeau_etat_masque" value="1" {% if settings['bandeau_etat_masque'] == '1' %}checked{% endif %} class="mt-1 w-4 h-4 accent-slate-900">
+                <span>
+                    <span class="block text-sm font-bold text-slate-700 dark:text-slate-200">{{ labels['bandeau_etat_masque'] }}</span>
+                    <span class="block text-[11px] text-slate-500 dark:text-slate-400">Le bandeau s'affiche automatiquement en tête du portail quand une dépendance est dégradée (annuaire, messagerie, sauvegarde, espace disque), en langage non technique. Cochez pour le masquer à tout le monde, par exemple pendant une maintenance annoncée.</span>
+                </span>
+            </label>
+
+            <p class="text-[10px] text-slate-400">Valeurs par défaut : rappel {{ defaults['escalade_rappel_jours'] }} j · escalade {{ defaults['escalade_directeur_jours'] }} j · espace {{ defaults['sauvegarde_espace_min_go'] }} Go.</p>
+            <button type="submit" class="w-full bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black px-5 py-2.5 text-xs uppercase tracking-widest transition">Enregistrer</button>
+        </form>
+
+        <div class="xl:col-span-3 space-y-6">
+            <!-- Aperçu du bandeau -->
+            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6">
+                <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3">État actuel (tel que vu par le portail)</h2>
+                {% if health_notices %}
+                <ul class="space-y-2">
+                    {% for m in health_notices %}
+                    <li class="flex gap-3 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 text-amber-900 dark:text-amber-100 p-3 text-sm">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 shrink-0 mt-0.5"></i><span>{{ m }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if settings['bandeau_etat_masque'] == '1' %}<p class="text-[11px] text-slate-500 mt-3 italic">Bandeau actuellement masqué sur le portail.</p>{% endif %}
+                {% else %}
+                <p class="flex items-center gap-2 text-sm text-emerald-700 dark:text-emerald-400 font-bold"><i data-lucide="check-circle-2" class="w-4 h-4"></i> Aucune perturbation : le bandeau n'est pas affiché.</p>
+                {% endif %}
+                <p class="text-[10px] text-slate-400 mt-3">Résultat mis en cache 60 s. Détail technique : <a class="underline" href="{{ url_for('main.admin_health') }}">Santé du système</a>.</p>
+            </div>
+
+            <!-- Dernières escalades -->
+            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm">
+                <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest px-5 pt-5 pb-3">Escalades envoyées (14 derniers jours)</h2>
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
+                            <th class="px-5 py-3">Jour</th>
+                            <th class="px-5 py-3">Demande</th>
+                            <th class="px-5 py-3">Niveau</th>
+                            <th class="px-5 py-3">Destinataires</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-700 dark:text-slate-300">
+                        {% for t in traces %}
+                        <tr class="border-b border-gray-100 dark:border-slate-800">
+                            <td class="px-5 py-3 tabular-nums whitespace-nowrap">{{ t.sent_on.strftime('%d/%m/%Y') }}</td>
+                            <td class="px-5 py-3 font-mono text-xs">{{ 'Ticket' if t.item_type == 'ticket' else 'Formulaire' }} #{{ t.item_id }}</td>
+                            <td class="px-5 py-3">
+                                {% if t.level == 'directeur' %}<span class="px-2 py-0.5 text-[10px] font-black uppercase bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">Escaladé</span>
+                                {% else %}<span class="px-2 py-0.5 text-[10px] font-black uppercase bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">Rappel</span>{% endif %}
+                            </td>
+                            <td class="px-5 py-3 text-xs break-all">{{ t.recipients or '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="p-8 text-center text-slate-400">Aucune escalade envoyée sur la période.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+{% endblock %}
