@@ -1,0 +1,33 @@
+{# Lot 6 — Date d'intervention (rdv_date) pour tout ticket assigné.
+   Inclus dans l'Espace technique de tickets/detail.html, uniquement pour le
+   technicien en charge (ticket.solver_id == current_user.id, ticket ouvert). #}
+<div class="bg-slate-800 p-4 border border-slate-700 space-y-2 mb-4" id="planning-rdv">
+    <h4 class="text-xs font-bold text-slate-300 uppercase flex items-center justify-between gap-2">
+        <span class="flex items-center gap-2"><i data-lucide="calendar-days" class="w-4 h-4 text-accent-400"></i> Intervention</span>
+        <a href="{{ url_for('tech_extras.planning', week=(ticket.rdv_date.strftime('%Y-%m-%d') if ticket.rdv_date else None)) }}" class="text-[10px] text-slate-400 hover:text-white underline">Planning</a>
+    </h4>
+    {% if ticket.rdv_date %}
+    <p class="text-xs text-emerald-300 font-bold flex items-center gap-2 bg-emerald-900/30 border border-emerald-700 p-2">
+        <i data-lucide="calendar-check" class="w-3.5 h-3.5"></i>
+        Planifiée le {{ ticket.rdv_date.strftime('%d/%m/%Y à %H:%M') }}
+    </p>
+    {% endif %}
+    <form action="{{ url_for('tech_extras.set_intervention', ticket_id=ticket.id) }}" method="POST" class="space-y-1">
+        <label for="rdv-date" class="text-[10px] text-slate-400 uppercase font-bold">{% if ticket.rdv_date %}Modifier la date{% else %}Planifier l'intervention{% endif %}</label>
+        <div class="flex gap-2">
+            <input type="datetime-local" id="rdv-date" name="rdv_date" required
+                   value="{{ ticket.rdv_date.strftime('%Y-%m-%dT%H:%M') if ticket.rdv_date else '' }}"
+                   class="flex-1 min-w-0 bg-slate-900 border border-slate-600 text-xs px-3 py-2 text-white focus:outline-none focus:border-accent-500">
+            <button type="submit" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 transition" title="Enregistrer la date d'intervention">
+                <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+            </button>
+        </div>
+        <p class="text-[10px] text-slate-500">Le demandeur est prévenu (« Intervention planifiée le … »).</p>
+    </form>
+    {% if ticket.rdv_date %}
+    <form action="{{ url_for('tech_extras.set_intervention', ticket_id=ticket.id) }}" method="POST">
+        <input type="hidden" name="clear" value="1">
+        <button type="submit" class="text-[10px] text-slate-400 hover:text-red-300 underline">Déprogrammer</button>
+    </form>
+    {% endif %}
+</div>

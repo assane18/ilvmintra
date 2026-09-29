@@ -1,0 +1,43 @@
+{# Lot 6 — Fil « Activités & Messages » de tickets/detail.html.
+   Variables attendues : ticket, can_manage_ticket (définit qui voit les notes internes). #}
+{% set can_see_internal = can_manage_ticket %}
+<div class="space-y-6">
+    {% for msg in ticket.messages %}
+    {% if not msg.is_internal or can_see_internal %}
+    {% set mine = (msg.author_id == current_user.id) %}
+    <div class="flex gap-4 {% if mine %}flex-row-reverse{% endif %}" data-message-id="{{ msg.id }}"{% if msg.is_internal %} data-internal="1"{% endif %}>
+        <div class="w-8 h-8 {% if msg.is_internal %}bg-amber-100 dark:bg-amber-500/20 border-amber-300 dark:border-amber-500/40 text-amber-700 dark:text-amber-300{% else %}bg-gray-100 dark:bg-slate-800 border-gray-200 dark:border-slate-700{% endif %} border flex items-center justify-center font-bold text-xs shrink-0">
+            {% if msg.is_internal %}<i data-lucide="lock" class="w-3.5 h-3.5"></i>{% else %}{{ ((msg.author.fullname or msg.author.username) if msg.author else '?')[0] }}{% endif %}
+        </div>
+        <div class="max-w-[80%] min-w-0">
+            {% if msg.is_internal %}
+            <span class="inline-flex items-center gap-1 mb-1 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest bg-amber-100 dark:bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40">
+                <i data-lucide="lock" class="w-3 h-3"></i> Note interne
+            </span>
+            {% endif %}
+            <div class="{% if msg.is_internal %}bg-amber-50 dark:bg-amber-500/10 border-amber-300 dark:border-amber-500/40{% else %}bg-gray-50 dark:bg-slate-950 border-gray-200 dark:border-slate-800{% endif %} p-4 border text-sm">
+                <p class="text-slate-800 dark:text-slate-200 break-words">{{ msg.content|replace('\n', '<br>')|safe }}</p>
+                {% set files = msg.get_attachments() %}
+                {% if files %}
+                <ul class="mt-3 pt-3 border-t {% if msg.is_internal %}border-amber-200 dark:border-amber-500/30{% else %}border-gray-200 dark:border-slate-800{% endif %} space-y-1">
+                    {% for name in files %}
+                    {% set f = chat_attachment_info(ticket, name) %}
+                    <li>
+                        <a href="{{ f.url }}" target="_blank" rel="noopener" class="flex items-center gap-2 text-xs text-accent-700 dark:text-accent-400 hover:underline" title="Ouvrir {{ f.label }}">
+                            <i data-lucide="{{ f.icon }}" class="w-3.5 h-3.5 shrink-0"></i>
+                            <span class="truncate font-bold">{{ f.label }}</span>
+                            {% if f.size %}<span class="text-slate-400 whitespace-nowrap">({{ f.size }})</span>{% endif %}
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+            <p class="text-[10px] text-slate-400 mt-1 px-2 {% if mine %}text-right{% endif %}">
+                {{ msg.author.fullname if msg.author else 'Utilisateur supprimé' }} • {{ msg.timestamp.strftime('%d/%m à %H:%M') }}
+            </p>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>

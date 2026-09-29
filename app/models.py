@@ -246,6 +246,24 @@ class Ticket(db.Model):
     daf_solver_file = db.Column(db.String(255), nullable=True)
     daf_signed_file = db.Column(db.String(255), nullable=True)
 
+    # --- Lot 6 : tickets liés / fusion de doublons ---
+    # Un ticket « doublon » pointe vers son ticket maître ; le maître expose
+    # ses doublons via `duplicates`. Un doublon ne peut pas être lui-même
+    # maître (règle appliquée dans app/routes/tech_extras.py::link_duplicate).
+    parent_id = db.Column(db.Integer, db.ForeignKey('tickets.id'), nullable=True)
+    parent = db.relationship('Ticket', remote_side=[id], foreign_keys=[parent_id],
+                             backref=db.backref('duplicates', lazy='select'))
+
+    @property
+    def is_duplicate(self):
+        return self.parent_id is not None
+
+    def open_duplicates(self):
+        """Doublons rattachés encore ouverts (ni terminés ni refusés)."""
+        return [d for d in (self.duplicates or [])
+                if d.status not in (TicketStatus.DONE, TicketStatus.REFUSED)]
+    # --- fin Lot 6 ---
+
     def get_safe_status(self):
         if self.status is None: return "INCONNU"
         if hasattr(self.status, 'value'): return str(self.status.value)
@@ -437,6 +455,20 @@ class TicketMessage(db.Model):
     ticket = db.relationship('Ticket', backref='messages')
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     author = db.relationship('User')
+
+    # --- Lot 6 : notes internes et pièces jointes du chat ---
+    # is_internal : note visible uniquement par l'équipe (jamais rendue au
+    # demandeur, ni dans la page ni dans les e-mails/notifications).
+    is_internal = db.Column(db.Boolean, default=False)
+    # attachments_json : liste JSON des noms de fichiers enregistrés dans
+    # uploads/tickets/<uid_public>/ (préfixe msg_<id>_).
+    attachments_json = db.Column(db.Text, nullable=True)
+
+    def get_attachments(self):
+        if not self.attachments_json: return []
+        try: return json.loads(self.attachments_json) or []
+        except: return []
+    # --- fin Lot 6 ---
 
 class TeamMessage(db.Model):
     __tablename__ = 'team_messages'

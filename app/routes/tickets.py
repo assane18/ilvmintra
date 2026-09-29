@@ -443,25 +443,14 @@ def view_ticket(ticket_uid):
                     can_manage_ticket = True
 
         # --- 3. MESSAGERIE ---
-        if request.method == 'POST' and request.form.get('message'):
-            msg_content = request.form.get('message')
-            msg = TicketMessage(content=msg_content, ticket=ticket, author=current_user)
-            db.session.add(msg)
-            
-            # --- EMAIL NOTIFICATION MESSAGE (AJOUTÉ) ---
-            # Cas 1: L'auteur écrit -> On notifie le technicien (s'il y en a un)
-            if ticket.solver and current_user.id == ticket.author_id:
-                create_notification(ticket.solver, f"Message sur {ticket.uid_public}", 'warning', url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
-                send_message_notification(ticket, msg_content, ticket.solver)
-            
-            # Cas 2: Le technicien (ou autre) écrit -> On notifie l'auteur
-            elif current_user.id != ticket.author_id:
-                create_notification(ticket.author, f"Réponse sur {ticket.uid_public}", 'success', url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
-                send_message_notification(ticket, msg_content, ticket.author)
-            # -------------------------------------------
-
-            db.session.commit()
-            return redirect(url_for('tickets.view_ticket', ticket_uid=ticket_uid))
+        # Lot 6 : notes internes, pièces jointes, diffusion aux tickets liés.
+        # La logique (notifications croisées auteur <-> technicien incluses) est
+        # dans app/routes/tech_extras.py::post_chat_message (import paresseux :
+        # ce module importe tickets.py au chargement).
+        if request.method == 'POST' and (request.form.get('message')
+                                         or any(f.filename for f in request.files.getlist('attachments'))):
+            from app.routes.tech_extras import post_chat_message
+            return post_chat_message(ticket, can_manage_ticket)
         
         # --- 4. DATA SUPPLEMENTAIRE ---
         attached_files = []
@@ -1446,6 +1435,11 @@ def close_ticket(ticket_id):
 
         t.status = TicketStatus.DONE
         t.closed_at = get_paris_time()
+
+        # --- Lot 6 : clôture en cascade des doublons rattachés (même horodatage,
+        # message système, notification + e-mail à chaque demandeur) ---
+        from app.routes.tech_extras import close_duplicates_of
+        close_duplicates_of(t, current_user)
 
         # --- NOTIFICATION CLOTURE ---
         create_notification(

@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% set sidebar_layout = true %}
+
+{% block content %}
+{# Lot 6 — Planning hebdomadaire des interventions (tickets à rdv_date dans la
+   semaine, périmètre de services de l'utilisateur). Colonne par jour lundi →
+   dimanche, filtre facultatif par technicien. Même DA « flat » que l'Espace Tech. #}
+<div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
+<style>.flat, .flat * { border-radius: 0 !important; }</style>
+<div class="max-w-[1600px] mx-auto p-6 space-y-6">
+
+    <div class="flex flex-col lg:flex-row justify-between lg:items-end gap-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 uppercase tracking-tight flex items-center gap-3">
+                <i data-lucide="calendar-days" class="w-6 h-6 text-accent-600 dark:text-accent-400"></i> Planning des interventions
+            </h1>
+            <p class="text-slate-500 dark:text-slate-400 font-bold text-sm mt-1" id="planning-week-label">
+                Semaine {{ iso_week }} · du {{ start.strftime('%d/%m') }} au {{ end.strftime('%d/%m/%Y') }}
+                · {{ tickets|length }} intervention(s)
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('tech_extras.planning', week=prev, solver=solver_filter) }}" class="flex items-center gap-1 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-xs font-bold uppercase text-slate-700 dark:text-slate-200 transition" rel="prev">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i> Semaine précédente
+            </a>
+            <a href="{{ url_for('tech_extras.planning', solver=solver_filter) }}" class="px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase transition">Aujourd'hui</a>
+            <a href="{{ url_for('tech_extras.planning', week=next, solver=solver_filter) }}" class="flex items-center gap-1 px-3 py-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-xs font-bold uppercase text-slate-700 dark:text-slate-200 transition" rel="next">
+                Semaine suivante <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </a>
+            <a href="{{ url_for('tickets.solver_dashboard') }}" class="px-3 py-2 text-xs font-bold uppercase text-slate-500 hover:text-accent-600 dark:hover:text-accent-400 transition">Espace Tech</a>
+        </div>
+    </div>
+
+    {% if solvers|length > 1 or solver_filter %}
+    <div class="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-900 p-3 border border-gray-200 dark:border-slate-800">
+        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide mr-2">Technicien</span>
+        <a href="{{ url_for('tech_extras.planning', week=start.strftime('%Y-%m-%d')) }}" class="px-3 py-1 text-xs font-bold {% if not solver_filter %}bg-accent-600 text-white{% else %}bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-700{% endif %} transition">Tous</a>
+        {% for s in solvers %}
+        <a href="{{ url_for('tech_extras.planning', week=start.strftime('%Y-%m-%d'), solver=s.id) }}" class="px-3 py-1 text-xs font-bold {% if solver_filter == s.id %}bg-accent-600 text-white{% else %}bg-gray-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-700{% endif %} transition">{{ s.fullname or s.username }}</a>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% set day_names = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] %}
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-3" id="planning-grid">
+        {% for d in days %}
+        <section class="bg-white dark:bg-slate-900 border {% if d.is_today %}border-accent-500 ring-2 ring-accent-500/30{% else %}border-gray-200 dark:border-slate-800{% endif %} flex flex-col min-h-[200px]" data-day="{{ d.date.strftime('%Y-%m-%d') }}">
+            <header class="px-3 py-2 border-b border-gray-200 dark:border-slate-800 {% if d.is_today %}bg-accent-600 text-white{% else %}bg-gray-50 dark:bg-slate-950 text-slate-700 dark:text-slate-200{% endif %} flex items-center justify-between">
+                <span class="text-xs font-black uppercase tracking-wide">{{ day_names[loop.index0] }}</span>
+                <span class="text-xs font-bold">{{ d.date.strftime('%d/%m') }}</span>
+            </header>
+            <div class="p-2 space-y-2 flex-1">
+                {% for t in d.tickets %}
+                {% set closed = t.status.value in ['TERMINE', 'REFUSE'] %}
+                <a href="{{ url_for('tickets.view_ticket', ticket_uid=t.uid_public) }}"
+                   class="block p-2 border text-xs transition hover:border-accent-500 {% if closed %}opacity-60 border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950{% else %}border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-950{% endif %}"
+                   data-ticket="{{ t.uid_public }}" title="{{ t.title }}">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="font-black text-slate-900 dark:text-white">{{ t.rdv_date.strftime('%H:%M') }}</span>
+                        <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 {% if closed %}bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400{% else %}bg-accent-100 dark:bg-accent-500/10 text-accent-700 dark:text-accent-400{% endif %}">{{ t.get_safe_target_service() }}</span>
+                    </div>
+                    <p class="font-bold text-slate-700 dark:text-slate-200 truncate mt-1">#{{ t.uid_public }} · {{ t.title }}</p>
+                    <p class="text-slate-500 dark:text-slate-400 truncate"><i data-lucide="user" class="w-3 h-3 inline"></i> {{ (t.author.fullname or t.author.username) if t.author else t.author_name }}{% if t.lieu_installation %} · {{ t.lieu_installation }}{% endif %}</p>
+                    <p class="text-slate-500 dark:text-slate-400 truncate"><i data-lucide="wrench" class="w-3 h-3 inline"></i> {{ (t.solver.fullname or t.solver.username) if t.solver else 'Non affecté' }}</p>
+                </a>
+                {% else %}
+                <p class="text-[10px] text-slate-400 text-center py-6">—</p>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+
+    <p class="text-[10px] text-slate-400">La date d'intervention se fixe depuis la fiche d'un ticket assigné (colonne « Espace technique » → Intervention). Périmètre : services autorisés de votre compte.</p>
+</div>
+</div>
+{% endblock %}
