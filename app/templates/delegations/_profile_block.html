@@ -1,0 +1,108 @@
+{#
+  Lot 7 — bloc « Mes délégations de validation » de l'onglet Mon compte du profil
+  (MANAGER / DIRECTEUR / ADMIN uniquement). Données : context processor
+  `lot7_delegations_context()` (app/routes/delegations.py) — rien à passer depuis main.profile.
+#}
+{% set dctx = lot7_delegations_context() %}
+{% if dctx %}
+{% set state_labels = {'active': ('En cours', 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'),
+                       'upcoming': ('À venir', 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'),
+                       'expired': ('Terminée', 'bg-gray-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'),
+                       'cancelled': ('Annulée', 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300')} %}
+<div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm" id="profile-delegations">
+    <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest">Mes délégations de validation</h2>
+        {% if dctx.is_admin %}
+        <a href="{{ url_for('delegations.admin_list') }}" class="text-xs font-bold text-accent-600 dark:text-accent-400 hover:underline flex items-center gap-1">Toutes les délégations <i data-lucide="arrow-right" class="w-3 h-3"></i></a>
+        {% endif %}
+    </div>
+    <p class="text-[11px] text-slate-400 mb-4">
+        En cas d'absence, désignez qui valide à votre place : pendant la période, cette personne voit et valide vos demandes en attente
+        (tickets, formulaires, validation en lot, récap hebdo) en plus des siennes. Chaque validation est tracée « pour votre compte ».
+    </p>
+
+    {% if dctx.given %}
+    <div class="divide-y divide-gray-100 dark:divide-slate-800 border border-gray-100 dark:border-slate-800 mb-4">
+        {% for d in dctx.given %}
+        {% set st = d.state() %}
+        <div class="flex flex-wrap items-center gap-3 px-4 py-3">
+            <div class="min-w-0 flex-1">
+                <p class="text-sm font-bold text-slate-800 dark:text-white">
+                    {{ d.delegate.fullname or d.delegate.username }} <span class="font-normal text-slate-400">valide à ma place</span>
+                </p>
+                <p class="text-[11px] text-slate-400">
+                    du {{ d.starts_at.strftime('%d/%m/%Y') }} au {{ d.ends_at.strftime('%d/%m/%Y') }}{% if d.reason %} · {{ d.reason }}{% endif %}
+                </p>
+            </div>
+            <span class="px-2 py-1 text-[10px] font-black uppercase tracking-wide {{ state_labels[st][1] }}">{{ state_labels[st][0] }}</span>
+            <form action="{{ url_for('delegations.cancel', delegation_id=d.id) }}" method="POST">
+                <button type="submit" class="text-xs font-bold text-red-500 hover:text-red-700 hover:underline">Annuler</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if dctx.received %}
+    <div class="bg-amber-50 dark:bg-amber-900/15 border border-amber-200 dark:border-amber-800 p-4 mb-4">
+        <p class="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-amber-200 mb-2 flex items-center gap-1.5"><i data-lucide="shield-check" class="w-3.5 h-3.5"></i> On me délègue</p>
+        <ul class="space-y-1">
+            {% for d in dctx.received %}
+            {% set st = d.state() %}
+            <li class="text-sm text-slate-700 dark:text-slate-200 flex flex-wrap items-center gap-2">
+                <span><strong>{{ d.delegator.fullname or d.delegator.username }}</strong> me délègue ses validations du {{ d.starts_at.strftime('%d/%m/%Y') }} au {{ d.ends_at.strftime('%d/%m/%Y') }}{% if d.reason %} ({{ d.reason }}){% endif %}</span>
+                <span class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide {{ state_labels[st][1] }}">{{ state_labels[st][0] }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form action="{{ url_for('delegations.new_delegation') }}" method="POST" class="{% if dctx.given or dctx.received %}pt-4 border-t border-gray-200 dark:border-slate-800{% endif %} space-y-3">
+        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wide">Nouvelle délégation</p>
+        <div>
+            <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Qui valide à ma place ?</label>
+            {% with picker_name='delegate_id', picker_scope='validators', picker_selected=None, picker_placeholder='Nom du manager / directeur (2 lettres minimum)' %}
+                {% include 'delegations/_picker.html' %}
+            {% endwith %}
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+                <label for="lot7-starts" class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Du</label>
+                <input id="lot7-starts" type="date" name="starts_at" required value="{{ dctx.today }}"
+                       class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+            <div>
+                <label for="lot7-ends" class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Au (inclus)</label>
+                <input id="lot7-ends" type="date" name="ends_at" required min="{{ dctx.today }}"
+                       class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+            <div>
+                <label for="lot7-reason" class="block text-[11px] font-bold text-slate-400 uppercase tracking-wide mb-1.5">Motif (optionnel)</label>
+                <input id="lot7-reason" type="text" name="reason" maxlength="255" placeholder="Congés, formation…"
+                       class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-2.5 text-sm text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+        </div>
+        <button type="submit" class="bg-slate-900 dark:bg-accent-600 hover:bg-slate-800 dark:hover:bg-accent-700 text-white font-black px-5 py-2.5 text-xs uppercase tracking-widest transition flex items-center gap-2">
+            <i data-lucide="user-check" class="w-4 h-4"></i> Déléguer
+        </button>
+    </form>
+
+    {% if dctx.given_past %}
+    <div class="mt-4 pt-4 border-t border-gray-200 dark:border-slate-800" x-data="{ open: false }">
+        <button type="button" @click="open = !open" class="text-[11px] font-bold text-slate-400 uppercase tracking-wide flex items-center gap-1.5">
+            <i data-lucide="history" class="w-3.5 h-3.5"></i> Délégations passées ({{ dctx.given_past|length }})
+        </button>
+        <ul x-show="open" x-cloak class="mt-2 space-y-1">
+            {% for d in dctx.given_past %}
+            {% set st = d.state() %}
+            <li class="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap items-center gap-2">
+                <span>{{ d.delegate.fullname or d.delegate.username }} — du {{ d.starts_at.strftime('%d/%m/%Y') }} au {{ d.ends_at.strftime('%d/%m/%Y') }}</span>
+                <span class="px-2 py-0.5 text-[10px] font-black uppercase tracking-wide {{ state_labels[st][1] }}">{{ state_labels[st][0] }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+</div>
+{% endif %}

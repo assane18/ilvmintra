@@ -1,0 +1,23 @@
+{#
+  Lot 7 — bloc repliable « Faire cette demande au nom de quelqu'un d'autre »,
+  inclus dans tickets/new_ticket.html et forms/new_submission.html (dans le <form>).
+  Poste `on_behalf_of_id` (vide = demande pour soi-même). Variable optionnelle
+  `on_behalf` : User déjà choisi (re-affichage après une erreur de validation).
+#}
+<div class="border border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950" x-data="{ open: {{ 'true' if on_behalf else 'false' }} }">
+    <button type="button" @click="open = !open" :aria-expanded="open" class="w-full flex items-center justify-between px-5 py-3 text-left">
+        <span class="text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+            <i data-lucide="user-plus" class="w-4 h-4"></i> Faire cette demande au nom de quelqu'un d'autre
+        </span>
+        <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform" :class="{ 'rotate-180': open }"></i>
+    </button>
+    <div x-show="open" x-cloak class="px-5 pb-4 space-y-3">
+        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+            La demande sera enregistrée <strong>au nom de la personne choisie</strong> : elle la verra dans son portail et son historique,
+            recevra les notifications, et la validation hiérarchique suivra <em>son</em> service. Votre nom reste visible comme créateur de la demande.
+        </p>
+        {% with picker_name='on_behalf_of_id', picker_scope='all', picker_selected=on_behalf, picker_placeholder="Nom ou identifiant de l'agent concerné (2 lettres minimum)" %}
+            {% include 'delegations/_picker.html' %}
+        {% endwith %}
+    </div>
+</div>

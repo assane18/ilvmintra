@@ -60,7 +60,17 @@
         </div>
     </div>
     {% endif %}
+        {% set prefill = prefill or {} %}
+        {% if prefill %}
+        <div class="mb-6 bg-accent-50 dark:bg-slate-800 border border-accent-200 dark:border-slate-700 px-5 py-3 flex items-start gap-3">
+            <i data-lucide="copy" class="w-4 h-4 text-accent-600 dark:text-accent-400 mt-0.5"></i>
+            <p class="text-xs text-slate-700 dark:text-slate-200">Formulaire pré-rempli à partir de votre demande <span class="font-mono font-bold">{{ request.args.get('from') }}</span>. Vérifiez et ajustez avant d'envoyer — les pièces jointes ne sont pas reprises.</p>
+        </div>
+        {% endif %}
         <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="Demande {{ service.value if service_name != 'MATERIEL' else 'MATÉRIEL' }}">
+
+            <!-- Lot 7 : demande au nom de quelqu'un d'autre -->
+            {% include 'delegations/_on_behalf_block.html' %}
 
             <!-- SÉLECTEUR SERVICE DEMANDEUR (Si User a plusieurs GU) -->
             {% if user_origins|length > 1 %}
@@ -68,7 +78,7 @@
                 <label class="block text-slate-700 dark:text-slate-300 text-sm font-bold mb-2">Pour quel service faites-vous cette demande ?</label>
                 <select name="selected_origin" class="w-full bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 p-2 border border-gray-300 dark:border-slate-600 focus:ring-2 focus:ring-accent-500">
                     {% for origin in user_origins %}
-                    <option value="{{ origin }}">GU-{{ origin }}</option>
+                    <option value="{{ origin }}" {% if prefill.get('selected_origin') == origin %}selected{% endif %}>GU-{{ origin }}</option>
                     {% endfor %}
                 </select>
                 <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">En tant que Directeur/Manager multi-services, veuillez préciser l'origine.</p>
@@ -84,19 +94,20 @@
             <div>
                 <label class="label-tiny">Type de demande</label>
                 <select name="category_ticket" id="category_ticket" onchange="toggleFormFields()" class="input-field cursor-pointer">
+                    {% set pcat = prefill.get('category_ticket') %}
                     {% if service_name not in ['INFO', 'DAF'] %}
-                    <option value="Standard">Demande Standard</option>
+                    <option value="Standard" {% if pcat == 'Standard' %}selected{% endif %}>Demande Standard</option>
                     {% endif %}
 
                     {% if service_name == 'INFO' %}
-                    <option value="Incident Standard">Incident / Panne (Internet, PC...)</option>
+                    <option value="Incident Standard" {% if pcat == 'Incident Standard' %}selected{% endif %}>Incident / Panne (Internet, PC...)</option>
                     {% endif %}
                     {% if service_name == 'DAF' %}
-                    <option value="Bon de Commande">Bon de Commande</option>
+                    <option value="Bon de Commande" {% if pcat == 'Bon de Commande' %}selected{% endif %}>Bon de Commande</option>
                     {% endif %}
 
                     {% if service_name == 'IMAGO' %}
-                    <option value="Dépannage Imago">Dépannage Imago</option>
+                    <option value="Dépannage Imago" {% if pcat == 'Dépannage Imago' %}selected{% endif %}>Dépannage Imago</option>
                     {% endif %}
                 </select>
             </div>
@@ -109,15 +120,16 @@
                     <i data-lucide="list" class="w-4 h-4"></i> Type de démarche RH
                 </h3>
                 <select name="titre_drh_select" id="titre_drh_select" onchange="toggleDrhAutre()" class="input-field cursor-pointer font-bold text-pink-700 dark:text-pink-200">
-                    <option value="Changement de RIB">Changement de RIB</option>
-                    <option value="Contrat">Contrat / Avenant</option>
-                    <option value="Modification d'information">Modification d'information personnelle</option>
-                    <option value="Autre">Autre...</option>
+                    {% set pdrh = prefill.get('titre_drh_select') %}
+                    <option value="Changement de RIB" {% if pdrh == 'Changement de RIB' %}selected{% endif %}>Changement de RIB</option>
+                    <option value="Contrat" {% if pdrh == 'Contrat' %}selected{% endif %}>Contrat / Avenant</option>
+                    <option value="Modification d'information" {% if pdrh == "Modification d'information" %}selected{% endif %}>Modification d'information personnelle</option>
+                    <option value="Autre" {% if pdrh == 'Autre' %}selected{% endif %}>Autre...</option>
                 </select>
 
-                <div id="drh_autre_field" class="hidden">
+                <div id="drh_autre_field" class="{% if pdrh != 'Autre' %}hidden{% endif %}">
                     <label class="label-tiny text-pink-600">Précisez le sujet</label>
-                    <input type="text" name="titre_drh_autre" class="input-field" placeholder="Objet de votre demande RH...">
+                    <input type="text" name="titre_drh_autre" class="input-field" placeholder="Objet de votre demande RH..." value="{{ prefill.get('titre_drh_autre', '') }}">
                 </div>
             </div>
             {% endif %}
@@ -129,23 +141,23 @@
                 <div>
                     <label class="label-tiny">Titre de la demande</label>
                     <input type="text" name="title" class="input-field"
-                        {% if service_name == 'MATERIEL' %}value="Demande de Matériel" readonly{% endif %}
+                        {% if service_name == 'MATERIEL' %}value="Demande de Matériel" readonly{% else %}value="{{ prefill.get('title', '') }}"{% endif %}
                         placeholder="Ex: Erreur lors de la connexion...">
                 </div>
                 {% endif %}
 
                 <div>
                     <label class="label-tiny">Description détaillée</label>
-                    <textarea name="description" rows="4" class="input-field" placeholder="Décrivez votre besoin..."></textarea>
+                    <textarea name="description" rows="4" class="input-field" placeholder="Décrivez votre besoin...">{{ prefill.get('description', '') }}</textarea>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="label-tiny">Service/Bureau</label>
-                        <input type="text" name="hostname" class="input-field" placeholder="Bureau A12...">
+                        <input type="text" name="hostname" class="input-field" placeholder="Bureau A12..." value="{{ prefill.get('hostname', '') }}">
                     </div>
                     <div>
                         <label class="label-tiny">Téléphone de contact</label>
-                        <input type="text" name="tel_demandeur" class="input-field" placeholder="06...">
+                        <input type="text" name="tel_demandeur" class="input-field" placeholder="06..." value="{{ prefill.get('tel_demandeur', '') }}">
                     </div>
                 </div>
 

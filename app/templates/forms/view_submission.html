@@ -17,7 +17,17 @@
         <div>
             <h1 class="text-xl font-black text-slate-800 dark:text-white">{{ submission.form.name }} — {{ submission.uid_public }}</h1>
             <p class="text-xs text-slate-500 dark:text-slate-400">Déposé par {{ submission.author_name }} le {{ submission.created_at.strftime('%d/%m/%Y') }}</p>
+            {% set created_for = lot7_created_for_label(submission) %}
+            {% if created_for %}
+            <p class="text-xs font-bold text-accent-600 dark:text-accent-400 flex items-center gap-1 mt-0.5"><i data-lucide="user-plus" class="w-3 h-3"></i> {{ created_for }}</p>
+            {% endif %}
         </div>
+        {% if submission.form.is_active and (submission.author_id == current_user.id or submission.created_by_id == current_user.id) %}
+        <a href="{{ url_for('forms.new_submission', slug=submission.form.slug, **{'from': submission.id}) }}"
+           class="ml-auto bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition" title="Ouvrir le formulaire pré-rempli avec cette demande">
+            <i data-lucide="copy" class="w-4 h-4"></i> Refaire cette demande
+        </a>
+        {% endif %}
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">

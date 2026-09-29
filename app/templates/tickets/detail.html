@@ -311,6 +311,10 @@
                         <p class="text-xs text-slate-400">{{ ticket.author.email }}</p>
                     </div>
                 </div>
+                {% set created_for = lot7_created_for_label(ticket) %}
+                {% if created_for %}
+                <p class="text-xs font-bold text-accent-600 dark:text-accent-400 flex items-center gap-1 mb-4"><i data-lucide="user-plus" class="w-3 h-3"></i> {{ created_for }}</p>
+                {% endif %}
                 <div class="space-y-3 pt-3 border-t border-gray-200 dark:border-slate-800">
                     <div class="flex justify-between text-xs">
                         <span class="text-slate-400">Service</span>
