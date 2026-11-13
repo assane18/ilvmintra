@@ -144,10 +144,14 @@ class TestStatsSla:
         assert _empty_stats_entry()['sla_rate'] is None
 
     def test_tuile_dashboard_et_export(self, client, db_session):
-        self._seed()
+        base, prev = self._seed()
         make_user(role=UserRole.ADMIN, username='admin_sla')
         login(client, 'admin_sla')
-        r = client.get('/tickets/stats?period=this_month')
+        # Période explicite autour des tickets semés (le 15 du mois) : avec
+        # period=this_month, le test échouait avant le 17 du mois (clôtures
+        # datées après « aujourd'hui », donc hors période).
+        qs = f"period=custom&start={base.replace(day=1):%Y-%m-%d}&end={(base + timedelta(days=10)):%Y-%m-%d}"
+        r = client.get(f'/tickets/stats?{qs}')
         assert r.status_code == 200
         html = r.get_data(as_text=True)
         assert 'Respect des délais' in html
@@ -156,7 +160,7 @@ class TestStatsSla:
         assert 'Catégories hors délai' in html
         assert 'slaChart_1' in html
 
-        r = client.get('/tickets/stats/export?period=this_month')
+        r = client.get(f'/tickets/stats/export?{qs}')
         assert r.status_code == 200
         import pandas as pd
         xls = pd.ExcelFile(io.BytesIO(r.data))
