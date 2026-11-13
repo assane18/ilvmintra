@@ -632,6 +632,18 @@ def manager_dashboard():
                 except Exception as e:
                     pass
 
+        # ADMIN : _can_validate_ticket l'autorise à valider n'importe quel ticket,
+        # mais la liste ci-dessus ne montrait que ses propres services — une demande
+        # dont le service n'a aucun autre manager/directeur (ex. bon DAF d'un
+        # manager seul sur son service) n'apparaissait nulle part (constat 2026-11-13).
+        if 'ADMIN' in role_str:
+            for t in Ticket.query.filter(Ticket.status == TicketStatus.VALIDATION_N1).all():
+                if t.id not in seen_n1 and t.author_id != current_user.id:
+                    seen_n1.add(t.id); tickets_n1.append(t)
+            for t in Ticket.query.filter(Ticket.status.in_([TicketStatus.VALIDATION_N2, TicketStatus.VALIDATION_DAF_MANAGER, TicketStatus.DAF_SIGNATURE])).all():
+                if t.id not in seen_n2:
+                    seen_n2.add(t.id); tickets_n2.append(t)
+
         fcpi_requests = []
         user_services = current_user.get_allowed_services()
         is_rh_team = 'DRH' in user_services or 'GS-DRH' in user_services or 'RH' in user_services or 'ADMIN' in role_str

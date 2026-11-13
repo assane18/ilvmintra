@@ -2138,6 +2138,28 @@ class TestLot3:
         assert untyped == [], untyped
         assert form.count('type="submit"') == 1
 
+    def test_admin_voit_toutes_les_validations_en_attente(self, client, db_session, app):
+        """Un bon DAF déposé par le seul manager de son service (N1 sans autre
+        validateur) doit au moins apparaître chez l'ADMIN, qui a le droit de le
+        valider (constat prod 2026-11-13 : invisible partout)."""
+        self._users(app)
+        with app.app_context():
+            make_user(username='l3_com_mgr', role=UserRole.MANAGER, service=ServiceType.COMMUNICATION, allowed_services=[ServiceType.COMMUNICATION])
+        with app.app_context():
+            a = User.query.filter_by(username='l3_com_mgr').first()
+            t = Ticket(title='Bon de Commande - Com', description='d', author=a, target_service=ServiceType.DAF,
+                       status=TicketStatus.VALIDATION_N1, uid_public='L3-COM-1', category_ticket='Bon de Commande',
+                       created_at=datetime.now(), service_demandeur='COMMUNICATION')
+            db.session.add(t); db.session.commit(); tid = t.id
+        login(client, 'l3_manager')           # manager DRH : pas son service, ne le voit pas
+        assert 'Bon de Commande - Com' not in client.get('/tickets/manager/dashboard').data.decode()
+        login(client, 'l3_admin')             # admin : le voit et peut le valider
+        html = client.get('/tickets/manager/dashboard').data.decode()
+        assert 'Bon de Commande - Com' in html
+        client.get(f'/tickets/manager/action/{tid}/validate')
+        with app.app_context():
+            assert Ticket.query.get(tid).status == TicketStatus.PENDING   # DAF : N1 validé -> file DAF
+
     def test_validation_en_lot(self, client, db_session, app):
         self._users(app)
         a = self._ticket(app, TicketStatus.VALIDATION_N1, title='A')
