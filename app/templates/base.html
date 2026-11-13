@@ -266,7 +266,7 @@
         <aside id="app-sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 -translate-x-full md:translate-x-0 transition-transform duration-200 shrink-0 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800">
             <div class="h-24 flex items-center justify-center px-5 border-b border-slate-800 shrink-0 relative">
                 <a href="{{ url_for('main.user_portal') }}" title="Retour au Portail" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/logo-dark.png') }}" alt="Logo" class="h-16 w-auto object-contain">
+                    <img src="{{ url_for('static', filename='img/logo-dark.png', v='agora') }}" alt="Logo" class="h-16 w-auto object-contain">
                 </a>
                 <button id="sidebar-mobile-close" class="md:hidden absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" aria-label="Fermer le menu"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
@@ -427,12 +427,12 @@
                 <span class="flex items-center">
 
                     <!-- Logo clair -->
-                    <img src="{{ url_for('static', filename='img/logo.png') }}"
+                    <img src="{{ url_for('static', filename='img/logo.png', v='agora') }}"
                         alt="Logo Entreprise"
                         class="h-[76px] ml-6 mr-0 object-contain dark:hidden">
 
                     <!-- Logo sombre -->
-                    <img src="{{ url_for('static', filename='img/logo-dark.png') }}"
+                    <img src="{{ url_for('static', filename='img/logo-dark.png', v='agora') }}"
                         alt="Logo Entreprise"
                         class="h-[76px] ml-6 mr-0 object-contain hidden dark:block">
 
