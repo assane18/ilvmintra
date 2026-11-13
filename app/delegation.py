@@ -334,7 +334,7 @@ def _email_delegate(d, period):
                    "tableau de bord manager, en plus des vôtres.</p>")
         text = (f"{_display(d.delegator)} vous délègue ses validations {period}."
                 + (f" Motif : {d.reason}." if d.reason else ""))
-        send_email(f"[Intranet] {title} — {_display(d.delegator)}", [d.delegate.email], text,
+        send_email(f"[L'Agora] {title} — {_display(d.delegator)}", [d.delegate.email], text,
                    get_outlook_friendly_html(title, content, link, "Ouvrir le tableau de bord"), kind='important')
     except Exception as e:  # l'e-mail ne doit jamais bloquer la déclaration
         print(f"⚠️ E-mail délégation non envoyé : {e}")

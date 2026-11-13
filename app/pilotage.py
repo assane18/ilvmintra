@@ -273,9 +273,9 @@ def send_escalation_email(email, rappel_items, directeur_items, now, rappel_jour
     """
     full_html = get_outlook_friendly_html("Validations en attente", html_content, f"{base_url}/tickets/manager", "Ouvrir mes validations")
     if directeur_items:
-        subject = f"[Intranet] Escaladé : {len(directeur_items)} demande(s) en attente de validation depuis plus de {directeur_jours} jours"
+        subject = f"[L'Agora] Escaladé : {len(directeur_items)} demande(s) en attente de validation depuis plus de {directeur_jours} jours"
     else:
-        subject = f"[Intranet] Rappel : {len(rappel_items)} demande(s) attendent votre validation"
+        subject = f"[L'Agora] Rappel : {len(rappel_items)} demande(s) attendent votre validation"
     text = f"{len(directeur_items)} escaladée(s), {len(rappel_items)} rappel(s)."
     send_email(subject, [email], text, full_html, kind='digest')
 
@@ -490,5 +490,5 @@ def send_backup_alert(anomalies, details, recipients, now=None):
     à vérifier : scripts/backup.sh, backups/backup.log, montage /mnt/ilvmfap1_info.</p>
     """
     full_html = get_outlook_friendly_html("Alerte sauvegarde", html_content)
-    send_email(f"[Intranet] Sauvegarde : {len(anomalies)} anomalie(s) détectée(s)", recipients,
+    send_email(f"[L'Agora] Sauvegarde : {len(anomalies)} anomalie(s) détectée(s)", recipients,
                "\n".join(anomalies), full_html, kind='digest')

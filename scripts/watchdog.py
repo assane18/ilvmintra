@@ -95,7 +95,7 @@ def main():
         if not http_ok:
             detail.append(f"- L'endpoint {HEALTH_URL} ne répond pas correctement.")
         send_alert(
-            "🔴 ALERTE : Intranet ILVM indisponible",
+            "🔴 ALERTE : L'Agora (intranet ILVM) indisponible",
             "L'intranet ILVM semble indisponible depuis la dernière vérification "
             f"({now}).\n\n" + "\n".join(detail) +
             "\n\nVérifier : systemctl status intranet.service, journalctl -u intranet.service -n 50"
@@ -103,7 +103,7 @@ def main():
         print(f"[{now}] Alerte de panne envoyée.")
     else:
         send_alert(
-            "🟢 Intranet ILVM de nouveau disponible",
+            "🟢 L'Agora (intranet ILVM) de nouveau disponible",
             f"L'intranet ILVM répond de nouveau normalement depuis {now}."
         )
         print(f"[{now}] Alerte de rétablissement envoyée.")

@@ -60,7 +60,7 @@ def get_outlook_friendly_html(title, content, link_url=None, link_text="Voir le 
             <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="600" style="width: 600px;">
               <tr>
                 <td align="center" style="padding-bottom: 20px;">
-                  <img src="cid:logo" alt="ILVM Intranet" width="150" style="width: 150px; height: auto;">
+                  <img src="cid:logo" alt="L'Agora" width="150" style="width: 150px; height: auto;">
                 </td>
               </tr>
             </table>
@@ -82,7 +82,7 @@ def get_outlook_friendly_html(title, content, link_url=None, link_text="Voir le 
                   {button_html}
                   
                   <p style="margin-top: 30px; font-size: 12px; color: #a0aec0; text-align: center;">
-                    Ceci est un message automatique de l'Intranet ILVM.<br>
+                    Ceci est un message automatique de L'Agora, l'intranet de l'ILVM.<br>
                     Ne répondez pas à cet email.
                   </p>
                 </td>
@@ -384,7 +384,7 @@ def send_daily_digest(user, notifications):
     <p style="font-size:12px; color:#718096;">Vous recevez ce résumé parce que vous avez choisi « un résumé par jour » dans votre profil. Modifiable à tout moment dans Mon profil &gt; Mon compte.</p>
     """
     full_html = get_outlook_friendly_html("Résumé quotidien", html_content, f"{base_url}/my_history", "Voir mes demandes")
-    send_email("[Intranet] Résumé quotidien de vos demandes", [user.email], f"{len(notifications)} événement(s)", full_html, kind='digest')
+    send_email("[L'Agora] Résumé quotidien de vos demandes", [user.email], f"{len(notifications)} événement(s)", full_html, kind='digest')
 
 
 # --- RÉCAP HEBDOMADAIRE MANAGERS / DIRECTEURS (lundi 8h, scripts/recap_hebdo_managers.py) ---
@@ -438,7 +438,7 @@ def send_weekly_manager_digest(user, data):
     """
     full_html = get_outlook_friendly_html("Récap hebdomadaire", html_content, f"{base_url}/tickets/manager", "Ouvrir mes validations")
     n = len(pending) + len(subs)
-    subject = f"[Intranet] {n} demande(s) attendent votre validation" if n else f"[Intranet] Récap hebdomadaire — {len(data['stale'])} ticket(s) en retard"
+    subject = f"[L'Agora] {n} demande(s) attendent votre validation" if n else f"[L'Agora] Récap hebdomadaire — {len(data['stale'])} ticket(s) en retard"
     send_email(subject, [user.email], "Récap hebdomadaire", full_html, kind='digest')
 
 

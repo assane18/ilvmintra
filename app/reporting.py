@@ -261,7 +261,7 @@ def send_monthly_report(year, month, pdf_bytes, recipients=None):
                f"dans Administration &gt; Rapports mensuels.</p>")
     html = get_outlook_friendly_html(f"Rapport mensuel — {label}", content,
                                      f"{base_url}/admin/rapports", "Voir les rapports")
-    send_email(f"[Intranet] Rapport d'activité — {label}", recipients,
+    send_email(f"[L'Agora] Rapport d'activité — {label}", recipients,
                f"Rapport d'activité {label} en pièce jointe.", html, kind='digest',
                attachments=[(report_filename(year, month), 'application/pdf', pdf_bytes)])
     return recipients
