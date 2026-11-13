@@ -130,12 +130,12 @@
     <!-- DESTINATAIRES -->
     <div class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 p-8 mb-6">
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Destinataires (Espace Tech)</h2>
+            <h2 class="text-base font-black text-slate-900 dark:text-white uppercase tracking-tight">Destinataires (Dashboard)</h2>
             <button type="button" onclick="addDispatchRow()" class="bg-accent-600 hover:bg-accent-700 text-white px-3 py-2 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
                 <i data-lucide="plus" class="w-4 h-4"></i> Ajouter un destinataire
             </button>
         </div>
-        <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-4">Une fois toutes les étapes validées (ou immédiatement si le formulaire n'a aucune étape), un Ticket est créé pour chaque destinataire dont la condition est remplie, traité par un Solver dans l'Espace Tech. Aucun destinataire = pas de Ticket créé, la soumission se termine simplement avec notification de l'auteur.</p>
+        <p class="text-[11px] text-slate-400 dark:text-slate-500 mb-4">Une fois toutes les étapes validées (ou immédiatement si le formulaire n'a aucune étape), un Ticket est créé pour chaque destinataire dont la condition est remplie, traité par un Solver dans l'Dashboard. Aucun destinataire = pas de Ticket créé, la soumission se termine simplement avec notification de l'auteur.</p>
         <div id="dispatchContainer" class="space-y-3"></div>
         <form id="dispatchForm" method="POST" action="{{ url_for('forms_admin.save_dispatch_targets', id=form_def.id) }}">
             <input type="hidden" name="dispatch_targets_payload" id="dispatchPayload">
