@@ -28,7 +28,7 @@
 
     {% if sejours %}
     <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
-        <table class="w-full text-sm">
+        <div class="overflow-x-auto"><table class="w-full text-sm">
             <thead>
                 <tr class="border-b-2 border-gray-200 dark:border-slate-800">
                     <th class="text-left px-4 py-3 font-bold text-slate-400 text-xs uppercase tracking-wide">Référence</th>
@@ -88,7 +88,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
 
     {% else %}

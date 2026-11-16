@@ -29,7 +29,7 @@
             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">Règles en vigueur (app/rgpd.py)</span>
             <span class="text-xs font-black {% if total_ops %}text-amber-600 dark:text-amber-400{% else %}text-emerald-600 dark:text-emerald-400{% endif %}">{{ total_ops }} opération{{ 's' if total_ops != 1 else '' }} prévue{{ 's' if total_ops != 1 else '' }}</span>
         </div>
-        <table class="w-full text-left text-sm">
+        <div class="overflow-x-auto"><table class="w-full text-left text-sm">
             <thead>
                 <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
                     <th class="px-5 py-3">Règle</th>
@@ -46,7 +46,7 @@
                 </tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
     </div>
 
     <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">

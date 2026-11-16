@@ -17,14 +17,10 @@
         <div class="flex flex-col gap-4">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
                 <div>
-                    <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 uppercase tracking-tight">
-                        Dashboard
-                        <span class="text-accent-600 dark:text-accent-400">
-                            {% for svc in current_user.get_allowed_services() %}
-                                {{ svc }}{% if not loop.last %}, {% endif %}
-                            {% endfor %}
-                        </span>
-                    </h1>
+                    <h1 class="text-2xl font-black text-slate-900 dark:text-slate-200 uppercase tracking-tight">Dashboard</h1>
+                    <p class="text-[11px] md:text-sm font-bold text-accent-600 dark:text-accent-400 uppercase tracking-wide break-words max-w-3xl">
+                        {% for svc in current_user.get_allowed_services() %}{{ svc }}{% if not loop.last %} · {% endif %}{% endfor %}
+                    </p>
                     <div class="text-slate-500 dark:text-slate-400 font-bold text-sm mt-1">
                         Bonjour <span class="text-accent-600 dark:text-accent-400">{{ current_user.fullname }}</span> !
                     </div>

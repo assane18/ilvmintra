@@ -79,7 +79,7 @@
 
             <div>
                 <label class="label-tiny">Lignes de commande ({{ ticket.daf_type_prix or 'TTC' }}) — laissez la désignation vide pour supprimer une ligne</label>
-                <table class="w-full text-xs" id="daf-lines">
+                <div class="overflow-x-auto"><table class="w-full text-xs" id="daf-lines">
                     <thead><tr class="text-[10px] text-slate-400 uppercase text-left"><th class="p-1 w-1/2">Désignation</th><th class="p-1">Réf.</th><th class="p-1 w-16 text-right">Qté</th><th class="p-1 w-24 text-right">P.U.</th><th class="p-1 w-24 text-right">Total</th></tr></thead>
                     <tbody>
                     {% set rows = lignes + [{}, {}, {}] %}
@@ -93,7 +93,7 @@
                     </tr>
                     {% endfor %}
                     </tbody>
-                </table>
+                </table></div>
             </div>
         </div>
         {% endif %}

@@ -71,7 +71,7 @@
             <span class="text-[10px] font-black uppercase tracking-widest text-slate-400">{{ total }} entrée{{ 's' if total != 1 else '' }} — page {{ page }} / {{ pages }}</span>
             <span class="text-[10px] text-slate-400">{{ per_page }} par page</span>
         </div>
-        <table class="w-full text-left text-sm">
+        <div class="overflow-x-auto"><table class="w-full text-left text-sm">
             <thead>
                 <tr class="border-b-2 border-gray-200 dark:border-slate-800 text-slate-400 font-black uppercase text-[10px] tracking-wider">
                     <th class="px-5 py-3 whitespace-nowrap">Horodatage</th>
@@ -108,7 +108,7 @@
                 <tr><td colspan="6" class="p-8 text-center text-slate-400">Aucune entrée pour ces critères.</td></tr>
                 {% endfor %}
             </tbody>
-        </table>
+        </table></div>
         {% if pages > 1 %}
         <div class="flex justify-between items-center px-5 py-3 border-t border-gray-200 dark:border-slate-800 text-xs">
             {% set prev_args = dict(filters, page=page-1) %}{% set next_args = dict(filters, page=page+1) %}

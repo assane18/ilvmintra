@@ -39,7 +39,7 @@
         </div>
 
         <!-- ONGLETS -->
-        <div class="px-6 flex gap-6 border-t border-gray-200 dark:border-slate-800 overflow-x-auto" role="tablist" aria-label="Sections du profil">
+        <div class="px-6 flex flex-wrap gap-x-6 border-t border-gray-200 dark:border-slate-800" role="tablist" aria-label="Sections du profil">
             <button type="button" @click="tab='account'" :class="{active: tab==='account'}" role="tab" id="profile-tab-account" aria-controls="profile-panel-account" :aria-selected="tab==='account'" class="profile-tab py-3 text-xs font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white flex items-center gap-2 whitespace-nowrap transition">
                 <i data-lucide="user" class="w-4 h-4"></i> Mon compte
             </button>
