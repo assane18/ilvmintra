@@ -30,9 +30,16 @@
             </p>
         </div>
 
-        <a href="javascript:history.back()" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
-            <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
-        </a>
+        <div class="flex items-center gap-2 flex-wrap">
+            {% if current_user.id in (ticket.author_id, ticket.created_by_id) and ticket.status.value not in ('TERMINE', 'REFUSE') %}
+            <a href="{{ url_for('tickets.edit_ticket', ticket_uid=ticket.uid_public) }}" class="bg-accent-600 hover:bg-accent-700 text-white px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition" id="edit-ticket-btn">
+                <i data-lucide="pencil" class="w-4 h-4"></i> Modifier ma demande
+            </a>
+            {% endif %}
+            <a href="javascript:history.back()" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 px-4 py-2.5 font-black text-xs uppercase shadow-sm flex items-center gap-2 transition">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Retour
+            </a>
+        </div>
     </div>
 
     <!-- FRISE DE SUIVI "façon colis" (app/status_display.py::ticket_timeline) -->

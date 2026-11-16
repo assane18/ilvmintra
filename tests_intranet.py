@@ -2497,6 +2497,65 @@ class TestDoublonsEtPool:
             assert 'COMMENTAIRE-SECRET-AVIS' in html and 'Avis du demandeur' in html and 'Insatisfait' in html
 
 
+class TestModificationDemande:
+    """Le demandeur peut modifier sa demande depuis le détail tant qu'elle n'est
+    pas close ; chaque modification ajoute un message, une entrée d'audit et
+    prévient la personne qui traite."""
+
+    def test_modification_par_le_demandeur(self, client, db_session, app):
+        from app.models import AuditLog
+        user = make_user(UserRole.USER, username='edit_user')
+        tech = make_user(UserRole.SOLVER, username='edit_tech', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        t = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.IN_PROGRESS, title='Ancien titre', description='Ancienne description')
+        t.solver_id = tech.id; db.session.commit()
+        login(client, 'edit_user')
+        html = client.get(f'/tickets/view/{t.uid_public}').data.decode()
+        assert 'Modifier ma demande' in html
+        assert client.get(f'/tickets/edit/{t.uid_public}').status_code == 200
+        r = client.post(f'/tickets/edit/{t.uid_public}', data={
+            'title': 'Nouveau titre', 'description': 'Nouvelle description', 'tel_demandeur': '0102030405', 'hostname': 'Bureau 7',
+            'attachments': (io.BytesIO(b'%PDF-1.4 fake'), 'justificatif.pdf')}, content_type='multipart/form-data', follow_redirects=True)
+        assert r.status_code == 200
+        t = Ticket.query.get(t.id)
+        assert t.title == 'Nouveau titre' and t.description == 'Nouvelle description' and t.tel_demandeur == '0102030405'
+        assert 'justificatif.pdf' in t.get_daf_files()
+        assert os.path.isfile(os.path.join(app.config['UPLOAD_FOLDER'], 'tickets', t.uid_public, 'justificatif.pdf'))
+        msg = [m for m in t.messages if 'Demande modifiée par' in m.content]
+        assert len(msg) == 1 and 'Ancien titre' in msg[0].content and 'Nouveau titre' in msg[0].content and 'justificatif.pdf' in msg[0].content
+        assert AuditLog.query.filter_by(action='ticket.update', target_ref=t.uid_public).count() == 1
+        assert Notification.query.filter_by(user_id=tech.id).filter(Notification.message.contains('modifiée par le demandeur')).count() == 1
+        import shutil
+        shutil.rmtree(os.path.join(app.config['UPLOAD_FOLDER'], 'tickets', t.uid_public), ignore_errors=True)
+
+    def test_refus_tiers_et_ticket_clos(self, client, db_session):
+        user = make_user(UserRole.USER, username='edit_user2')
+        make_user(UserRole.USER, username='edit_other')
+        t = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.PENDING, title='Titre')
+        login(client, 'edit_other')
+        client.post(f'/tickets/edit/{t.uid_public}', data={'title': 'Pirate'}, follow_redirects=True)
+        assert Ticket.query.get(t.id).title == 'Titre'
+        t.status = TicketStatus.DONE; db.session.commit()
+        login(client, 'edit_user2')
+        assert 'Modifier ma demande' not in client.get(f'/tickets/view/{t.uid_public}').data.decode()
+        client.post(f'/tickets/edit/{t.uid_public}', data={'title': 'Trop tard'}, follow_redirects=True)
+        assert Ticket.query.get(t.id).title == 'Titre'
+
+    def test_bon_daf_lignes_et_validateur_prevenu(self, client, db_session):
+        user = make_user(UserRole.USER, username='edit_daf_user', service=ServiceType.DRH)
+        mgr = make_user(UserRole.MANAGER, username='edit_daf_mgr', service=ServiceType.DRH, allowed_services=[ServiceType.DRH])
+        t = make_ticket(user, service=ServiceType.DAF, status=TicketStatus.VALIDATION_N1, title='Bon de commande - Test')
+        t.daf_lignes_json = json.dumps([{'designation': 'Écran', 'ref': 'E1', 'qte': '1', 'pu': '100', 'total': '100'}]); db.session.commit()
+        login(client, 'edit_daf_user')
+        html = client.get(f'/tickets/edit/{t.uid_public}').data.decode()
+        assert 'Lignes de commande' in html and 'value="Écran"' in html
+        client.post(f'/tickets/edit/{t.uid_public}', data={
+            'title': 'Bon de commande - Test', 'daf_fournisseur_nom': 'LDLC', 'daf_uf': 'DRH',
+            'daf_designation_1': 'Écran', 'daf_ref_1': 'E1', 'daf_qte_1': '2', 'daf_pu_1': '100', 'daf_total_1': '200'}, follow_redirects=True)
+        t = Ticket.query.get(t.id)
+        assert t.daf_fournisseur_nom == 'LDLC' and t.daf_uf == 'DRH' and t.get_daf_lignes()[0]['qte'] == '2'
+        assert Notification.query.filter_by(user_id=mgr.id).filter(Notification.message.contains('modifiée par le demandeur')).count() == 1
+
+
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================

@@ -1440,6 +1440,119 @@ def take_ticket(ticket_id):
         flash(f"Erreur prise en charge: {e}", "danger")
         return redirect(url_for('main.user_portal'))
 
+def _can_edit_ticket(user, t):
+    """Le demandeur (ou la personne qui a déposé la demande pour lui) peut
+    modifier sa demande tant qu'elle n'est pas clôturée ni refusée."""
+    return user.id in (t.author_id, t.created_by_id) and t.status not in (TicketStatus.DONE, TicketStatus.REFUSED)
+
+
+def _parse_daf_lines(form):
+    lignes = []
+    for i in range(1, 51):
+        des = (form.get(f'daf_designation_{i}') or '').strip()
+        if des:
+            lignes.append({'designation': des, 'ref': form.get(f'daf_ref_{i}'), 'qte': form.get(f'daf_qte_{i}'),
+                           'pu': form.get(f'daf_pu_{i}'), 'total': form.get(f'daf_total_{i}')})
+    return lignes
+
+
+@tickets_bp.route('/edit/<ticket_uid>', methods=['GET', 'POST'])
+@login_required
+def edit_ticket(ticket_uid):
+    """Modification d'une demande par son demandeur (2026-11-16) : titre,
+    description, téléphone, lieu, pièces jointes supplémentaires — et pour un
+    bon DAF, fournisseur, livraison, UF, budget et lignes de commande. Chaque
+    modification ajoute un message dans le fil, une entrée d'audit et prévient
+    la personne qui a la demande en main (technicien, validateurs ou équipe)."""
+    t = Ticket.query.filter_by(uid_public=ticket_uid).first_or_404()
+    if current_user.id not in (t.author_id, t.created_by_id):
+        flash("Seul le demandeur peut modifier cette demande.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    if t.status in (TicketStatus.DONE, TicketStatus.REFUSED):
+        flash("Cette demande est close : elle ne peut plus être modifiée.", "warning")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    is_daf = t.target_service == ServiceType.DAF
+
+    if request.method == 'POST':
+        changes = []
+
+        def upd(attr, label, field, hide_values=False):
+            # Un champ absent du formulaire n'est pas touché (jamais écrasé par du vide).
+            if field not in request.form:
+                return
+            old = (getattr(t, attr) or '').strip()
+            new = (request.form.get(field) or '').strip()
+            if new != old:
+                changes.append(f"{label} mise à jour" if hide_values else f"{label} : « {old or '—'} » → « {new or '—'} »")
+                setattr(t, attr, new if attr == 'description' else (new or None))
+
+        title = (request.form.get('title') or '').strip()
+        if not title:
+            flash("Le titre est obligatoire.", "danger")
+            return redirect(url_for('tickets.edit_ticket', ticket_uid=t.uid_public))
+        upd('title', 'Titre', 'title')
+        upd('description', 'Description', 'description', hide_values=True)
+        upd('tel_demandeur', 'Téléphone', 'tel_demandeur')
+        upd('hostname', 'Lieu / poste', 'hostname')
+        if is_daf:
+            upd('daf_fournisseur_nom', 'Fournisseur', 'daf_fournisseur_nom')
+            upd('daf_fournisseur_email', 'E-mail fournisseur', 'daf_fournisseur_email')
+            upd('daf_fournisseur_tel', 'Téléphone fournisseur', 'daf_fournisseur_tel')
+            upd('daf_lieu_livraison', 'Lieu de livraison', 'daf_lieu_livraison')
+            upd('daf_uf', 'Unité fonctionnelle', 'daf_uf')
+            upd('daf_budget_affecte', 'Budget', 'daf_budget_affecte')
+            lignes = _parse_daf_lines(request.form)
+            if lignes and json.dumps(lignes, sort_keys=True) != json.dumps(t.get_daf_lignes(), sort_keys=True):
+                t.daf_lignes_json = json.dumps(lignes)
+                changes.append(f"Lignes de commande mises à jour ({len(lignes)} ligne(s))")
+
+        added = []
+        files = [f for f in request.files.getlist('attachments') if f and f.filename]
+        if files:
+            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', t.uid_public)
+            os.makedirs(upload_path, exist_ok=True)
+            current = t.get_daf_files()
+            for f in files:
+                name = secure_filename(f.filename)
+                if not name:
+                    continue
+                f.save(os.path.join(upload_path, name))
+                if name not in current:
+                    current.append(name)
+                added.append(name)
+            if added:
+                t.daf_files_json = json.dumps(current)
+                changes.append("Pièce(s) jointe(s) ajoutée(s) : " + ', '.join(added))
+
+        if not changes:
+            flash("Aucune modification détectée.", "info")
+            return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+        db.session.add(TicketMessage(
+            content="Demande modifiée par " + current_user.fullname + " :\n- " + "\n- ".join(changes),
+            ticket=t, author=current_user))
+        log_action('ticket.update', t, details='; '.join(changes))
+        link = url_for('tickets.view_ticket', ticket_uid=t.uid_public)
+        text = f"Demande {t.uid_public} modifiée par le demandeur — vérifiez la version à jour."
+        if t.solver:
+            create_notification(t.solver, text, 'info', link)
+        elif t.status == TicketStatus.VALIDATION_N1:
+            for mgr in User.query.filter(User.role.in_([UserRole.MANAGER, UserRole.DIRECTEUR])).all():
+                if t.service_demandeur in mgr.get_origin_services() and mgr.id != current_user.id:
+                    create_notification(mgr, text, 'info', link)
+        else:
+            from app.duplicates import _team_for
+            for u in _team_for(t.target_service):
+                if u.id != current_user.id:
+                    create_notification(u, text, 'info', link)
+        db.session.commit()
+        flash("Demande mise à jour.", "success")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+    return render_template('tickets/edit.html', ticket=t, is_daf=is_daf,
+                           uf_options=daf_uf_options() if is_daf else [], lignes=t.get_daf_lignes() if is_daf else [])
+
+
 @tickets_bp.route('/solver/release/<int:ticket_id>', methods=['POST'])
 @login_required
 def release_ticket(ticket_id):
