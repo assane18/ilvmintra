@@ -329,6 +329,25 @@
                 </div>
             </div>
 
+            {% if can_pilot_ticket %}
+            {# Pilotage manager/directeur (service d'origine ou destinataire, ADMIN) : refuser un ticket ouvert
+               ou le supprimer, hors DAF, même une fois validé et dans le pool de traitement #}
+            <div class="bg-white dark:bg-slate-900 p-5 shadow-sm border border-red-200 dark:border-red-900/50 border-l-4 border-l-red-500 flex flex-wrap items-center gap-2">
+                <div class="mr-auto">
+                    <p class="text-[10px] font-black text-red-600 dark:text-red-400 uppercase tracking-widest">Pilotage de la demande</p>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Manager / directeur : refuser ou retirer cette demande, même après validation.</p>
+                </div>
+                {% if ticket.status.value not in ('TERMINE', 'REFUSE') %}
+                <button type="button" onclick="document.getElementById('poolRefuseModal').classList.remove('hidden')" class="px-3 py-2 border-2 border-red-500 text-red-600 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5">
+                    <i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Refuser
+                </button>
+                {% endif %}
+                <button type="button" onclick="document.getElementById('poolDeleteModal').classList.remove('hidden')" class="px-3 py-2 bg-red-600 hover:bg-red-500 text-white text-[11px] font-black uppercase tracking-wide flex items-center gap-1.5">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Supprimer
+                </button>
+            </div>
+            {% endif %}
+
             {% if can_manage_ticket %}
 
             <div class="bg-slate-900 dark:bg-slate-950 p-6 shadow-sm text-white border border-slate-800">
@@ -472,6 +491,35 @@
     </div>
 </div>
 </div>
+
+{% if can_pilot_ticket %}
+<!-- MODAL REFUS (pilotage manager/directeur) -->
+<div id="poolRefuseModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-900 p-8 w-full max-w-md m-4 shadow-2xl relative border border-gray-200 dark:border-slate-800">
+        <button type="button" onclick="document.getElementById('poolRefuseModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+        <h3 class="text-xl font-black text-red-500 uppercase tracking-tight mb-2">Refuser la demande</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Motif du refus pour <span class="font-mono font-bold text-slate-800 dark:text-white">{{ ticket.uid_public }}</span>. Le demandeur sera prévenu et la demande passera au statut « Refusée ».</p>
+        <form method="POST" action="{{ url_for('tickets.manager_pool_refuse', ticket_id=ticket.id) }}" class="space-y-4">
+            <textarea name="refusal_reason" rows="3" required class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-4 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-white" placeholder="Ex : demande hors périmètre, doublon, besoin non justifié…"></textarea>
+            <button type="submit" class="w-full bg-red-600 text-white font-black py-3 hover:bg-red-500 text-xs uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="x-circle" class="w-4 h-4"></i> Confirmer le refus</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL SUPPRESSION (pilotage manager/directeur) -->
+<div id="poolDeleteModal" class="hidden fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div class="bg-white dark:bg-slate-900 p-8 w-full max-w-md m-4 shadow-2xl relative border border-gray-200 dark:border-slate-800">
+        <button type="button" onclick="document.getElementById('poolDeleteModal').classList.add('hidden')" class="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+        <h3 class="text-xl font-black text-red-600 uppercase tracking-tight mb-2">Supprimer la demande</h3>
+        <p class="text-sm text-slate-500 dark:text-slate-400 mb-2">La demande <span class="font-mono font-bold text-slate-800 dark:text-white">{{ ticket.uid_public }}</span> et tout son contenu (messages, pièces jointes, rendez-vous) seront <strong class="text-red-600">définitivement supprimés</strong>. Cette action est irréversible et tracée dans le journal d'audit.</p>
+        <p class="text-xs text-slate-400 mb-6">Pour un simple rejet, préférez « Refuser » : la demande reste consultable dans l'historique du demandeur.</p>
+        <form method="POST" action="{{ url_for('tickets.manager_pool_delete', ticket_id=ticket.id) }}" class="space-y-4">
+            <input type="text" name="delete_reason" maxlength="300" class="w-full bg-gray-50 dark:bg-slate-950 border border-gray-200 dark:border-slate-700 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 dark:text-white" placeholder="Motif (optionnel, transmis au demandeur)">
+            <button type="submit" class="w-full bg-red-600 text-white font-black py-3 hover:bg-red-500 text-xs uppercase tracking-widest flex items-center justify-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> Supprimer définitivement</button>
+        </form>
+    </div>
+</div>
+{% endif %}
 <script>
 (function () {
     var sel = document.getElementById('canned-select'), ta = document.getElementById('ticket-message');

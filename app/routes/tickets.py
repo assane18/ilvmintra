@@ -536,8 +536,9 @@ def view_ticket(ticket_uid):
             _target_vals = {getattr(_target, 'value', str(_target)), getattr(_target, 'name', str(_target))}
             can_see_internal = (ticket.service_demandeur in _origins) or bool(_target_vals & set(_allowed))
 
-        return render_template('tickets/detail.html', canned_responses=canned_responses, can_reopen=can_reopen, 
-                               ticket=ticket, 
+        return render_template('tickets/detail.html', canned_responses=canned_responses, can_reopen=can_reopen,
+                               can_pilot_ticket=_can_pilot_ticket(current_user, ticket),
+                               ticket=ticket,
                                attached_files=attached_files, 
                                solvers_available=solvers_available,
                                can_manage_ticket=can_manage_ticket, can_see_internal=can_see_internal)
@@ -1291,6 +1292,86 @@ def manager_action(ticket_id, action):
     except Exception as e:
         flash(f"Erreur action: {e}", "danger")
         return redirect(url_for('tickets.manager_dashboard'))
+
+# ---------------------------------------------------------------------------
+# Pilotage par les managers / directeurs : refuser ou supprimer un ticket
+# (hors DAF) à tout moment, y compris une fois validé et dans le pool de
+# traitement. Les bons de commande DAF gardent leur circuit propre.
+# ---------------------------------------------------------------------------
+def _can_pilot_ticket(user, t):
+    """ADMIN, ou MANAGER/DIRECTEUR du service d'origine du demandeur ou du
+    service destinataire — jamais sur sa propre demande (sauf ADMIN), jamais
+    sur un bon DAF."""
+    if t.target_service == ServiceType.DAF:
+        return False
+    role_str = safe_role_str(user)
+    if 'ADMIN' in role_str:
+        return True
+    if not ('MANAGER' in role_str or 'DIRECTEUR' in role_str) or t.author_id == user.id:
+        return False
+    if t.service_demandeur in (user.get_origin_services() or []):
+        return True
+    target = t.get_safe_target_service()
+    tags = {str(target), str(getattr(target, 'value', '')), str(getattr(target, 'name', ''))}
+    return bool(tags & set(user.get_allowed_services() or []))
+
+
+def _delete_ticket_cascade(t):
+    """Supprime un ticket et tout ce qui lui est rattaché : messages, rendez-vous,
+    notifications pointant vers lui, traces d'escalade, pièces jointes sur
+    disque ; les tickets liés (doublons) sont simplement détachés."""
+    import shutil
+    from app.models import Appointment, EscalationTrace
+    uid = t.uid_public
+    Ticket.query.filter_by(parent_id=t.id).update({'parent_id': None})
+    TicketMessage.query.filter_by(ticket_id=t.id).delete()
+    Appointment.query.filter_by(ticket_id=t.id).delete()
+    EscalationTrace.query.filter_by(item_type='ticket', item_id=t.id).delete()
+    Notification.query.filter(Notification.link.like(f'%/{uid}%')).delete(synchronize_session=False)
+    upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
+    if os.path.isdir(upload_path):
+        shutil.rmtree(upload_path, ignore_errors=True)
+    db.session.delete(t)
+
+
+@tickets_bp.route('/manager/pool/<int:ticket_id>/refuse', methods=['POST'])
+@login_required
+def manager_pool_refuse(ticket_id):
+    t = Ticket.query.get_or_404(ticket_id)
+    if not _can_pilot_ticket(current_user, t):
+        flash("Droits insuffisants pour refuser cette demande.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    if t.status in (TicketStatus.DONE, TicketStatus.REFUSED):
+        flash("Cette demande est déjà close.", "warning")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    reason = (request.form.get('refusal_reason') or '').strip() or 'Refusé.'
+    db.session.add(TicketMessage(content=f"Ticket REFUSÉ par {current_user.fullname}.\nMotif : {reason}", ticket=t, author=current_user))
+    t.status = TicketStatus.REFUSED
+    t.validated_at = get_paris_time(); t.validated_by_id = current_user.id
+    create_notification(t.author, f"Votre demande {t.uid_public} a été refusée.", 'danger', url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    log_action('ticket.refuse', t, details=f"(pilotage) {reason}")
+    db.session.commit()
+    flash(f"Demande {t.uid_public} refusée.", "success")
+    return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+
+@tickets_bp.route('/manager/pool/<int:ticket_id>/delete', methods=['POST'])
+@login_required
+def manager_pool_delete(ticket_id):
+    t = Ticket.query.get_or_404(ticket_id)
+    if not _can_pilot_ticket(current_user, t):
+        flash("Droits insuffisants pour supprimer cette demande.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    uid, title, author = t.uid_public, t.title, t.author
+    reason = (request.form.get('delete_reason') or '').strip()
+    log_action('ticket.delete', ('Ticket', t.id, uid), details=f"« {title} » — {reason or 'sans motif'}")
+    _delete_ticket_cascade(t)
+    if author and author.id != current_user.id:
+        create_notification(author, f"Votre demande {uid} a été supprimée par {current_user.fullname}" + (f" : {reason}" if reason else "."), 'warning', None)
+    db.session.commit()
+    flash(f"Demande {uid} supprimée.", "success")
+    return redirect(url_for('tickets.manager_dashboard'))
+
 
 @tickets_bp.route('/manager/daf_validate/<int:ticket_id>', methods=['POST'])
 @login_required

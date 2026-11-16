@@ -2284,6 +2284,84 @@ class TestRetouchesLots:
             shutil.rmtree(os.path.join(app.root_path, 'static', 'uploads', 'tickets', uid), ignore_errors=True)
 
 # ===========================================================================
+#  PILOTAGE : refus / suppression d'un ticket par un manager, hors DAF,
+#  même une fois dans le pool de traitement (2026-11-16)
+# ===========================================================================
+
+class TestPilotagePool:
+
+    def _setup(self, client, db_session, status=TicketStatus.PENDING, service=ServiceType.INFO):
+        author = make_user(UserRole.USER, username='pp_user', service=ServiceType.DRH)
+        manager = make_user(UserRole.MANAGER, username='pp_manager', service=ServiceType.INFO,
+                            allowed_services=[ServiceType.INFO])
+        t = make_ticket(author, service=service, status=status, title='Ticket pool')
+        db.session.add(TicketMessage(content='un message', ticket=t, author=author))
+        db.session.commit()
+        return author, manager, t
+
+    def test_manager_refuse_ticket_dans_le_pool(self, client, db_session):
+        author, manager, t = self._setup(client, db_session, status=TicketStatus.IN_PROGRESS)
+        login(client, 'pp_manager')
+        r = client.post(f'/tickets/manager/pool/{t.id}/refuse', data={'refusal_reason': 'Hors périmètre'}, follow_redirects=True)
+        assert r.status_code == 200
+        t = Ticket.query.get(t.id)
+        assert t.status == TicketStatus.REFUSED and t.validated_by_id == manager.id
+        assert any('Hors périmètre' in m.content for m in t.messages)
+        assert Notification.query.filter_by(user_id=author.id).filter(Notification.message.contains('refusée')).count() == 1
+
+    def test_manager_supprime_ticket_et_ses_dependances(self, client, db_session):
+        from app.models import Appointment, AuditLog
+        author, manager, t = self._setup(client, db_session)
+        db.session.add(Appointment(ticket_id=t.id, proposed_by_id=manager.id, starts_at=datetime.utcnow() + timedelta(days=1)))
+        db.session.add(Notification(user_id=author.id, message='x', category='info', link=f'/tickets/view/{t.uid_public}'))
+        db.session.commit()
+        tid, uid = t.id, t.uid_public
+        login(client, 'pp_manager')
+        r = client.post(f'/tickets/manager/pool/{tid}/delete', data={'delete_reason': 'Doublon'}, follow_redirects=True)
+        assert r.status_code == 200
+        assert Ticket.query.get(tid) is None
+        assert TicketMessage.query.filter_by(ticket_id=tid).count() == 0
+        assert Appointment.query.filter_by(ticket_id=tid).count() == 0
+        assert Notification.query.filter(Notification.link.contains(uid)).count() == 0
+        assert AuditLog.query.filter_by(action='ticket.delete', target_ref=uid).count() == 1
+        # le demandeur est prévenu, avec le motif
+        assert Notification.query.filter_by(user_id=author.id).filter(Notification.message.contains('Doublon')).count() == 1
+
+    def test_bon_daf_exclu_du_pilotage(self, client, db_session):
+        author, manager, t = self._setup(client, db_session, service=ServiceType.DAF)
+        manager.set_allowed_services([ServiceType.DAF.value]); db.session.commit()
+        login(client, 'pp_manager')
+        client.post(f'/tickets/manager/pool/{t.id}/refuse', data={'refusal_reason': 'x'}, follow_redirects=True)
+        client.post(f'/tickets/manager/pool/{t.id}/delete', follow_redirects=True)
+        t = Ticket.query.get(t.id)
+        assert t is not None and t.status == TicketStatus.PENDING
+
+    def test_user_simple_et_auteur_manager_refuses(self, client, db_session):
+        author, manager, t = self._setup(client, db_session)
+        login(client, 'pp_user')
+        client.post(f'/tickets/manager/pool/{t.id}/delete', follow_redirects=True)
+        assert Ticket.query.get(t.id) is not None
+        # un manager sur SA propre demande : non plus
+        own = make_ticket(manager, service=ServiceType.INFO, title='Ma demande')
+        login(client, 'pp_manager')
+        client.post(f'/tickets/manager/pool/{own.id}/delete', follow_redirects=True)
+        assert Ticket.query.get(own.id) is not None
+
+    def test_manager_du_service_d_origine_peut_piloter(self, client, db_session):
+        author, manager, t = self._setup(client, db_session)
+        make_user(UserRole.MANAGER, username='pp_chef_drh', service=ServiceType.DRH, allowed_services=[ServiceType.DRH])
+        login(client, 'pp_chef_drh')
+        assert 'Pilotage de la demande' in client.get(f'/tickets/view/{t.uid_public}').data.decode()
+        client.post(f'/tickets/manager/pool/{t.id}/refuse', data={'refusal_reason': 'Non justifié'}, follow_redirects=True)
+        assert Ticket.query.get(t.id).status == TicketStatus.REFUSED
+
+    def test_boutons_invisibles_pour_le_demandeur(self, client, db_session):
+        author, manager, t = self._setup(client, db_session)
+        login(client, 'pp_user')
+        assert 'Pilotage de la demande' not in client.get(f'/tickets/view/{t.uid_public}').data.decode()
+
+
+# ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================
 
