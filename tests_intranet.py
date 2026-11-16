@@ -2360,6 +2360,22 @@ class TestPilotagePool:
         login(client, 'pp_user')
         assert 'Pilotage de la demande' not in client.get(f'/tickets/view/{t.uid_public}').data.decode()
 
+    def test_manager_voit_les_tickets_pris_par_son_equipe(self, client, db_session):
+        """Dashboard : un ticket pris en charge par un technicien apparaît dans
+        « Tickets en cours » du manager/directeur du service (DAF compris),
+        avec le nom du technicien ; un autre technicien ne le voit pas."""
+        author, manager, t = self._setup(client, db_session, status=TicketStatus.IN_PROGRESS, service=ServiceType.DAF)
+        manager.set_allowed_services([ServiceType.DAF.value])
+        tech = make_user(UserRole.SOLVER, username='pp_tech', fullname='Tech Daf', service=ServiceType.DAF, allowed_services=[ServiceType.DAF])
+        other = make_user(UserRole.SOLVER, username='pp_tech2', service=ServiceType.DAF, allowed_services=[ServiceType.DAF])
+        t.solver_id = tech.id; db.session.commit()
+        login(client, 'pp_manager')
+        html = client.get('/tickets/solver/dashboard').data.decode()
+        assert 'Ticket pool' in html and 'Tech Daf' in html
+        login(client, 'pp_tech2')
+        html = client.get('/tickets/solver/dashboard').data.decode()
+        assert 'Ticket pool' not in html
+
 
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)

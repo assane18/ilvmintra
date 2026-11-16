@@ -1745,7 +1745,14 @@ def solver_dashboard():
         pool_drh = [t for t in pending_tickets if is_drh(t)]
         
         mine = Ticket.query.filter_by(solver_id=current_user.id, status=TicketStatus.IN_PROGRESS).all()
-        
+        # Pilotage (2026-11-16) : managers / directeurs / ADMIN voient aussi, dans
+        # « Tickets en cours », les tickets de leurs services pris en charge par
+        # un technicien (DAF compris) — le nom du technicien est affiché.
+        if any(r in user_role for r in ('MANAGER', 'DIRECTEUR', 'ADMIN')):
+            team = [t for t in tickets_pool
+                    if t.status == TicketStatus.IN_PROGRESS and t.solver_id and t.solver_id != current_user.id]
+            mine = mine + sorted(team, key=lambda t: t.created_at or datetime.min)
+
         hist_query = Ticket.query.filter_by(status=TicketStatus.DONE)
         history_all = hist_query.order_by(Ticket.closed_at.desc()).limit(20).all()
         

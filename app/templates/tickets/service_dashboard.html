@@ -94,6 +94,9 @@
                     <h2 class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                         <i data-lucide="activity" class="w-5 h-5 text-accent-500"></i> Mes Tickets en cours
                     </h2>
+                    {% if 'MANAGER' in current_user.role.value or 'DIRECTEUR' in current_user.role.value or 'ADMIN' in current_user.role.value %}
+                    <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Vos tickets + ceux pris en charge par votre équipe</span>
+                    {% endif %}
                 </div>
 
                 <div class="divide-y divide-gray-200 dark:divide-slate-800 overflow-y-auto flex-1">
@@ -119,6 +122,11 @@
                                     </div>
                                     {{ ticket.author.fullname if ticket.author else 'Anonymisé' }}
                                     {% if ticket.tel_demandeur %}<span class="text-slate-300">|</span> <i data-lucide="phone" class="w-3 h-3"></i> {{ ticket.tel_demandeur }}{% endif %}
+                                    {% if ticket.solver and ticket.solver_id != current_user.id %}
+                                    <span class="ml-1 inline-flex items-center gap-1 bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-300 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide" title="Pris en charge par {{ ticket.solver.fullname }}">
+                                        <i data-lucide="user-check" class="w-3 h-3"></i> {{ ticket.solver.fullname }}
+                                    </span>
+                                    {% endif %}
                                 </div>
 
                                 <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
