@@ -235,6 +235,24 @@
             };
         })();
     </script>
+    <!-- Barre latérale repliable (icônes seules) : état mémorisé localement, appliqué avant le rendu -->
+    <script>(function(){try{if(localStorage.sidebarCollapsed==='1')document.documentElement.setAttribute('data-sidebar','collapsed');}catch(e){}})();</script>
+    <style>
+        @media (min-width: 768px) {
+            html[data-sidebar="collapsed"] #app-sidebar { width: 4.5rem; }
+            html[data-sidebar="collapsed"] #app-sidebar .sb-label { display: none; }
+            html[data-sidebar="collapsed"] #app-sidebar nav a,
+            html[data-sidebar="collapsed"] #app-sidebar .sb-foot { justify-content: center; padding-left: 0; padding-right: 0; }
+            html[data-sidebar="collapsed"] #app-sidebar .sb-logo-full { display: none; }
+            html[data-sidebar="collapsed"] #app-sidebar .sb-logo-mini { display: block; }
+            html[data-sidebar="collapsed"] #sidebar-collapse .sb-ico-close { display: none; }
+            html[data-sidebar="collapsed"] #sidebar-collapse .sb-ico-open { display: block; }
+            #app-sidebar { transition: width .2s ease, transform .2s ease; }
+            html[data-sidebar="collapsed"] #app-sidebar.sb-collapsible { cursor: e-resize; }
+            html[data-sidebar="collapsed"] #app-sidebar.sb-collapsible a, html[data-sidebar="collapsed"] #app-sidebar.sb-collapsible button { cursor: pointer; }
+        }
+        #app-sidebar .sb-logo-mini, #sidebar-collapse .sb-ico-open { display: none; }
+    </style>
 </head>
 <body class="font-sans text-slate-900 antialiased bg-gray-50 dark:bg-slate-950 selection:bg-blue-100 selection:text-blue-900 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
     <a href="#contenu" class="a11y-skip-link">Aller au contenu</a>
@@ -266,46 +284,50 @@
         <aside id="app-sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-64 -translate-x-full md:translate-x-0 transition-transform duration-200 shrink-0 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800">
             <div class="h-24 flex items-center justify-center px-5 border-b border-slate-800 shrink-0 relative">
                 <a href="{{ url_for('main.user_portal') }}" title="Retour au Portail" class="flex items-center">
-                    <img src="{{ url_for('static', filename='img/logo-dark.png', v='agora') }}" alt="Logo" class="h-16 w-auto object-contain">
+                    <img src="{{ url_for('static', filename='img/logo-dark.png', v='agora') }}" alt="Logo" class="sb-logo-full h-16 w-auto object-contain">
+                    <img src="{{ url_for('static', filename='img/icon-192.png') }}" alt="Logo" class="sb-logo-mini h-10 w-10 object-contain">
                 </a>
                 <button id="sidebar-mobile-close" class="md:hidden absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white" aria-label="Fermer le menu"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
 
             <nav class="flex-1 py-4 space-y-0.5 text-sm overflow-y-auto">
-                <a href="{{ url_for('main.user_portal') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.user_portal' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> Portail
+                <a title="Portail" href="{{ url_for('main.user_portal') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.user_portal' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="layout-dashboard" class="w-4 h-4"></i> <span class="sb-label">Portail</span>
                 </a>
-                <a href="{{ url_for('tickets.solver_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.solver_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="wrench" class="w-4 h-4"></i> Dashboard
+                <a title="Dashboard" href="{{ url_for('tickets.solver_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.solver_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="wrench" class="w-4 h-4"></i> <span class="sb-label">Dashboard</span>
                 </a>
-                <a href="{{ url_for('tickets.manager_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.manager_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="check-circle" class="w-4 h-4"></i> Validation
+                <a title="Validation" href="{{ url_for('tickets.manager_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.manager_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="check-circle" class="w-4 h-4"></i> <span class="sb-label">Validation</span>
                 </a>
-                <a href="{{ url_for('main.help_center') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.help_center' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="life-buoy" class="w-4 h-4"></i> Aide / Tuto
+                <a title="Aide / Tuto" href="{{ url_for('main.help_center') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.help_center' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="life-buoy" class="w-4 h-4"></i> <span class="sb-label">Aide / Tuto</span>
                 </a>
                 {% if current_user.is_authenticated and (current_user.role.value == 'ADMIN' or 'COMMUNICATION' in (current_user.get_allowed_services() + current_user.get_origin_services())) %}
-                <a href="{{ url_for('main.announcements_manage') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.announcements_manage' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="megaphone" class="w-4 h-4"></i> Annonces
+                <a title="Annonces" href="{{ url_for('main.announcements_manage') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.announcements_manage' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="megaphone" class="w-4 h-4"></i> <span class="sb-label">Annonces</span>
                 </a>
                 {% endif %}
-                <a href="{{ url_for('main.profile') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.profile' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="user-circle" class="w-4 h-4"></i> Mon profil
+                <a title="Mon profil" href="{{ url_for('main.profile') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.profile' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="user-circle" class="w-4 h-4"></i> <span class="sb-label">Mon profil</span>
                 </a>
                 {% if current_user.is_authenticated and current_user.role.value in ['DIRECTEUR', 'ADMIN'] %}
-                <a href="{{ url_for('tickets.stats_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.stats_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Statistiques
+                <a title="Statistiques" href="{{ url_for('tickets.stats_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'tickets.stats_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="bar-chart-3" class="w-4 h-4"></i> <span class="sb-label">Statistiques</span>
                 </a>
                 {% endif %}
                 {% if current_user.is_authenticated and current_user.role.value == 'ADMIN' %}
-                <a href="{{ url_for('main.admin_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.admin_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
-                    <i data-lucide="shield-check" class="w-4 h-4"></i> Administration
+                <a title="Administration" href="{{ url_for('main.admin_dashboard') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-l-4 transition {% if request.endpoint == 'main.admin_dashboard' %}border-accent-400 bg-slate-800 text-accent-400 font-semibold{% else %}border-transparent hover:bg-slate-800 hover:text-white{% endif %}">
+                    <i data-lucide="shield-check" class="w-4 h-4"></i> <span class="sb-label">Administration</span>
                 </a>
                 {% endif %}
             </nav>
 
-            <a href="{{ url_for('auth.logout') }}" class="flex items-center gap-3 pl-4 pr-3 py-3 border-t border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white transition text-sm shrink-0">
-                <i data-lucide="log-out" class="w-4 h-4"></i> Déconnexion
+            <button type="button" id="sidebar-collapse" class="sb-foot hidden md:flex items-center gap-3 pl-4 pr-3 py-2.5 border-t border-slate-800 text-slate-500 hover:bg-slate-800 hover:text-white transition text-xs w-full shrink-0" title="Replier / déplier le menu" aria-label="Replier ou déplier le menu">
+                <i data-lucide="chevrons-left" class="sb-ico-close w-4 h-4"></i><i data-lucide="chevrons-right" class="sb-ico-open w-4 h-4"></i> <span class="sb-label">Replier le menu</span>
+            </button>
+            <a title="Déconnexion" href="{{ url_for('auth.logout') }}" class="sb-foot flex items-center gap-3 pl-4 pr-3 py-3 border-t border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white transition text-sm shrink-0">
+                <i data-lucide="log-out" class="w-4 h-4"></i> <span class="sb-label">Déconnexion</span>
             </a>
         </aside>
         <div id="sidebar-overlay" class="hidden fixed inset-0 bg-black/50 z-40 md:hidden"></div>
@@ -605,6 +627,27 @@
             if (sidebarOpenBtn) sidebarOpenBtn.addEventListener('click', openSidebar);
             if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeSidebar);
             sidebarOverlay.addEventListener('click', closeSidebar);
+        }
+
+        // --- BARRE LATÉRALE REPLIABLE (icônes seules, desktop) ---
+        const sidebarCollapseBtn = document.getElementById('sidebar-collapse');
+        function setSidebarCollapsed(collapsed) {
+            if (collapsed) document.documentElement.setAttribute('data-sidebar', 'collapsed');
+            else document.documentElement.removeAttribute('data-sidebar');
+            try { localStorage.sidebarCollapsed = collapsed ? '1' : '0'; } catch (e) {}
+        }
+        if (sidebarCollapseBtn) {
+            sidebarCollapseBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                setSidebarCollapsed(document.documentElement.getAttribute('data-sidebar') !== 'collapsed');
+            });
+            // Replié : un clic n'importe où sur la barre (hors liens et boutons) la rouvre.
+            appSidebar.addEventListener('click', function (e) {
+                if (document.documentElement.getAttribute('data-sidebar') !== 'collapsed') return;
+                if (window.innerWidth < 768 || e.target.closest('a, button')) return;
+                setSidebarCollapsed(false);
+            });
+            appSidebar.classList.add('sb-collapsible');
         }
 
         // --- PANNEAU PROFIL (overlay glissant depuis la droite) ---
