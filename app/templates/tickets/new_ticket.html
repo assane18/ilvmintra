@@ -200,11 +200,15 @@
                             <label class="label-tiny">Unité Fonctionnelle (UF)</label>
                             <select name="daf_uf" class="input-field cursor-pointer">
                                 <option value="">-- Sélectionner UF --</option>
-                                <option value="UF-DIRECTION">Direction</option>
-                                <option value="UF-IT">Informatique</option>
-                                <option value="UF-RH">Ressources Humaines</option>
-                                <option value="UF-COMMERCE">Commerce</option>
-                                <option value="UF-TECHNIQUE">Technique</option>
+                                {% set puf = prefill.get('daf_uf') or uf_default %}
+                                {% for group, items in uf_groups %}
+                                <optgroup label="{{ group }}">
+                                    {% for value, label in items %}
+                                    <option value="{{ value }}" {% if puf == value %}selected{% endif %}>{{ label }}</option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endfor %}
+
                             </select>
                         </div>
                         <div>

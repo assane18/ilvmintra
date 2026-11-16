@@ -404,7 +404,8 @@ def new_ticket(service_name):
     prefill = ticket_prefill(request.args.get('from'), current_user)
     if request.args.get('from') and not prefill:
         flash("Impossible de pré-remplir : demande introuvable ou qui ne vous appartient pas.", "warning")
-    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation, help_tips=help_tips, prefill=prefill)
+    return render_template('tickets/new_ticket.html', service=service_enum, service_name=service_name, user_origins=user_origins, is_delegation=is_delegation, help_tips=help_tips, prefill=prefill,
+                           uf_groups=daf_uf_groups(), uf_default=current_user.service)
 
 
 @tickets_bp.route('/view/<string:ticket_uid>', methods=['GET', 'POST'])
@@ -911,6 +912,28 @@ def _compute_stats(scope_services, period_start, period_end, monthly_start, mont
 # pertinentes du filtre — pas seulement ceux ayant déjà des données.
 _SUPPORT_SERVICES = [ServiceType.INFO, ServiceType.DAF, ServiceType.GEN, ServiceType.TECH,
                       ServiceType.DRH, ServiceType.SECU, ServiceType.AUTRE, ServiceType.IMAGO]
+
+# Formulaire DAF — Unité Fonctionnelle : tous les services de l'institut
+# (supports puis établissements, cf. ServiceType), libellés lisibles pour les
+# codes techniques. La valeur enregistrée dans Ticket.daf_uf est ServiceType.value.
+_UF_LABELS = {
+    'INFORMATIQUE': 'Informatique', 'DAF': 'DAF / Achats', 'GENERAUX': 'Services Généraux',
+    'TECHNIQUE': 'Services Techniques', 'DRH': 'DRH', 'SECU': 'Sécurité', 'AUTRE': 'Autre',
+    'IMAGO': 'Imago', 'COMMUNICATION': 'Communication', 'MEDIATEAM': 'Médiateam',
+    'DRH-PAIE_CARRIERE': 'DRH – Paie / Carrière', 'DRH-RECRUTEMENT_FORMATION': 'DRH – Recrutement / Formation',
+    'DRH-EFFECTIFS_SOCIAL': 'DRH – Effectifs / Social', 'Qualite': 'Qualité', 'Gite': 'Gîte',
+}
+
+
+def daf_uf_groups():
+    """[(groupe, [(valeur, libellé), ...]), ...] triés par libellé dans chaque groupe."""
+    supports, etabs = [], []
+    for st in ServiceType:
+        item = (st.value, _UF_LABELS.get(st.value, st.value))
+        (supports if st in _SUPPORT_SERVICES or st.value.startswith('DRH-') or st in (ServiceType.COMMUNICATION, ServiceType.MEDIATEAM) else etabs).append(item)
+    key = lambda x: x[1].casefold()
+    return [('Services supports', sorted(supports, key=key)), ('Établissements', sorted(etabs, key=key))]
+
 
 
 def _relevant_services():
