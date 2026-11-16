@@ -2476,6 +2476,26 @@ class TestDoublonsEtPool:
         client.post(f'/tickets/solver/release/{t.id}', follow_redirects=True)
         assert Ticket.query.get(t.id).solver_id is None
 
+    def test_avis_visible_uniquement_managers_directeurs(self, client, db_session):
+        """L'avis de satisfaction (note + commentaire) n'est montré ni au technicien
+        ni dans son historique ; managers, directeurs et ADMIN le voient."""
+        user = make_user(UserRole.USER, username='avis_user')
+        tech = make_user(UserRole.SOLVER, username='avis_tech', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        make_user(UserRole.MANAGER, username='avis_mgr', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        make_user(UserRole.DIRECTEUR, username='avis_dir', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        t = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.DONE)
+        t.solver_id = tech.id; t.closed_at = datetime.utcnow(); db.session.commit()
+        login(client, 'avis_user')
+        client.post(f'/tickets/rate/{t.uid_public}', data={'score': '1', 'comment': 'COMMENTAIRE-SECRET-AVIS'}, follow_redirects=True)
+        assert Ticket.query.get(t.id).satisfaction == 1
+        login(client, 'avis_tech')
+        html = client.get(f'/tickets/view/{t.uid_public}').data.decode()
+        assert 'COMMENTAIRE-SECRET-AVIS' not in html and 'Avis du demandeur' not in html and 'Insatisfait' not in html
+        for who in ('avis_mgr', 'avis_dir'):
+            login(client, who)
+            html = client.get(f'/tickets/view/{t.uid_public}').data.decode()
+            assert 'COMMENTAIRE-SECRET-AVIS' in html and 'Avis du demandeur' in html and 'Insatisfait' in html
+
 
 # ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)

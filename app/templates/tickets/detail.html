@@ -71,6 +71,22 @@
     {% include 'tickets/_rdv_demandeur.html' %}
     {% endif %}
 
+    {% set _role = current_user.role.value %}
+    {% if ticket.satisfaction and ticket.status.value == 'TERMINE' and ticket.author_id != current_user.id and ('MANAGER' in _role or 'DIRECTEUR' in _role or 'ADMIN' in _role) %}
+    {# Avis du demandeur : résultat réservé aux managers / directeurs (jamais au technicien) #}
+    <div class="mb-6 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 border-l-4 {% if ticket.satisfaction == 3 %}border-l-emerald-500{% elif ticket.satisfaction == 2 %}border-l-amber-500{% else %}border-l-red-500{% endif %} shadow-sm p-5" id="avis-demandeur">
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+            <p class="text-xs font-black text-slate-400 uppercase tracking-widest">Avis du demandeur</p>
+            <span class="text-[10px] font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1" title="Visible uniquement par les managers, directeurs et administrateurs"><i data-lucide="lock" class="w-3 h-3"></i> Managers / directeurs</span>
+        </div>
+        <p class="text-sm font-bold text-slate-800 dark:text-white mt-2">
+            {% if ticket.satisfaction == 3 %}😊 Satisfait{% elif ticket.satisfaction == 2 %}😐 Moyen{% else %}🙁 Insatisfait{% endif %}
+            {% if ticket.satisfaction_at %}<span class="text-xs font-normal text-slate-400 ml-2">le {{ ticket.satisfaction_at.strftime('%d/%m/%Y à %H:%M') }}</span>{% endif %}
+        </p>
+        {% if ticket.satisfaction_comment %}<p class="text-xs text-slate-600 dark:text-slate-300 mt-2 italic">« {{ ticket.satisfaction_comment }} »</p>{% endif %}
+    </div>
+    {% endif %}
+
     {% if ticket.author_id == current_user.id and ticket.status.value == 'TERMINE' %}
     <!-- BOUCLE QUALITÉ (demandeur, ticket terminé) : avis + "ce n'est pas résolu" -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">

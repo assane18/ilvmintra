@@ -1,6 +1,9 @@
 {# Historique chronologique du ticket (journal d'audit, lot 8) — inclus dans
    tickets/detail.html pour l'équipe uniquement (can_manage_ticket). #}
 {% set history = audit_history('Ticket', ticket.id) %}
+{# L'avis du demandeur (ticket.rate) est réservé aux managers / directeurs / ADMIN : masqué aux techniciens #}
+{% set _r = current_user.role.value %}
+{% if not ('MANAGER' in _r or 'DIRECTEUR' in _r or 'ADMIN' in _r) %}{% set history = history|rejectattr('action', 'equalto', 'ticket.rate')|list %}{% endif %}
 {% if history %}
 <div class="bg-white dark:bg-slate-900 p-6 shadow-sm border border-gray-200 dark:border-slate-800">
     <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
