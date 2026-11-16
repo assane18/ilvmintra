@@ -143,6 +143,7 @@ class User(UserMixin, db.Model):
     font_scale = db.Column(db.String(10), default='normal')     # normal | large | xlarge
     density = db.Column(db.String(12), default='comfortable')   # comfortable | compact
     high_contrast = db.Column(db.Boolean, default=False)
+    theme_style = db.Column(db.String(10), default='flat')      # flat | glass
 
     # Préférence e-mail (page /profile) : all = chaque événement (défaut),
     # important = clôture / validation / affectation mais pas chaque message du

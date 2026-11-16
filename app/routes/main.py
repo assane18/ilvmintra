@@ -35,6 +35,7 @@ PROFILE_THEME_COLORS = {c for c, _, _ in PROFILE_THEME_PALETTE}
 PROFILE_THEME_MODES = {'light', 'dark', 'auto'}
 PROFILE_FONT_SCALES = {'normal', 'large', 'xlarge'}
 PROFILE_DENSITIES = {'comfortable', 'compact'}
+PROFILE_THEME_STYLES = {'flat', 'glass'}
 PROFILE_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 PROFILE_BUG_TYPES = ['Erreur', 'Affichage', 'Lenteur', 'Suggestion']
 
@@ -576,6 +577,9 @@ def profile_appearance_update():
     density = (data.get('density') or '').strip().lower()
     if density in PROFILE_DENSITIES:
         current_user.density = density; changed['density'] = density
+    style = (data.get('theme_style') or '').strip().lower()
+    if style in PROFILE_THEME_STYLES:
+        current_user.theme_style = style; changed['theme_style'] = style
     if 'high_contrast' in data:
         raw = data.get('high_contrast')
         hc = raw if isinstance(raw, bool) else str(raw).lower() in ('1', 'true', 'on', 'yes')

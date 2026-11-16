@@ -222,6 +222,23 @@
                 </div>
             </div>
 
+            <!-- Style visuel -->
+            <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
+                <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Style visuel</h2>
+                <p class="text-xs text-slate-400 mb-4">Change l'apparence des cartes et du fond de l'intranet — appliqué immédiatement.</p>
+                <div class="grid grid-cols-2 gap-3">
+                    {% for v, label, icon, desc in [('flat','Plat (actuel)','square','Cartes opaques, coins nets'), ('glass','Verre','sparkles','Cartes translucides, flou, coins arrondis — toujours en sombre')] %}
+                    <button type="button" data-pref="theme_style" data-value="{{ v }}"
+                            class="pref-btn text-left p-4 border-2 border-gray-200 dark:border-slate-700 hover:border-accent-400 transition {% if (current_user.theme_style or 'flat') == v %}is-active{% endif %}">
+                        <i data-lucide="{{ icon }}" class="w-5 h-5 mb-2 text-slate-500 dark:text-slate-300"></i>
+                        <p class="text-sm font-black text-slate-800 dark:text-white">{{ label }}</p>
+                        <p class="text-[11px] text-slate-400 mt-0.5">{{ desc }}</p>
+                    </button>
+                    {% endfor %}
+                </div>
+                <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5"><i data-lucide="moon" class="w-3 h-3 shrink-0"></i> Le thème Verre n'existe qu'en sombre : il force le mode sombre tant qu'il est actif, quel que soit le réglage "Mode d'affichage" ci-dessous.</p>
+            </div>
+
             <!-- Lisibilité -->
             <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm space-y-6">
                 <div>
@@ -387,6 +404,7 @@
         if (pref === 'theme_color') html.setAttribute('data-theme-color', value);
         else if (pref === 'font_scale') html.setAttribute('data-font-scale', value);
         else if (pref === 'density') html.setAttribute('data-density', value);
+        else if (pref === 'theme_style') html.setAttribute('data-theme-style', value);
         else if (pref === 'theme_mode' && window.ILVM_saveThemeMode) { window.ILVM_saveThemeMode(value); return true; } // sauvegarde déjà incluse
         return false;
     }

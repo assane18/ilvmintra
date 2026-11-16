@@ -3,7 +3,8 @@
       data-theme-color="{{ current_user.theme_color if current_user.is_authenticated and current_user.theme_color else 'teal' }}"
       data-font-scale="{{ current_user.font_scale if current_user.is_authenticated and current_user.font_scale else 'normal' }}"
       data-density="{{ current_user.density if current_user.is_authenticated and current_user.density else 'comfortable' }}"
-      data-contrast="{{ 'high' if current_user.is_authenticated and current_user.high_contrast else 'normal' }}">
+      data-contrast="{{ 'high' if current_user.is_authenticated and current_user.high_contrast else 'normal' }}"
+      data-theme-style="{{ current_user.theme_style if current_user.is_authenticated and current_user.theme_style else 'flat' }}">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
@@ -194,6 +195,147 @@
         html[data-contrast="high"]:not(.dark) body { background: #ffffff; }
         html[data-contrast="high"].dark body { background: #000000; }
 
+        /* --- Thème "Verre" (glassmorphism), optionnel — activé via l'attribut
+           data-theme-style="glass" sur <html> (réglage Apparence du profil, voir
+           app/routes/main.py::PROFILE_THEME_STYLES). N'habille que les classes
+           Tailwind déjà utilisées par les gabarits (transparence + flou + coins
+           arrondis) : aucun template n'a besoin d'être modifié pour en profiter.
+           Sélecteurs plus spécifiques que les utilitaires Tailwind injectés après,
+           donc ils l'emportent sans !important. Désactivé en contraste élevé
+           (:not([data-contrast="high"])) : la lisibilité prime sur le décoratif,
+           et sans ça le raccourci `background` du bloc contraste élevé ci-dessus
+           efface le dégradé de fond (shorthand = reset implicite de l'image). */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) body {
+            background-color: #eaf6f5;
+            position: relative;
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]).dark body {
+            background-color: #03101a;
+        }
+        /* "Aurore" de fond : vrais blobs flous au gaussien (filter: blur), pas un
+           simple dégradé — c'est ce qui rend l'effet verre crédible. Pseudo-
+           élément fixe plein écran débordant de 15% pour éviter un bord net en
+           bordure de viewport. */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) body::before {
+            content: "";
+            position: fixed;
+            inset: -15%;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                radial-gradient(circle at 15% 20%, #2dd4bf 0%, transparent 32%),
+                radial-gradient(circle at 85% 12%, #38bdf8 0%, transparent 34%),
+                radial-gradient(circle at 25% 85%, #818cf8 0%, transparent 32%),
+                radial-gradient(circle at 92% 88%, #f472b6 0%, transparent 30%),
+                radial-gradient(circle at 55% 50%, #5eead4 0%, transparent 36%);
+            filter: blur(70px) saturate(160%);
+            opacity: 0.65;
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]).dark body::before {
+            background:
+                radial-gradient(circle at 15% 20%, #0f766e 0%, transparent 32%),
+                radial-gradient(circle at 85% 12%, #0369a1 0%, transparent 34%),
+                radial-gradient(circle at 25% 85%, #4338ca 0%, transparent 32%),
+                radial-gradient(circle at 92% 88%, #a21caf 0%, transparent 30%),
+                radial-gradient(circle at 55% 50%, #0d9488 0%, transparent 36%);
+            opacity: 0.8;
+        }
+        /* Conteneur plein écran de chaque page (ex. <div class="flat bg-gray-50
+           dark:bg-slate-950 min-h-screen">, répété dans ~20 gabarits) : rendu
+           transparent pour laisser transparaître l'aurore du body ci-dessus —
+           sinon elle reste masquée derrière un aplat opaque. */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 {
+            background-color: transparent !important;
+        }
+        /* Cartes, panneaux, dropdowns : verre dépoli (l'aurore transparaît à
+           travers, flouté) + coins arrondis. border-radius en !important : de
+           nombreuses pages (profile.html, admin_*.html, portal.html, ...)
+           s'enveloppent dans un conteneur .flat qui force ".flat, .flat *
+           { border-radius: 0 !important; }" (design plat maison) — seul un
+           !important plus spécifique passe devant une règle !important
+           existante. */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) .dark\:bg-slate-900 {
+            background-color: rgba(255, 255, 255, 0.42) !important;
+            backdrop-filter: blur(26px) saturate(190%);
+            -webkit-backdrop-filter: blur(26px) saturate(190%);
+            border-radius: 1.5rem !important;
+            border: 1px solid rgba(255, 255, 255, 0.85) !important;
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]).dark .bg-white,
+        html[data-theme-style="glass"]:not([data-contrast="high"]).dark .dark\:bg-slate-900 {
+            background-color: rgba(15, 23, 42, 0.42) !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.09);
+        }
+        /* En-tête et barre latérale (layout "sidebar") : totalement détachées des
+           bords de l'écran (marge tout autour + coins arrondis sur les 4 côtés),
+           comme des panneaux de verre flottants plutôt que des barres accolées. */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) header {
+            margin: 1rem 1rem 0 0;
+            border-radius: 1.5rem !important;
+            background-color: rgba(255, 255, 255, 0.4) !important;
+            backdrop-filter: blur(26px) saturate(190%);
+            -webkit-backdrop-filter: blur(26px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.85) !important;
+            box-shadow: 0 8px 32px rgba(15, 23, 42, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]).dark header {
+            background-color: rgba(2, 6, 23, 0.42) !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.07);
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #app-sidebar {
+            margin: 1rem 0.75rem 1rem 1rem;
+            height: calc(100vh - 2rem);
+            border-radius: 1.5rem !important;
+            background-color: rgba(8, 47, 73, 0.4) !important;
+            backdrop-filter: blur(26px) saturate(190%);
+            -webkit-backdrop-filter: blur(26px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]) main#contenu {
+            margin: 0 1rem 1rem 0;
+        }
+        /* Volets flottants de l'en-tête (notifications, résultats de recherche) :
+           le backdrop-filter de <header> crée un contexte d'empilement, donc le
+           z-50 des volets n'agit qu'à l'intérieur de l'en-tête — sans z-index sur
+           l'en-tête lui-même, <main> (z-10) passait par-dessus. Et on leur donne
+           le même verre que les cartes, y compris leur bandeau de titre. */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) header { position: relative; z-index: 40; }
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #notif-dropdown,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #global-search-results {
+            background-color: rgba(2, 6, 23, 0.62) !important;
+            backdrop-filter: blur(26px) saturate(190%);
+            -webkit-backdrop-filter: blur(26px) saturate(190%);
+            border-radius: 1.25rem !important;
+            border: 1px solid rgba(255, 255, 255, 0.14) !important;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            overflow: hidden;
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #notif-dropdown > div:first-child,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #notif-list > *,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #global-search-results > * {
+            background-color: transparent !important;
+            border-color: rgba(255, 255, 255, 0.1) !important;
+        }
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #notif-list > *.border-blue-500 { background-color: rgba(59, 130, 246, 0.14) !important; }
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #notif-list > *:hover,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) #global-search-results a:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        /* Champs de saisie et boutons : coins arrondis pour rester cohérent avec les cartes */
+        html[data-theme-style="glass"]:not([data-contrast="high"]) input,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) select,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) textarea,
+        html[data-theme-style="glass"]:not([data-contrast="high"]) button {
+            border-radius: 0.9rem !important;
+        }
+
         /* Vos styles personnalisés conservés */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .modal { transition: opacity 0.25s ease; }
@@ -218,11 +360,14 @@
         // que de repli pour les pages non connectées (login) et de cache local.
         window.ILVM_THEME_MODE = "{{ current_user.theme_mode if current_user.is_authenticated and current_user.theme_mode else '' }}";
         window.ILVM_AUTHENTICATED = {{ 'true' if current_user.is_authenticated else 'false' }};
+        // Le thème "Verre" n'existe qu'en sombre (aucune version claire) : on force
+        // le mode sombre tant qu'il est actif, quel que soit le réglage Mode d'affichage.
+        window.ILVM_THEME_STYLE_GLASS = {{ 'true' if current_user.is_authenticated and current_user.theme_style == 'glass' else 'false' }};
         (function() {
             var mode = window.ILVM_THEME_MODE || localStorage.theme || 'auto';
             var mq = window.matchMedia('(prefers-color-scheme: dark)');
             function apply() {
-                var dark = mode === 'dark' || (mode === 'auto' && mq.matches);
+                var dark = window.ILVM_THEME_STYLE_GLASS || mode === 'dark' || (mode === 'auto' && mq.matches);
                 document.documentElement.classList.toggle('dark', dark);
             }
             apply();
