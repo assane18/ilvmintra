@@ -56,7 +56,7 @@ def create_sub_ticket(recruitment, target_service, title, description, specific_
     # 4. Copie physique des fichiers (Avec sécurité)
     ticket_files_list = []
     if files_to_copy:
-        base_upload_path = os.path.join(current_app.root_path, 'static', 'uploads')
+        base_upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'])
         src_dir = os.path.join(base_upload_path, 'fcpi', recruitment.uid_public)
         dest_dir = os.path.join(base_upload_path, 'tickets', unique_uid)
         
@@ -107,7 +107,7 @@ def new_fcpi():
             count = 1
         uid = f"FCPI-{today_str}-{str(count).zfill(3)}"
         
-        upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'fcpi', uid)
+        upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'fcpi', uid)
         os.makedirs(upload_path, exist_ok=True)
         
         def save_file(key):

@@ -1434,7 +1434,7 @@ class TestProfil:
             t = Ticket.query.filter(Ticket.category_ticket == 'Bug Intranet').first()
             assert t.get_daf_files() == ['CAPTURE_ecran.png']
             import shutil
-            shutil.rmtree(os.path.join(app.root_path, 'static', 'uploads', 'tickets', t.uid_public), ignore_errors=True)
+            shutil.rmtree(os.path.join(app.config['UPLOAD_FOLDER'], 'tickets', t.uid_public), ignore_errors=True)
 
     def test_detail_ticket_affiche_coordonnees_profil(self, client, db_session, app):
         self._setup(app)
@@ -2281,7 +2281,7 @@ class TestRetouchesLots:
             assert t.status == TicketStatus.DONE
             assert AuditLog.query.filter_by(action='ticket.close', target_ref=uid).count() == 1
             import shutil
-            shutil.rmtree(os.path.join(app.root_path, 'static', 'uploads', 'tickets', uid), ignore_errors=True)
+            shutil.rmtree(os.path.join(app.config['UPLOAD_FOLDER'], 'tickets', uid), ignore_errors=True)
 
 # ===========================================================================
 #  PILOTAGE : refus / suppression d'un ticket par un manager, hors DAF,

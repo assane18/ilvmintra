@@ -197,7 +197,7 @@ def attach_file_to_ticket(ticket, filename, content):
     from flask import current_app
     from werkzeug.utils import secure_filename
     filename = secure_filename(filename) or 'piece_jointe'
-    base = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', ticket.uid_public)
+    base = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', ticket.uid_public)
     os.makedirs(base, exist_ok=True)
     with open(os.path.join(base, filename), 'wb') as f:
         f.write(content)

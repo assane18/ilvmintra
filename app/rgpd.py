@@ -68,7 +68,7 @@ SUB_CLOSED = (FormSubmissionStatus.DONE, FormSubmissionStatus.REFUSED)
 
 # --- Helpers --------------------------------------------------------------
 def uploads_base():
-    return current_app.config.get('UPLOAD_FOLDER') or os.path.join(current_app.root_path, 'static', 'uploads')
+    return current_app.config['UPLOAD_FOLDER']
 
 
 def log_dir():

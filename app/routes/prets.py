@@ -186,7 +186,7 @@ def export_prets():
         })
     
     df = pd.DataFrame(data)
-    export_dir = os.path.join(current_app.root_path, 'static', 'uploads')
+    export_dir = os.path.join(current_app.config['UPLOAD_FOLDER'])
     os.makedirs(export_dir, exist_ok=True)
     filename = f'Export_Prets_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
     path = os.path.join(export_dir, filename)

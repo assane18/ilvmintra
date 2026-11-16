@@ -627,7 +627,7 @@ def profile_bug():
     if shot and shot.filename:
         ext = shot.filename.rsplit('.', 1)[-1].lower() if '.' in shot.filename else ''
         if ext in PROFILE_PHOTO_EXTENSIONS:
-            upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
+            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', uid)
             fname = secure_filename(f"CAPTURE_{shot.filename}")
             try:
                 os.makedirs(upload_path, exist_ok=True)

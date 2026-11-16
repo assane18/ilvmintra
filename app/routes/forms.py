@@ -21,7 +21,7 @@ forms_bp = Blueprint('forms', __name__, url_prefix='/forms')
 
 
 def _upload_dir(slug, uid):
-    path = os.path.join(current_app.root_path, 'static', 'uploads', 'forms', slug, uid)
+    path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'forms', slug, uid)
     os.makedirs(path, exist_ok=True)
     return path
 
@@ -192,7 +192,7 @@ def _create_one_ticket(submission, target):
         else [f for f in submission.files if f.field_name in included_fields]
 
     if files_to_copy:
-        base = os.path.join(current_app.root_path, 'static', 'uploads')
+        base = os.path.join(current_app.config['UPLOAD_FOLDER'])
         src_dir = os.path.join(base, 'forms', form_def.slug, submission.uid_public)
         dest_dir = os.path.join(base, 'tickets', uid)
         ticket_files = []

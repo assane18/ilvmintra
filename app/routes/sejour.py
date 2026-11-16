@@ -47,7 +47,7 @@ def _create_sejour_ticket(sejour, target_service, description, files_to_copy):
     # Copier les fichiers concernés dans le dossier du ticket
     ticket_files = []
     if files_to_copy:
-        base = os.path.join(current_app.root_path, 'static', 'uploads')
+        base = os.path.join(current_app.config['UPLOAD_FOLDER'])
         src_dir = os.path.join(base, 'sejour', sejour.uid_public)
         dest_dir = os.path.join(base, 'tickets', uid)
         if os.path.exists(src_dir):
@@ -82,7 +82,7 @@ def new_sejour():
         uid = f"SEJ-{today_str}-{str(count).zfill(3)}"
 
         upload_path = os.path.join(
-            current_app.root_path, 'static', 'uploads', 'sejour', uid
+            current_app.config['UPLOAD_FOLDER'], 'sejour', uid
         )
         os.makedirs(upload_path, exist_ok=True)
 
@@ -199,7 +199,7 @@ def validate_sejour(id, action):
 
         # Sauvegarde du dossier signé uploadé par le Directeur Adjoint
         upload_path = os.path.join(
-            current_app.root_path, 'static', 'uploads', 'sejour', sejour.uid_public
+            current_app.config['UPLOAD_FOLDER'], 'sejour', sejour.uid_public
         )
         os.makedirs(upload_path, exist_ok=True)
         file_signe = _save_file(request.files.get('file_dossier_signe'), upload_path, 'signe_')

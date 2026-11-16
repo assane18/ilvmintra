@@ -291,7 +291,7 @@ def new_ticket(service_name):
         daf_rib_filename = None
         
         if request.files:
-            upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
+            upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', uid)
             
             # Screenshot
             screenshot_file = request.files.get('screenshot')
@@ -485,7 +485,10 @@ def view_ticket(ticket_uid):
         if ticket.daf_files_json:
             try: attached_files = json.loads(ticket.daf_files_json)
             except: pass
-            
+        # Pièces jointes déclarées mais absentes du disque : signalées plutôt qu'un lien mort
+        _dir = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', ticket.uid_public)
+        missing_files = [f for f in attached_files if not os.path.isfile(os.path.join(_dir, f))]
+
         solvers_available = []
         
         # Si j'ai le droit de gérer, je veux voir la liste des collègues compétents
@@ -538,6 +541,7 @@ def view_ticket(ticket_uid):
 
         return render_template('tickets/detail.html', canned_responses=canned_responses, can_reopen=can_reopen,
                                can_pilot_ticket=_can_pilot_ticket(current_user, ticket),
+                               missing_files=missing_files,
                                ticket=ticket,
                                attached_files=attached_files, 
                                solvers_available=solvers_available,
@@ -1328,7 +1332,7 @@ def _delete_ticket_cascade(t):
     Appointment.query.filter_by(ticket_id=t.id).delete()
     EscalationTrace.query.filter_by(item_type='ticket', item_id=t.id).delete()
     Notification.query.filter(Notification.link.like(f'%/{uid}%')).delete(synchronize_session=False)
-    upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', uid)
+    upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', uid)
     if os.path.isdir(upload_path):
         shutil.rmtree(upload_path, ignore_errors=True)
     db.session.delete(t)
@@ -1445,7 +1449,7 @@ def daf_solver_submit(ticket_id):
             file = request.files['daf_prepared_file']
             if file and file.filename != '':
                 filename = secure_filename(f"PREPA_{t.uid_public}_{file.filename}")
-                upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', t.uid_public)
+                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', t.uid_public)
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, filename))
                 
@@ -1485,7 +1489,7 @@ def daf_director_sign(ticket_id):
             file = request.files['daf_signed_file']
             if file and file.filename != '':
                 filename = secure_filename(f"SIGNE_{t.uid_public}_{file.filename}")
-                upload_path = os.path.join(current_app.root_path, 'static', 'uploads', 'tickets', t.uid_public)
+                upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], 'tickets', t.uid_public)
                 os.makedirs(upload_path, exist_ok=True)
                 file.save(os.path.join(upload_path, filename))
                 t.daf_signed_file = filename
@@ -1909,7 +1913,7 @@ def export_history():
 
         df = pd.DataFrame(data)
         
-        export_dir = os.path.join(current_app.root_path, 'static', 'uploads')
+        export_dir = os.path.join(current_app.config['UPLOAD_FOLDER'])
         os.makedirs(export_dir, exist_ok=True)
         
         filename = f'Historique_Tickets_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
