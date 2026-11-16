@@ -8,6 +8,25 @@
         <i data-lucide="git-merge" class="w-4 h-4"></i> Tickets liés
     </h3>
 
+    {% if suspected_duplicates and can_manage_ticket and not ticket.parent and not is_closed %}
+        {# Doublons probables (app/duplicates.py) : signalés, jamais liés d'office — décision humaine #}
+        <div class="mb-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/40 p-3 text-xs space-y-2" id="suspected-duplicates">
+            <p class="font-black text-amber-800 dark:text-amber-200 uppercase tracking-wide flex items-center gap-2"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Doublon probable</p>
+            <p class="text-amber-700 dark:text-amber-300">Même demandeur, demande ouverte très proche :</p>
+            {% for s in suspected_duplicates[:3] %}
+            <div class="flex items-center gap-2 bg-white/60 dark:bg-slate-900/40 p-2">
+                <a href="{{ url_for('tickets.view_ticket', ticket_uid=s.uid_public) }}" class="flex-1 min-w-0">
+                    <span class="font-mono text-[10px] text-slate-500">#{{ s.uid_public }}</span>
+                    <span class="block font-bold text-slate-800 dark:text-white truncate" title="{{ s.title }}">{{ s.title }}</span>
+                </a>
+                <form action="{{ url_for('tech_extras.link_duplicate', ticket_id=ticket.id) }}" method="POST">
+                    <input type="hidden" name="master_uid" value="{{ s.uid_public }}">
+                    <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white px-2 py-1 text-[10px] font-bold uppercase flex items-center gap-1" title="Rattacher ce ticket comme doublon de #{{ s.uid_public }}"><i data-lucide="link" class="w-3 h-3"></i> Lier</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
     {% if ticket.parent %}
         <div class="bg-accent-50 dark:bg-accent-500/10 border border-accent-200 dark:border-accent-500/30 p-3 text-xs">
             <p class="text-slate-700 dark:text-slate-200">

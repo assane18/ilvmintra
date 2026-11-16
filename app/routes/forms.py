@@ -227,6 +227,9 @@ def _create_tickets_from_submission(submission):
             from app.routes.tickets import get_service_emails, notify_solvers_new_ticket
             send_service_alert(ticket, get_service_emails(target.target_service))
             notify_solvers_new_ticket(ticket)
+            # Doublon probable : signalé à l'équipe (note interne + notification), jamais lié d'office.
+            from app.duplicates import signal_possible_duplicates
+            signal_possible_duplicates(ticket, url_for('tickets.view_ticket', ticket_uid=ticket.uid_public))
 
 
 def _finalize_submission(submission):
@@ -318,6 +321,18 @@ def new_submission(slug):
                 flash(e, "danger")
             return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form, help_tips=help_tips, on_behalf=beneficiary)
 
+        # Demande en double probable (même demandeur, même formulaire, réponses
+        # très proches, demande encore ouverte) : on avertit avant de créer —
+        # sauf si le demandeur a déjà confirmé « créer quand même » (dup_ack).
+        # Repli serveur de la vérification JS (duplicate_check.js).
+        if not request.form.get('dup_ack') and not form_def.manager_only:
+            from app.duplicates import similar_open_submissions
+            dups = similar_open_submissions(author.id, form_def, data)
+            if dups:
+                flash("Vous avez déjà une demande en cours qui ressemble à celle-ci. Consultez-la ci-dessous, ou cochez « Créer quand même ».", "warning")
+                return render_template('forms/new_submission.html', form_def=form_def, form_data=request.form,
+                                       help_tips=help_tips, on_behalf=beneficiary, duplicate_suspects=[s for s, _ in dups[:3]])
+
         initial_index = _first_eligible_step_index(form_def, author, 0)
         submission = FormSubmission(
             uid_public=uid,
@@ -363,6 +378,26 @@ def new_submission(slug):
     if request.args.get('from') and form_data is None:
         flash("Impossible de pré-remplir : demande introuvable ou qui ne vous appartient pas.", "warning")
     return render_template('forms/new_submission.html', form_def=form_def, form_data=form_data or {}, help_tips=help_tips)
+
+
+@forms_bp.route('/<slug>/check-duplicate', methods=['POST'])
+@login_required
+def check_duplicate(slug):
+    """Vérification avant soumission (duplicate_check.js) : demandes ouvertes
+    similaires du demandeur sur ce formulaire. JSON {similar: [...]}."""
+    from app.duplicates import similar_open_submissions, form_data_to_dict
+    from app.delegation import resolve_on_behalf
+    form_def = FormDefinition.query.filter_by(slug=slug).first_or_404()
+    if form_def.manager_only:
+        return {'similar': []}
+    author = resolve_on_behalf(current_user, request.form) or current_user
+    data = form_data_to_dict(form_def, request.form)
+    found = similar_open_submissions(author.id, form_def, data)
+    return {'similar': [{
+        'uid': s.uid_public, 'title': f"{form_def.name}",
+        'status': 'En cours' if s.status == FormSubmissionStatus.IN_PROGRESS else 'Transmise',
+        'when': f"déposée le {s.created_at.strftime('%d/%m/%Y')}" if s.created_at else '',
+        'url': url_for('forms.view_submission', id=s.id)} for s, _ in found[:3]]}
 
 
 @forms_bp.route('/submission/<int:id>')

@@ -2378,6 +2378,106 @@ class TestPilotagePool:
 
 
 # ===========================================================================
+#  DOUBLONS (avertissement avant soumission, signalement équipe, jamais lié
+#  d'office) + remise d'un ticket dans le pool (2026-11-16)
+# ===========================================================================
+
+class TestDoublonsEtPool:
+
+    def _simple_form(self, author, slug='dup-form'):
+        from app.models import FormDefinition, FormField, FormFieldType, FormDispatchTarget
+        fd = FormDefinition(slug=slug, name='Demande info', is_active=True, created_by=author, manager_only=False)
+        db.session.add(fd); db.session.flush()
+        db.session.add(FormField(form_definition_id=fd.id, name='objet', label='Objet', field_type=FormFieldType.TEXT, is_required=True, order_index=0))
+        db.session.add(FormField(form_definition_id=fd.id, name='detail', label='Détail', field_type=FormFieldType.TEXTAREA, order_index=1))
+        db.session.add(FormDispatchTarget(form_definition_id=fd.id, label='INFO', target_service=ServiceType.INFO,
+                                          ticket_title_template='$objet', ticket_description_template='$detail'))
+        db.session.commit()
+        return fd
+
+    def test_similarite_normalisee(self):
+        from app.duplicates import similarity
+        assert similarity("Écran cassé bureau 12", "ecran casse, bureau 12 !") > 0.95
+        assert similarity("Écran cassé", "Imprimante en panne") < 0.5
+
+    def test_verification_avant_soumission_formulaire(self, client, db_session):
+        user = make_user(UserRole.USER, username='dup_user')
+        self._simple_form(user)
+        login(client, 'dup_user')
+        data = {'objet': 'Mon écran est cassé', 'detail': 'Le bureau 12 a un écran noir depuis ce matin'}
+        # 1re demande : rien de similaire
+        assert client.post('/forms/dup-form/check-duplicate', data=data).get_json() == {'similar': []}
+        r = client.post('/forms/dup-form/new', data=data, follow_redirects=True)
+        assert r.status_code == 200 and Ticket.query.count() == 1
+        # 2e demande quasi identique : le contrôle la détecte
+        data2 = {'objet': 'mon ecran est casse', 'detail': 'le bureau 12 a un ecran noir depuis ce matin.'}
+        sim = client.post('/forms/dup-form/check-duplicate', data=data2).get_json()['similar']
+        assert len(sim) == 1 and sim[0]['uid'].startswith('FRM-dup-form-')
+        # repli serveur : sans dup_ack, on avertit sans créer
+        r = client.post('/forms/dup-form/new', data=data2)
+        assert r.status_code == 200 and 'demande en cours similaire' in r.data.decode() and Ticket.query.count() == 1
+        # avec dup_ack : créée, et l'équipe est prévenue (note interne + notification), sans liaison
+        tech = make_user(UserRole.SOLVER, username='dup_tech', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        r = client.post('/forms/dup-form/new', data=dict(data2, dup_ack='1'), follow_redirects=True)
+        assert r.status_code == 200 and Ticket.query.count() == 2
+        new = Ticket.query.order_by(Ticket.id.desc()).first()
+        assert new.parent_id is None
+        assert any(m.is_internal and 'Doublon probable' in m.content for m in new.messages)
+        assert Notification.query.filter_by(user_id=tech.id).filter(Notification.message.contains('Doublon probable')).count() == 1
+
+    def test_verification_formulaire_historique_et_carte_lier(self, client, db_session):
+        user = make_user(UserRole.USER, username='dup_user2')
+        first = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.PENDING, title='Imprimante bloquée couloir A', description='Bourrage papier permanent')
+        login(client, 'dup_user2')
+        sim = client.post('/tickets/check-duplicate', data={'service_name': 'INFO', 'title': 'imprimante bloquee couloir a', 'description': ''}).get_json()['similar']
+        assert [s['uid'] for s in sim] == [first.uid_public]
+        assert client.post('/tickets/check-duplicate', data={'service_name': 'DAF', 'title': 'imprimante bloquee couloir a'}).get_json() == {'similar': []}
+        # côté équipe : le 2e ticket affiche « Doublon probable » avec le bouton Lier pré-rempli
+        second = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.PENDING, title='Imprimante bloquée couloir A (bis)', description='Bourrage papier permanent')
+        make_user(UserRole.SOLVER, username='dup_tech2', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        login(client, 'dup_tech2')
+        html = client.get(f'/tickets/view/{second.uid_public}').data.decode()
+        assert 'Doublon probable' in html and f'value="{first.uid_public}"' in html
+        login(client, 'dup_user2')
+        assert 'Doublon probable' not in client.get(f'/tickets/view/{second.uid_public}').data.decode()
+
+    def test_remise_dans_le_pool(self, client, db_session):
+        from app.models import AuditLog
+        user = make_user(UserRole.USER, username='pool_user')
+        tech = make_user(UserRole.SOLVER, username='pool_tech', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        make_user(UserRole.SOLVER, username='pool_other', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        t = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.IN_PROGRESS)
+        t.solver_id = tech.id; t.assigned_at = datetime.utcnow(); t.category_ticket = 'Standard'; db.session.commit()
+        # un autre technicien ne peut pas
+        login(client, 'pool_other')
+        client.post(f'/tickets/solver/release/{t.id}', follow_redirects=True)
+        assert Ticket.query.get(t.id).solver_id == tech.id
+        # le technicien en charge : oui, avec motif
+        login(client, 'pool_tech')
+        r = client.post(f'/tickets/solver/release/{t.id}', data={'reason': 'Pas ma compétence'}, follow_redirects=True)
+        assert r.status_code == 200
+        t = Ticket.query.get(t.id)
+        assert t.solver_id is None and t.assigned_at is None and t.status == TicketStatus.PENDING
+        assert any('remis dans le pool' in m.content and 'Pas ma compétence' in m.content for m in t.messages)
+        assert AuditLog.query.filter_by(action='ticket.release', target_ref=t.uid_public).count() == 1
+        assert Notification.query.filter_by(user_id=user.id).filter(Notification.message.contains("en attente d'un technicien")).count() == 1
+        # il réapparaît dans le pool du Dashboard des techniciens
+        login(client, 'pool_other')
+        assert t.uid_public in client.get('/tickets/solver/dashboard').data.decode()
+
+    def test_manager_peut_remettre_dans_le_pool(self, client, db_session):
+        user = make_user(UserRole.USER, username='pool_user3')
+        tech = make_user(UserRole.SOLVER, username='pool_tech3', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        make_user(UserRole.MANAGER, username='pool_mgr3', service=ServiceType.INFO, allowed_services=[ServiceType.INFO])
+        t = make_ticket(user, service=ServiceType.INFO, status=TicketStatus.IN_PROGRESS)
+        t.solver_id = tech.id; db.session.commit()
+        login(client, 'pool_mgr3')
+        assert 'Remettre dans le pool' in client.get(f'/tickets/view/{t.uid_public}').data.decode()
+        client.post(f'/tickets/solver/release/{t.id}', follow_redirects=True)
+        assert Ticket.query.get(t.id).solver_id is None
+
+
+# ===========================================================================
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================
 

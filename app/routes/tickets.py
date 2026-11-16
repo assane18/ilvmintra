@@ -355,8 +355,14 @@ def new_ticket(service_name):
         
         try:
             db.session.add(t)
+            db.session.flush()
+            if service_name != 'DAF':
+                # Doublon probable (même demandeur, demande similaire ouverte) :
+                # signalé à l'équipe, jamais lié automatiquement (app/duplicates.py).
+                from app.duplicates import signal_possible_duplicates
+                signal_possible_duplicates(t, url_for('tickets.view_ticket', ticket_uid=uid))
             db.session.commit()
-            
+
             # --- EMAIL ALERT (AJOUTÉ) ---
             recipients = get_service_emails(service_enum)
             if recipients:
@@ -542,6 +548,7 @@ def view_ticket(ticket_uid):
         return render_template('tickets/detail.html', canned_responses=canned_responses, can_reopen=can_reopen,
                                can_pilot_ticket=_can_pilot_ticket(current_user, ticket),
                                missing_files=missing_files,
+                               suspected_duplicates=(__import__('app.duplicates', fromlist=['suspected_for']).suspected_for(ticket) if can_manage_ticket else []),
                                ticket=ticket,
                                attached_files=attached_files, 
                                solvers_available=solvers_available,
@@ -1432,6 +1439,60 @@ def take_ticket(ticket_id):
     except Exception as e:
         flash(f"Erreur prise en charge: {e}", "danger")
         return redirect(url_for('main.user_portal'))
+
+@tickets_bp.route('/solver/release/<int:ticket_id>', methods=['POST'])
+@login_required
+def release_ticket(ticket_id):
+    """Remettre un ticket pris en charge dans le pool : par le technicien qui
+    l'a pris, ou par un manager/directeur/ADMIN compétent sur le service."""
+    t = Ticket.query.get_or_404(ticket_id)
+    role = safe_role_str(current_user)
+    from app.routes.tech_extras import can_manage
+    allowed = (t.solver_id == current_user.id) or (
+        any(r in role for r in ('MANAGER', 'DIRECTEUR', 'ADMIN')) and can_manage(t, current_user))
+    if not allowed:
+        flash("Seul le technicien en charge (ou un manager du service) peut remettre ce ticket dans le pool.", "danger")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    if t.solver_id is None or t.status in (TicketStatus.DONE, TicketStatus.REFUSED):
+        flash("Ce ticket n'est pas en cours de traitement.", "warning")
+        return redirect(url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    reason = (request.form.get('reason') or '').strip()
+    previous = t.solver.fullname if t.solver else '?'
+    t.solver_id = None
+    t.assigned_at = None
+    t.status = TicketStatus.PENDING
+    db.session.add(TicketMessage(
+        content=f"Ticket remis dans le pool par {current_user.fullname} (était pris en charge par {previous})."
+                + (f"\nMotif : {reason}" if reason else ""),
+        ticket=t, author=current_user, is_internal=True))
+    log_action('ticket.release', t, details=reason or f"libéré (était : {previous})")
+    create_notification(t.author, f"Votre demande {t.uid_public} est de nouveau en attente d'un technicien.", 'info',
+                        url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+    notify_solvers_new_ticket(t)
+    db.session.commit()
+    flash(f"Ticket {t.uid_public} remis dans le pool.", "success")
+    return redirect(request.form.get('next') or url_for('tickets.view_ticket', ticket_uid=t.uid_public))
+
+
+@tickets_bp.route('/check-duplicate', methods=['POST'])
+@login_required
+def check_duplicate():
+    """Avant soumission (formulaire historique) : demandes ouvertes similaires
+    du demandeur courant pour ce service. JSON {similar: [...]}."""
+    from app.duplicates import similar_open_tickets
+    from app.status_display import status_label
+    service_name = (request.form.get('service_name') or '').upper()
+    try:
+        svc = ServiceType[service_name]
+    except KeyError:
+        svc = None
+    found = similar_open_tickets(current_user.id, request.form.get('title', ''), request.form.get('description', ''),
+                                 target_service=svc)
+    return {'similar': [{
+        'uid': t.uid_public, 'title': t.title, 'status': status_label(t.status, short=True),
+        'when': f"créée le {t.created_at.strftime('%d/%m/%Y')}" if t.created_at else '',
+        'url': url_for('tickets.view_ticket', ticket_uid=t.uid_public)} for t, _ in found[:3]]}
+
 
 @tickets_bp.route('/solver/daf_submit/<int:ticket_id>', methods=['POST'])
 @login_required

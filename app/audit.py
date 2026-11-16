@@ -25,6 +25,7 @@ ACTION_LABELS = {
     'ticket.validate': 'Ticket validé',
     'ticket.refuse': 'Ticket refusé',
     'ticket.delete': 'Ticket supprimé',
+    'ticket.release': 'Ticket remis dans le pool',
     'ticket.close': 'Ticket clôturé',
     'ticket.reopen': 'Ticket rouvert',
     'ticket.assign': 'Ticket affecté',

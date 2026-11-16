@@ -51,7 +51,20 @@
         <p class="text-xs text-slate-700 dark:text-slate-200">Formulaire pré-rempli à partir d'une de vos demandes précédentes. Vérifiez et ajustez avant de soumettre — les pièces jointes ne sont pas reprises.</p>
     </div>
     {% endif %}
-    <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="{{ form_def.name }}">
+    {% if duplicate_suspects %}
+    <div class="mb-6 bg-amber-50 dark:bg-amber-500/10 border border-amber-300 dark:border-amber-500/40 px-5 py-4" id="duplicate-warning">
+        <p class="text-sm font-black text-amber-800 dark:text-amber-200 flex items-center gap-2"><i data-lucide="copy" class="w-4 h-4"></i> Vous avez déjà une demande en cours similaire</p>
+        <ul class="mt-2 space-y-1 text-xs">
+            {% for s in duplicate_suspects %}
+            <li><a href="{{ url_for('forms.view_submission', id=s.id) }}" class="font-bold text-amber-800 dark:text-amber-200 underline">{{ s.uid_public }}</a> — déposée le {{ s.created_at.strftime('%d/%m/%Y') if s.created_at else '' }}, {{ 'en cours de validation' if s.status.value == 'EN_COURS' else 'transmise au service' }}</li>
+            {% endfor %}
+        </ul>
+        <p class="text-[11px] text-amber-700 dark:text-amber-300 mt-2">Inutile de refaire la demande : ouvrez-la pour y ajouter un message. Si c'est bien une nouvelle demande, cochez ci-dessous puis soumettez à nouveau (les fichiers sont à rejoindre).</p>
+        <label class="mt-3 flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-white"><input type="checkbox" name="dup_ack" value="1" form="form-{{ form_def.slug }}"> Créer quand même, c'est une nouvelle demande</label>
+    </div>
+    {% endif %}
+    <form id="form-{{ form_def.slug }}" method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="{{ form_def.name }}"
+          {% if not form_def.manager_only and not duplicate_suspects %}data-dup-check="{{ url_for('forms.check_duplicate', slug=form_def.slug) }}"{% endif %}>
         <!-- Lot 7 : demande au nom de quelqu'un d'autre -->
         {% include 'delegations/_on_behalf_block.html' %}
 
@@ -65,5 +78,6 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/form_conditions.js') }}"></script>
+<script src="{{ url_for('static', filename='js/duplicate_check.js') }}"></script>
 </div>
 {% endblock %}

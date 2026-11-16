@@ -34,7 +34,7 @@
                 {% endif %}
             </div>
             <p class="text-[10px] text-slate-400 mt-1 px-2 {% if mine %}text-right{% endif %}">
-                {{ msg.author.fullname if msg.author else 'Utilisateur supprimé' }} • {{ msg.timestamp.strftime('%d/%m à %H:%M') }}
+                {{ msg.author.fullname if msg.author else ('Système' if msg.is_internal else 'Utilisateur supprimé') }} • {{ msg.timestamp.strftime('%d/%m à %H:%M') }}
             </p>
         </div>
     </div>

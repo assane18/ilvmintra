@@ -144,6 +144,12 @@
                                                     <i data-lucide="check" class="w-3.5 h-3.5"></i> Clôturer
                                                 </button>
                                             </form>
+                                            <form action="{{ url_for('tickets.release_ticket', ticket_id=ticket.id) }}" method="POST">
+                                                <input type="hidden" name="next" value="{{ url_for('tickets.solver_dashboard') }}">
+                                                <button type="submit" class="w-full text-left px-3 py-2 text-xs font-bold uppercase text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/30 flex items-center gap-2">
+                                                    <i data-lucide="undo-2" class="w-3.5 h-3.5"></i> Remettre dans le pool
+                                                </button>
+                                            </form>
                                             <div class="border-t border-gray-200 dark:border-slate-700 mt-1 pt-2 px-3 pb-1">
                                                 <p class="text-[9px] text-slate-400 dark:text-slate-500 uppercase font-bold mb-1">Transférer à</p>
                                                 <form action="{{ url_for('tickets.transfer_ticket', ticket_id=ticket.id) }}" method="POST">

@@ -483,6 +483,17 @@
 
                     {% endif %}
 
+                    {% if ticket.status.value not in ('TERMINE', 'REFUSE') and (ticket.solver_id == current_user.id or 'MANAGER' in current_user.role.value or 'DIRECTEUR' in current_user.role.value or 'ADMIN' in current_user.role.value) %}
+                    {# Remettre dans le pool : le technicien en charge, ou un manager/directeur/ADMIN du service #}
+                    <form action="{{ url_for('tickets.release_ticket', ticket_id=ticket.id) }}" method="POST" class="mt-4 pt-4 border-t border-slate-700 flex gap-2" x-data="{ open: false }">
+                        <input type="text" name="reason" maxlength="300" x-show="open" x-cloak placeholder="Motif (optionnel)" class="flex-1 bg-slate-900 border border-slate-600 text-xs px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-amber-500">
+                        <button type="button" x-show="!open" @click="open = true" class="w-full border border-amber-500/60 text-amber-300 hover:bg-amber-500/10 py-2.5 text-xs font-bold uppercase flex items-center justify-center gap-2 transition">
+                            <i data-lucide="undo-2" class="w-4 h-4"></i> Remettre dans le pool
+                        </button>
+                        <button type="submit" x-show="open" x-cloak class="bg-amber-600 hover:bg-amber-500 text-white px-3 py-2 text-xs font-bold uppercase whitespace-nowrap">Confirmer</button>
+                    </form>
+                    {% endif %}
+
                 {% else %}
                     <p class="text-sm text-slate-400 text-center py-4">Ticket clôturé sans prise en charge.</p>
                 {% endif %}

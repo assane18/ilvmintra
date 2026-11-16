@@ -67,7 +67,8 @@
             <p class="text-xs text-slate-700 dark:text-slate-200">Formulaire pré-rempli à partir de votre demande <span class="font-mono font-bold">{{ request.args.get('from') }}</span>. Vérifiez et ajustez avant d'envoyer — les pièces jointes ne sont pas reprises.</p>
         </div>
         {% endif %}
-        <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="Demande {{ service.value if service_name != 'MATERIEL' else 'MATÉRIEL' }}">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6" data-recap-confirm="Demande {{ service.value if service_name != 'MATERIEL' else 'MATÉRIEL' }}" {% if service_name != 'DAF' %}data-dup-check="{{ url_for('tickets.check_duplicate') }}"{% endif %}>
+            <input type="hidden" name="service_name" value="{{ service_name }}">
 
             <!-- Lot 7 : demande au nom de quelqu'un d'autre -->
             {% include 'delegations/_on_behalf_block.html' %}
@@ -462,4 +463,5 @@
 </script>
 {% endif %}
 </div>
+<script src="{{ url_for('static', filename='js/duplicate_check.js') }}"></script>
 {% endblock %}
