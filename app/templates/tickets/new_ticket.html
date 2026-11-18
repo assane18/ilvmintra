@@ -417,47 +417,47 @@
 
 {% if is_delegation %}
 <script>
+    // Délégation de signature : plafond 380 € HT / 400 € TTC, vérifié en direct
+    // (le serveur refuse aussi au-delà). Délégation d'événements sur le formulaire :
+    // couvre les lignes ajoutées après coup et le changement HT / TTC.
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.querySelector('form');
+        const total = document.querySelector('input[name^="daf_total_"]');
+        const form = total ? total.closest('form') : null;
+        if (!form) return;
         const submitBtn = form.querySelector('button[type="submit"]');
+        if (!submitBtn) return;
 
         const errorDiv = document.createElement('div');
         errorDiv.className = "hidden mt-4 p-4 bg-red-100 border border-red-400 text-red-700 font-bold text-sm text-center";
-
+        errorDiv.setAttribute('role', 'alert');
         submitBtn.parentNode.insertBefore(errorDiv, submitBtn);
 
         window.checkTotal = function() {
-            let total = 0;
-            const inputs = document.querySelectorAll('input[name^="daf_total_"]');
-            inputs.forEach(input => {
-                const val = parseFloat(input.value) || 0;
-                total += val;
+            let sum = 0;
+            form.querySelectorAll('input[name^="daf_total_"]').forEach(input => {
+                sum += parseFloat(String(input.value).replace(',', '.')) || 0;
             });
-
-            const taxType = document.querySelector('input[name="daf_tax_type"]:checked').value;
+            const checked = form.querySelector('input[name="daf_type_prix"]:checked');
+            const taxType = checked ? checked.value : 'TTC';
             const limit = (taxType === 'HT') ? 380 : 400;
 
-            if (total > limit) {
+            if (sum > limit) {
                 submitBtn.disabled = true;
                 submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
-                errorDiv.innerHTML = `⚠️ Le montant total dépasse ${limit}€ ${taxType}.<br>Impossible d'utiliser la délégation de signature.`;
+                errorDiv.innerHTML = `⚠️ Le montant total (${sum.toFixed(2)} €) dépasse ${limit} € ${taxType}.<br>Impossible d'utiliser la délégation de signature : passez par le bon de commande standard.`;
                 errorDiv.classList.remove('hidden');
             } else {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 errorDiv.classList.add('hidden');
             }
-        }
+        };
 
-        const initialInputs = document.querySelectorAll('input[name^="daf_total_"]');
-        initialInputs.forEach(input => {
-            input.addEventListener('input', checkTotal);
-            input.addEventListener('change', checkTotal);
-        });
-
-        document.getElementById('qte_1').addEventListener('input', () => setTimeout(checkTotal, 100));
-        document.getElementById('pu_1').addEventListener('input', () => setTimeout(checkTotal, 100));
-
+        // calcTotal() remplit le total de la ligne sur 'input' : on vérifie juste après.
+        const later = () => setTimeout(checkTotal, 0);
+        form.addEventListener('input', later);
+        form.addEventListener('change', later);
+        form.addEventListener('click', later);  // suppression d'une ligne
         checkTotal();
     });
 </script>
