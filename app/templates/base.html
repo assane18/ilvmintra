@@ -4,7 +4,7 @@
       data-font-scale="{{ current_user.font_scale if current_user.is_authenticated and current_user.font_scale else 'normal' }}"
       data-density="{{ current_user.density if current_user.is_authenticated and current_user.density else 'comfortable' }}"
       data-contrast="{{ 'high' if current_user.is_authenticated and current_user.high_contrast else 'normal' }}"
-      data-theme-style="{{ current_user.theme_style if current_user.is_authenticated and current_user.theme_style else 'flat' }}">
+      data-theme-style="{{ effective_theme_style(current_user) }}">
 <head>
     <meta charset="UTF-8">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
@@ -195,7 +195,7 @@
         html[data-contrast="high"]:not(.dark) body { background: #ffffff; }
         html[data-contrast="high"].dark body { background: #000000; }
 
-        /* --- Thème "Verre" (glassmorphism), optionnel — activé via l'attribut
+        /* --- Thème "Liquid Glass" (glassmorphism), optionnel — activé via l'attribut
            data-theme-style="glass" sur <html> (réglage Apparence du profil, voir
            app/routes/main.py::PROFILE_THEME_STYLES). N'habille que les classes
            Tailwind déjà utilisées par les gabarits (transparence + flou + coins
@@ -336,6 +336,477 @@
             border-radius: 0.9rem !important;
         }
 
+        /* ======================================================================
+           AUTRES STYLES VISUELS (Profil > Apparence > Style visuel). Même
+           mécanique que Liquid Glass : purement CSS, attribut data-theme-style
+           sur <html>, désactivés en contraste élevé, aucun gabarit modifié.
+           Repères communs : les cartes sont ".bg-white / .dark:bg-slate-900",
+           le conteneur plein écran de chaque page est ".min-h-screen.bg-gray-50",
+           et border-radius doit être !important pour passer devant la règle
+           ".flat * { border-radius: 0 !important }" du design plat.
+           ====================================================================== */
+
+        /* ---------- BENTO : cellules arrondies, bien séparées, beaucoup d'air ---------- */
+        html[data-theme-style="bento"]:not([data-contrast="high"]) body { background-color: #eef0f4; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]).dark body { background-color: #090e1a; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="bento"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 { background-color: transparent; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="bento"]:not([data-contrast="high"]) .dark\:bg-slate-900 {
+            border-radius: 1.25rem !important;
+            border-color: transparent;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+        }
+        html[data-theme-style="bento"]:not([data-contrast="high"]).dark .bg-white,
+        html[data-theme-style="bento"]:not([data-contrast="high"]).dark .dark\:bg-slate-900 {
+            background-color: #111827;
+            box-shadow: none;
+        }
+        /* Plus d'air entre et dans les cellules (sauf si l'utilisateur a choisi la densité compacte). */
+        html[data-theme-style="bento"]:not([data-contrast="high"]):not([data-density="compact"]) .p-6 { padding: 1.75rem; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]):not([data-density="compact"]) .gap-6 { gap: 1.75rem; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]):not([data-density="compact"]) .gap-4 { gap: 1.25rem; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) header.bg-white {
+            margin: 1rem 1rem 0 0;
+            border-radius: 1.25rem !important;
+            border-color: transparent;
+        }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) #app-sidebar {
+            margin: 1rem 0.5rem 1rem 1rem;
+            height: calc(100vh - 2rem);
+            border-radius: 1.25rem !important;
+            border-color: transparent;
+            overflow: hidden;
+        }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) main#contenu { margin: 0 1rem 1rem 0; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) input,
+        html[data-theme-style="bento"]:not([data-contrast="high"]) select,
+        html[data-theme-style="bento"]:not([data-contrast="high"]) textarea,
+        html[data-theme-style="bento"]:not([data-contrast="high"]) button { border-radius: 0.75rem !important; }
+        html[data-theme-style="bento"]:not([data-contrast="high"]) .w-2.h-2 { border-radius: 9999px !important; }
+
+        /* ---------- NEOMORPHISM : relief doux, tout moulé dans une même surface ---------- */
+        html[data-theme-style="neo"]:not([data-contrast="high"]) body { background-color: #e0e5ec; }
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark body { background-color: #1f2630; }
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 { background-color: transparent; box-shadow: none; }
+        /* Cartes : extrudées (ombre sombre en bas à droite, claire en haut à gauche). */
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .dark\:bg-slate-900 {
+            background-color: #e0e5ec;
+            border-color: transparent;
+            border-radius: 1.25rem !important;
+            box-shadow: 9px 9px 18px rgba(163, 177, 198, 0.65), -9px -9px 18px rgba(255, 255, 255, 0.85);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark .bg-white,
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark .dark\:bg-slate-900 {
+            background-color: #1f2630;
+            box-shadow: 9px 9px 18px rgba(10, 13, 18, 0.8), -9px -9px 18px rgba(52, 62, 76, 0.55);
+        }
+        /* Sous-panneaux et champs : enfoncés dans la surface (body et conteneur de
+           page exclus, sinon une vignette apparaîtrait sur tout l'écran). */
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .bg-gray-50:not(body):not(.min-h-screen),
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .bg-gray-100,
+        html[data-theme-style="neo"]:not([data-contrast="high"]) input,
+        html[data-theme-style="neo"]:not([data-contrast="high"]) select,
+        html[data-theme-style="neo"]:not([data-contrast="high"]) textarea {
+            background-color: #e0e5ec;
+            border-color: transparent;
+            border-radius: 0.9rem !important;
+            box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark .bg-gray-50:not(body):not(.min-h-screen),
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark .bg-gray-100,
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark input,
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark select,
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark textarea {
+            background-color: #1f2630;
+            box-shadow: inset 4px 4px 8px rgba(10, 13, 18, 0.75), inset -4px -4px 8px rgba(52, 62, 76, 0.5);
+        }
+        /* Boutons : extrudés, enfoncés au clic. */
+        html[data-theme-style="neo"]:not([data-contrast="high"]) button {
+            border-radius: 0.9rem !important;
+            border-color: transparent;
+            box-shadow: 5px 5px 10px rgba(163, 177, 198, 0.6), -5px -5px 10px rgba(255, 255, 255, 0.8);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark button {
+            box-shadow: 5px 5px 10px rgba(10, 13, 18, 0.75), -5px -5px 10px rgba(52, 62, 76, 0.5);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]) button:active {
+            box-shadow: inset 4px 4px 8px rgba(163, 177, 198, 0.6), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark button:active {
+            box-shadow: inset 4px 4px 8px rgba(10, 13, 18, 0.75), inset -4px -4px 8px rgba(52, 62, 76, 0.5);
+        }
+        /* Boutons dans la barre latérale (toujours sombre) : relief sombre même en mode clair. */
+        html[data-theme-style="neo"]:not([data-contrast="high"]) #app-sidebar button {
+            box-shadow: 4px 4px 8px rgba(10, 13, 18, 0.75), -4px -4px 8px rgba(52, 62, 76, 0.5);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]) header.bg-white {
+            margin: 1rem 1rem 0 0;
+            border-radius: 1.25rem !important;
+            border-color: transparent;
+        }
+        /* Barre latérale : reste sombre (logo et textes prévus pour fond sombre),
+           avec le même relief, détachée comme une pièce posée sur la surface. */
+        html[data-theme-style="neo"]:not([data-contrast="high"]) #app-sidebar {
+            margin: 1rem 0.5rem 1rem 1rem;
+            height: calc(100vh - 2rem);
+            border-radius: 1.25rem !important;
+            border-color: transparent;
+            background-color: #1f2630;
+            box-shadow: 9px 9px 18px rgba(163, 177, 198, 0.65), -9px -9px 18px rgba(255, 255, 255, 0.85);
+            overflow: hidden;
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]).dark #app-sidebar {
+            box-shadow: 9px 9px 18px rgba(10, 13, 18, 0.8), -9px -9px 18px rgba(52, 62, 76, 0.55);
+        }
+        html[data-theme-style="neo"]:not([data-contrast="high"]) main#contenu { margin: 0 1rem 1rem 0; }
+        html[data-theme-style="neo"]:not([data-contrast="high"]) .w-2.h-2 { border-radius: 9999px !important; }
+
+        /* ---------- HALFTONE : pop art, trame de points, contours noirs, ombres franches ---------- */
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) body {
+            background-color: #fff7e8;
+            background-image: radial-gradient(circle, rgba(17, 17, 17, 0.2) 1.2px, transparent 1.4px);
+            background-size: 9px 9px;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark body {
+            background-color: #0d0d0d;
+            background-image: radial-gradient(circle, rgba(255, 255, 255, 0.14) 1.2px, transparent 1.4px);
+            background-size: 9px 9px;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 { background-color: transparent; }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) .dark\:bg-slate-900 {
+            border: 2px solid #111111;
+            border-radius: 0.5rem !important;
+            box-shadow: 5px 5px 0 rgb(var(--accent-500));
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark .bg-white,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark .dark\:bg-slate-900 {
+            background-color: #161616;
+            border-color: #f2f2f2;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) header.bg-white {
+            border-width: 0 0 2px 0;
+            border-radius: 0 !important;
+            box-shadow: none;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) #app-sidebar {
+            background-color: #111111;
+            border-right: 2px solid #111111;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark #app-sidebar { border-right-color: #f2f2f2; }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) input,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) select,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) textarea {
+            border: 2px solid #111111;
+            border-radius: 0.25rem !important;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark input,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark select,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark textarea { border-color: #f2f2f2; }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) button,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) a.bg-accent-600,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) a.bg-accent-500 {
+            border: 2px solid #111111;
+            border-radius: 0.25rem !important;
+            box-shadow: 3px 3px 0 #111111;
+            transition: transform 0.08s, box-shadow 0.08s;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark button,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark a.bg-accent-600,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]).dark a.bg-accent-500 {
+            border-color: #f2f2f2;
+            box-shadow: 3px 3px 0 #f2f2f2;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) button:active,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) a.bg-accent-600:active {
+            transform: translate(2px, 2px);
+            box-shadow: 1px 1px 0 #111111;
+        }
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) h1,
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) h2 { letter-spacing: -0.01em; }
+        /* Boutons dans la barre latérale sombre : pas de contour ni d'ombre franche. */
+        html[data-theme-style="halftone"]:not([data-contrast="high"]) #app-sidebar button {
+            border-color: transparent;
+            box-shadow: none;
+        }
+
+        /* ---------- ASCII : terminal rétro, monospace. Clair = téléscripteur (vert
+           foncé sur papier crème) ; sombre = palette Tokyo Night (bleu nuit, texte
+           lavande, accent bleu). ---------- */
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) {
+            --accent-50: 220 252 231; --accent-100: 187 247 208; --accent-400: 34 197 94;
+            --accent-500: 22 163 74; --accent-600: 21 128 61; --accent-700: 20 83 45;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark {
+            --accent-50: 36 40 59; --accent-100: 41 46 66; --accent-400: 122 162 247;
+            --accent-500: 122 162 247; --accent-600: 109 143 224; --accent-700: 90 123 208;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) body,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .font-sans {
+            font-family: ui-monospace, "Cascadia Mono", "Consolas", "Courier New", monospace;
+            background-color: #f3efe2;
+            color: #14321c;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark body,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .font-sans {
+            background-color: #1a1b26;
+            color: #c0caf5;
+        }
+        /* Scanlines très légères par-dessus tout (pointer-events none : aucune gêne). */
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) body::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            pointer-events: none;
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.05) 0 1px, transparent 1px 3px);
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark body::after {
+            background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px);
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 { background-color: transparent; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:bg-slate-900,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) header.bg-white {
+            background-color: #faf7ee;
+            border: 1px solid #4b7d55;
+            border-radius: 0 !important;
+            box-shadow: none;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .bg-white,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:bg-slate-900,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark header.bg-white {
+            background-color: #24283b;
+            border-color: #3b4261;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .bg-gray-50:not(body):not(.min-h-screen),
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .bg-gray-100,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) input,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) select,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) textarea {
+            background-color: #ece8d8;
+            border: 1px solid #4b7d55;
+            border-radius: 0 !important;
+            color: #14321c;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .bg-gray-50:not(body):not(.min-h-screen),
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .bg-gray-100,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:bg-slate-800:not(body):not(.min-h-screen),
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:bg-slate-950:not(body):not(.min-h-screen),
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark input,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark select,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark textarea {
+            background-color: #1f2335;
+            border: 1px solid #3b4261;
+            border-radius: 0 !important;
+            color: #c0caf5;
+        }
+        /* Barre latérale : toujours sombre (logo et textes prévus pour fond sombre). */
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) #app-sidebar {
+            background-color: #0a140c;
+            border-right: 1px solid #2f7a3a;
+        }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark #app-sidebar { background-color: #16161e; border-right-color: #3b4261; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) #app-sidebar .bg-slate-800 { background-color: #163016; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark #app-sidebar .bg-slate-800 { background-color: #292e42; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) button { border-radius: 0 !important; box-shadow: none; }
+        /* Toute la typographie passe au vert : titres marqués, textes secondaires atténués. */
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-slate-900,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-slate-800,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-slate-700,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:text-white,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:text-slate-100,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:text-slate-200 { color: #14321c; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-slate-600,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-slate-500,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-slate-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-gray-500,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .text-gray-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:text-slate-300,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:text-slate-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:text-slate-500 { color: #3f7a4a; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-slate-900,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-slate-800,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-slate-700,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:text-white,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:text-slate-100,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:text-slate-200 { color: #c0caf5; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-slate-600,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-slate-500,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-slate-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-gray-500,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .text-gray-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:text-slate-300,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:text-slate-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:text-slate-500 { color: #737aa2; }
+        /* La barre latérale garde ses textes clairs sur fond sombre dans les deux modes. */
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) #app-sidebar .text-slate-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) #app-sidebar .text-slate-300 { color: #74c77e; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark #app-sidebar .text-slate-400,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark #app-sidebar .text-slate-300 { color: #a9b1d6; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .border-gray-200,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:border-slate-800,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]) .dark\:border-slate-700 { border-color: #4b7d55; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .border-gray-200,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:border-slate-800,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark .dark\:border-slate-700 { border-color: #3b4261; }
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark h1,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark h2,
+        html[data-theme-style="ascii"]:not([data-contrast="high"]).dark h3 { text-shadow: 0 0 8px rgba(122, 162, 247, 0.35); }
+
+        /* ---------- SOFT 3D (claymorphism) : formes rebondies, ombres douces, surfaces pastel ---------- */
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) body {
+            background: linear-gradient(135deg, #e9edff 0%, #e6fbf5 50%, #fdeaf3 100%) fixed;
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]).dark body {
+            background: linear-gradient(135deg, #0f172a 0%, #121a2e 55%, #1e1b4b 100%) fixed;
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 { background-color: transparent; }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) .dark\:bg-slate-900 {
+            border-color: transparent;
+            border-radius: 1.75rem !important;
+            box-shadow:
+                0 18px 36px rgba(99, 102, 241, 0.14),
+                inset 0 -6px 12px rgba(15, 23, 42, 0.06),
+                inset 0 6px 12px rgba(255, 255, 255, 0.9);
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]).dark .bg-white,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]).dark .dark\:bg-slate-900 {
+            background-color: #1b2540;
+            box-shadow:
+                0 18px 36px rgba(0, 0, 0, 0.45),
+                inset 0 -6px 12px rgba(0, 0, 0, 0.35),
+                inset 0 6px 12px rgba(255, 255, 255, 0.07);
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) header.bg-white {
+            margin: 1rem 1rem 0 0;
+            border-radius: 1.75rem !important;
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) #app-sidebar {
+            margin: 1rem 0.5rem 1rem 1rem;
+            height: calc(100vh - 2rem);
+            border-radius: 1.75rem !important;
+            border-color: transparent;
+            background-color: #1b2540;
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.3), inset 0 6px 12px rgba(255, 255, 255, 0.07);
+            overflow: hidden;
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) main#contenu { margin: 0 1rem 1rem 0; }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) input,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) select,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) textarea {
+            border-radius: 1rem !important;
+            border-color: transparent;
+            box-shadow: inset 0 3px 8px rgba(15, 23, 42, 0.08);
+        }
+        /* Boutons "jouet" : lèvre 3D en bas, s'enfoncent au clic. */
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) button,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) a.bg-accent-600,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) a.bg-accent-500 {
+            border-radius: 1rem !important;
+            box-shadow: inset 0 -4px 0 rgba(15, 23, 42, 0.18), 0 6px 14px rgba(15, 23, 42, 0.12);
+            transition: transform 0.08s, box-shadow 0.08s;
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) button:active,
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) a.bg-accent-600:active {
+            transform: translateY(2px);
+            box-shadow: inset 0 -1px 0 rgba(15, 23, 42, 0.18), 0 2px 6px rgba(15, 23, 42, 0.12);
+        }
+        html[data-theme-style="soft3d"]:not([data-contrast="high"]) .w-2.h-2 { border-radius: 9999px !important; }
+
+        /* ---------- JAPON (édition limitée, clair uniquement) : peinture à l'encre
+           fournie (static/img/theme_japon.jpg — cerisier, montagnes dans la brume,
+           calligraphie), police monospace, cartes translucides à bord gris chaud,
+           barre latérale ardoise-indigo, accent rouge "sceau". Réservé aux comptes
+           de main.py::PROFILE_LIMITED_STYLES. ---------- */
+        html[data-theme-style="japon"]:not([data-contrast="high"]) {
+            --accent-50: 246 232 230; --accent-100: 236 206 203; --accent-400: 200 90 84;
+            --accent-500: 181 65 59; --accent-600: 160 52 47; --accent-700: 130 40 36;
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) body,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .font-sans {
+            font-family: ui-monospace, "Cascadia Mono", "Consolas", "Courier New", monospace;
+            background-color: #ece6d8;
+            color: #2b2a28;
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background: url("{{ url_for('static', filename='img/theme_japon.jpg', v='1') }}") center / cover no-repeat;
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .min-h-screen.bg-gray-50,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .min-h-screen.dark\:bg-slate-950 { background-color: transparent; }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .bg-white,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .dark\:bg-slate-900,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) header.bg-white {
+            background-color: rgba(247, 243, 235, 0.74);
+            border: 1px solid #b9b1a3;
+            border-radius: 0.5rem !important;
+            box-shadow: 0 2px 10px rgba(60, 50, 40, 0.08);
+            backdrop-filter: blur(2px);
+            -webkit-backdrop-filter: blur(2px);
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) header.bg-white {
+            margin: 0.75rem 1rem 0 0;
+            background-color: rgba(247, 243, 235, 0.6);
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) main#contenu { margin-right: 1rem; }
+        /* Halo couleur papier derrière les textes posés directement sur la peinture
+           (titres de page hors cartes) ; invisible sur les cartes, de la même teinte. */
+        html[data-theme-style="japon"]:not([data-contrast="high"]) main#contenu {
+            text-shadow: 0 0 4px rgba(236, 230, 216, 0.95), 0 0 10px rgba(236, 230, 216, 0.9), 0 0 18px rgba(236, 230, 216, 0.8);
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .bg-gray-50:not(body):not(.min-h-screen),
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .bg-gray-100,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) input,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) select,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) textarea {
+            background-color: rgba(240, 235, 225, 0.85);
+            border: 1px solid #b9b1a3;
+            border-radius: 0.4rem !important;
+            color: #2b2a28;
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) button {
+            border-radius: 0.4rem !important;
+            box-shadow: none;
+        }
+        /* Boutons sombres (ex. « Écran mural », « Retour portail ») : ardoise-indigo
+           comme la barre latérale plutôt que noir, pour rester dans la palette. */
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .bg-slate-900 { background-color: #3f4357; }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) #app-sidebar {
+            background-color: #3f4357;
+            border-right: 1px solid #2f3344;
+            color: #e8e4dc;
+        }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) #app-sidebar .bg-slate-800 { background-color: #52576e; }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) #app-sidebar .text-slate-300,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) #app-sidebar .text-slate-400 { color: #e8e4dc; }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) #app-sidebar .border-slate-800 { border-color: #2f3344; }
+        /* Typographie : encre sur papier, textes secondaires gris chaud */
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-slate-900,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-slate-800,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-slate-700 { color: #2b2a28; }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-slate-600,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-slate-500,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-slate-400,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-gray-500,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-gray-400 { color: #6b665c; }
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .border-gray-200,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .border-slate-200 { border-color: #b9b1a3; }
+        /* Les grands chiffres des indicateurs en rouge sceau, comme sur la maquette */
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-2xl.font-black,
+        html[data-theme-style="japon"]:not([data-contrast="high"]) .text-3xl.font-black { color: #b5413b; }
+
         /* Vos styles personnalisés conservés */
         .scrollbar-hide::-webkit-scrollbar { display: none; }
         .modal { transition: opacity 0.25s ease; }
@@ -360,14 +831,18 @@
         // que de repli pour les pages non connectées (login) et de cache local.
         window.ILVM_THEME_MODE = "{{ current_user.theme_mode if current_user.is_authenticated and current_user.theme_mode else '' }}";
         window.ILVM_AUTHENTICATED = {{ 'true' if current_user.is_authenticated else 'false' }};
-        // Le thème "Verre" n'existe qu'en sombre (aucune version claire) : on force
-        // le mode sombre tant qu'il est actif, quel que soit le réglage Mode d'affichage.
-        window.ILVM_THEME_STYLE_GLASS = {{ 'true' if current_user.is_authenticated and current_user.theme_style == 'glass' else 'false' }};
+        // Le style Liquid Glass n'existe qu'en sombre : on force le mode sombre tant
+        // qu'il est actif, quel que soit le réglage Mode d'affichage. Liste côté
+        // serveur : main.py::PROFILE_DARK_ONLY_STYLES.
+        window.ILVM_DARK_ONLY_STYLES = {{ dark_only_styles|list|tojson }};
+        window.ILVM_LIGHT_ONLY_STYLES = {{ light_only_styles|list|tojson }};
+        window.ILVM_THEME_FORCE_DARK = {{ 'true' if effective_theme_style(current_user) in dark_only_styles else 'false' }};
+        window.ILVM_THEME_FORCE_LIGHT = {{ 'true' if effective_theme_style(current_user) in light_only_styles else 'false' }};
         (function() {
             var mode = window.ILVM_THEME_MODE || localStorage.theme || 'auto';
             var mq = window.matchMedia('(prefers-color-scheme: dark)');
             function apply() {
-                var dark = window.ILVM_THEME_STYLE_GLASS || mode === 'dark' || (mode === 'auto' && mq.matches);
+                var dark = !window.ILVM_THEME_FORCE_LIGHT && (window.ILVM_THEME_FORCE_DARK || mode === 'dark' || (mode === 'auto' && mq.matches));
                 document.documentElement.classList.toggle('dark', dark);
             }
             apply();
@@ -378,6 +853,9 @@
                 try { localStorage.theme = newMode; } catch (e) {}
                 apply();
             };
+            // Ré-application sans changer la préférence (aperçu en direct d'un style
+            // visuel depuis la page profil).
+            window.ILVM_applyThemeMode = apply;
         })();
     </script>
     <!-- Barre latérale repliable (icônes seules) : état mémorisé localement, appliqué avant le rendu -->

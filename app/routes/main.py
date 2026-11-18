@@ -35,7 +35,40 @@ PROFILE_THEME_COLORS = {c for c, _, _ in PROFILE_THEME_PALETTE}
 PROFILE_THEME_MODES = {'light', 'dark', 'auto'}
 PROFILE_FONT_SCALES = {'normal', 'large', 'xlarge'}
 PROFILE_DENSITIES = {'comfortable', 'compact'}
-PROFILE_THEME_STYLES = {'flat', 'glass'}
+# flat = design plat par défaut ; les autres sont des habillages purement CSS
+# (base.html, html[data-theme-style="..."]). glass n'existe qu'en sombre (mode
+# forcé côté client, voir le script d'init du thème) ; les autres ont une
+# version claire et une version sombre.
+PROFILE_THEME_STYLES = {'flat', 'glass', 'bento', 'neo', 'halftone', 'ascii', 'soft3d', 'japon'}
+PROFILE_DARK_ONLY_STYLES = {'glass'}
+PROFILE_LIGHT_ONLY_STYLES = {'japon'}
+# Styles en édition limitée : réservés à une liste d'identifiants (comparaison
+# insensible à la casse). Le bouton n'est proposé qu'à eux, la sauvegarde est
+# refusée aux autres, et un style limité déjà en base pour un compte qui n'y a
+# plus droit retombe sur le design plat (effective_theme_style ci-dessous).
+PROFILE_LIMITED_STYLES = {'japon': {'admin-traore', 'astraore'}}
+
+
+def user_can_use_style(user, style):
+    allowed = PROFILE_LIMITED_STYLES.get(style)
+    if allowed is None:
+        return True
+    return bool(user and user.is_authenticated and (user.username or '').lower() in allowed)
+
+
+def effective_theme_style(user):
+    style = (user.theme_style if user and user.is_authenticated and user.theme_style else 'flat')
+    return style if user_can_use_style(user, style) else 'flat'
+
+
+@main_bp.app_context_processor
+def _inject_theme_helpers():
+    return {
+        'effective_theme_style': effective_theme_style,
+        'user_can_use_style': user_can_use_style,
+        'light_only_styles': PROFILE_LIGHT_ONLY_STYLES,
+        'dark_only_styles': PROFILE_DARK_ONLY_STYLES,
+    }
 PROFILE_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp'}
 PROFILE_BUG_TYPES = ['Erreur', 'Affichage', 'Lenteur', 'Suggestion']
 
@@ -578,7 +611,7 @@ def profile_appearance_update():
     if density in PROFILE_DENSITIES:
         current_user.density = density; changed['density'] = density
     style = (data.get('theme_style') or '').strip().lower()
-    if style in PROFILE_THEME_STYLES:
+    if style in PROFILE_THEME_STYLES and user_can_use_style(current_user, style):
         current_user.theme_style = style; changed['theme_style'] = style
     if 'high_contrast' in data:
         raw = data.get('high_contrast')

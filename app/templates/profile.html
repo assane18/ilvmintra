@@ -226,17 +226,33 @@
             <div class="bg-white dark:bg-slate-900 p-6 border border-gray-200 dark:border-slate-800 shadow-sm">
                 <h2 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Style visuel</h2>
                 <p class="text-xs text-slate-400 mb-4">Change l'apparence des cartes et du fond de l'intranet — appliqué immédiatement.</p>
-                <div class="grid grid-cols-2 gap-3">
-                    {% for v, label, icon, desc in [('flat','Plat (actuel)','square','Cartes opaques, coins nets'), ('glass','Verre','sparkles','Cartes translucides, flou, coins arrondis — toujours en sombre')] %}
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {% for v, label, icon, desc in [
+                        ('flat', 'Plat (défaut)', 'square', 'Cartes opaques, coins nets'),
+                        ('glass', 'Liquid Glass', 'sparkles', 'Verre dépoli, flou, aurore colorée — sombre uniquement'),
+                        ('bento', 'Bento', 'layout-grid', 'Cellules arrondies bien séparées, beaucoup d\'air'),
+                        ('neo', 'Neomorphism', 'layers', 'Relief doux moulé dans le fond, monochrome'),
+                        ('halftone', 'Halftone', 'grip', 'Pop art : trame de points, contours noirs, ombres franches'),
+                        ('ascii', 'ASCII', 'terminal', 'Terminal monospace — téléscripteur en clair, Tokyo Night en sombre'),
+                        ('soft3d', 'Soft 3D', 'box', 'Formes rebondies façon pâte à modeler, ombres douces'),
+                    ] + ([('japon', 'Japon — édition limitée', 'flower', 'Encre de Chine sur papier washi, cerisier en fleurs — clair uniquement')] if user_can_use_style(current_user, 'japon') else []) %}
                     <button type="button" data-pref="theme_style" data-value="{{ v }}"
-                            class="pref-btn text-left p-4 border-2 border-gray-200 dark:border-slate-700 hover:border-accent-400 transition {% if (current_user.theme_style or 'flat') == v %}is-active{% endif %}">
-                        <i data-lucide="{{ icon }}" class="w-5 h-5 mb-2 text-slate-500 dark:text-slate-300"></i>
-                        <p class="text-sm font-black text-slate-800 dark:text-white">{{ label }}</p>
+                            class="pref-btn text-left p-3 border-2 border-gray-200 dark:border-slate-700 hover:border-accent-400 transition {% if (current_user.theme_style or 'flat') == v %}is-active{% endif %}">
+                        <!-- Vignette d'aperçu dessinée dans le style qu'elle représente (CSS pur, voir .style-thumb plus bas) -->
+                        <span class="style-thumb style-thumb--{{ v }}" aria-hidden="true">
+                            <span class="st-side"></span>
+                            <span class="st-main">
+                                <span class="st-card st-a"></span>
+                                <span class="st-card st-b"></span>
+                                <span class="st-card st-c"></span>
+                            </span>
+                        </span>
+                        <p class="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5"><i data-lucide="{{ icon }}" class="w-3.5 h-3.5 text-slate-400"></i>{{ label }}</p>
                         <p class="text-[11px] text-slate-400 mt-0.5">{{ desc }}</p>
                     </button>
                     {% endfor %}
                 </div>
-                <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5"><i data-lucide="moon" class="w-3 h-3 shrink-0"></i> Le thème Verre n'existe qu'en sombre : il force le mode sombre tant qu'il est actif, quel que soit le réglage "Mode d'affichage" ci-dessous.</p>
+                <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5"><i data-lucide="moon" class="w-3 h-3 shrink-0"></i> Liquid Glass n'existe qu'en sombre et Japon qu'en clair : ils forcent le mode correspondant tant qu'ils sont actifs, quel que soit le réglage "Mode d'affichage". Les autres styles ont une version claire et une version sombre. En contraste élevé, le design plat est toujours appliqué.</p>
             </div>
 
             <!-- Lisibilité -->
@@ -404,7 +420,13 @@
         if (pref === 'theme_color') html.setAttribute('data-theme-color', value);
         else if (pref === 'font_scale') html.setAttribute('data-font-scale', value);
         else if (pref === 'density') html.setAttribute('data-density', value);
-        else if (pref === 'theme_style') html.setAttribute('data-theme-style', value);
+        else if (pref === 'theme_style') {
+            html.setAttribute('data-theme-style', value);
+            // Styles « sombre / clair uniquement » : forçage appliqué/levé immédiatement, sans rechargement.
+            window.ILVM_THEME_FORCE_DARK = (window.ILVM_DARK_ONLY_STYLES || []).indexOf(value) !== -1;
+            window.ILVM_THEME_FORCE_LIGHT = (window.ILVM_LIGHT_ONLY_STYLES || []).indexOf(value) !== -1;
+            if (window.ILVM_applyThemeMode) window.ILVM_applyThemeMode();
+        }
         else if (pref === 'theme_mode' && window.ILVM_saveThemeMode) { window.ILVM_saveThemeMode(value); return true; } // sauvegarde déjà incluse
         return false;
     }
@@ -440,5 +462,88 @@
     #appearance-tab .pref-btn.is-active .swatch { border-color: #1e293b; }
     .dark #appearance-tab .pref-btn.is-active .swatch { border-color: #ffffff; }
     #appearance-tab .pref-btn[data-pref="theme_color"].is-active { background-color: transparent; }
+
+    /* ---- Vignettes d'aperçu des styles visuels : un mini-écran (barre latérale +
+       3 cartes) dessiné dans le style représenté, rendu dans le mode courant
+       (clair/sombre) pour les styles qui ont les deux versions. CSS pur, aucune
+       image. border-radius en !important : la page est dans un conteneur .flat
+       qui force les coins carrés partout. ---- */
+    .style-thumb { position: relative; display: flex; gap: 4px; height: 72px; padding: 5px; margin-bottom: 0.6rem; overflow: hidden; border-radius: 6px !important; background: #f3f4f6; }
+    .dark .style-thumb { background: #0f172a; }
+    .st-side { flex: none; width: 16px; border-radius: 3px !important; background: #0f172a; }
+    .st-main { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 4px; min-width: 0; }
+    .st-card { display: block; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 3px !important; }
+    .st-a { grid-column: 1 / 3; }
+    .dark .st-card { background: #1e293b; border-color: #334155; }
+
+    /* Plat : coins carrés partout */
+    .style-thumb--flat, .style-thumb--flat .st-side, .style-thumb--flat .st-card { border-radius: 0 !important; }
+
+    /* Liquid Glass : toujours sombre, aurore colorée + panneaux translucides flous */
+    .style-thumb--glass, .dark .style-thumb--glass {
+        background: radial-gradient(circle at 20% 25%, #2dd4bf 0%, transparent 40%),
+                    radial-gradient(circle at 85% 20%, #38bdf8 0%, transparent 40%),
+                    radial-gradient(circle at 80% 90%, #f472b6 0%, transparent 40%),
+                    radial-gradient(circle at 25% 90%, #818cf8 0%, transparent 40%), #03101a;
+        border-radius: 10px !important;
+    }
+    .style-thumb--glass .st-side, .style-thumb--glass .st-card {
+        background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35);
+        border-radius: 6px !important; backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+    }
+
+    /* Bento : cellules arrondies bien séparées, sans bordure */
+    .style-thumb--bento { background: #eef0f4; gap: 6px; padding: 6px; border-radius: 10px !important; }
+    .dark .style-thumb--bento { background: #090e1a; }
+    .style-thumb--bento .st-main { gap: 6px; }
+    .style-thumb--bento .st-side { border-radius: 7px !important; }
+    .style-thumb--bento .st-card { border-color: transparent; border-radius: 7px !important; }
+    .dark .style-thumb--bento .st-card { background: #111827; }
+
+    /* Neomorphism : même couleur que le fond, relief par double ombre */
+    .style-thumb--neo { background: #e0e5ec; border-radius: 10px !important; }
+    .dark .style-thumb--neo { background: #1f2630; }
+    .style-thumb--neo .st-card { background: #e0e5ec; border-color: transparent; border-radius: 6px !important; box-shadow: 3px 3px 6px rgba(163, 177, 198, 0.7), -3px -3px 6px rgba(255, 255, 255, 0.95); }
+    .style-thumb--neo .st-side { background: #1f2630; border-radius: 6px !important; box-shadow: 3px 3px 6px rgba(163, 177, 198, 0.7), -3px -3px 6px rgba(255, 255, 255, 0.95); }
+    .dark .style-thumb--neo .st-card { background: #1f2630; box-shadow: 3px 3px 6px rgba(10, 13, 18, 0.85), -3px -3px 6px rgba(52, 62, 76, 0.6); }
+    .dark .style-thumb--neo .st-side { box-shadow: 3px 3px 6px rgba(10, 13, 18, 0.85), -3px -3px 6px rgba(52, 62, 76, 0.6); }
+
+    /* Halftone : trame de points, contours noirs, ombre franche colorée */
+    .style-thumb--halftone { background-color: #fff7e8; background-image: radial-gradient(circle, rgba(17, 17, 17, 0.25) 0.7px, transparent 0.9px); background-size: 4px 4px; border-radius: 4px !important; }
+    .dark .style-thumb--halftone { background-color: #0d0d0d; background-image: radial-gradient(circle, rgba(255, 255, 255, 0.18) 0.7px, transparent 0.9px); }
+    .style-thumb--halftone .st-card { border: 1.5px solid #111111; border-radius: 2px !important; box-shadow: 2px 2px 0 rgb(var(--accent-500)); }
+    .style-thumb--halftone .st-side { background: #111111; border-radius: 2px !important; }
+    .dark .style-thumb--halftone .st-card { background: #161616; border-color: #f2f2f2; }
+    .dark .style-thumb--halftone .st-side { border: 1.5px solid #f2f2f2; }
+
+    /* ASCII : cadres verts, coins carrés, lignes de "texte" monospace */
+    .style-thumb--ascii { background: #f3efe2; border-radius: 0 !important; }
+    .style-thumb--ascii .st-side { background: #0a140c; border: 1px solid #2f7a3a; border-radius: 0 !important; }
+    .style-thumb--ascii .st-card {
+        background-color: #faf7ee; border: 1px solid #4b7d55; border-radius: 0 !important;
+        background-image: repeating-linear-gradient(180deg, transparent 0 3px, rgba(63, 122, 74, 0.7) 3px 4px);
+        background-size: 55% calc(100% - 6px); background-repeat: no-repeat; background-position: 3px 3px;
+    }
+    /* Sombre = Tokyo Night */
+    .dark .style-thumb--ascii { background: #1a1b26; }
+    .dark .style-thumb--ascii .st-side { background: #16161e; border-color: #3b4261; }
+    .dark .style-thumb--ascii .st-card { background-color: #24283b; border-color: #3b4261; background-image: repeating-linear-gradient(180deg, transparent 0 3px, rgba(122, 162, 247, 0.85) 3px 4px); }
+
+    /* Soft 3D : fond pastel dégradé, blocs très arrondis avec reflet et ombre douce */
+    .style-thumb--soft3d { background: linear-gradient(135deg, #e9edff 0%, #e6fbf5 50%, #fdeaf3 100%); border-radius: 12px !important; }
+    .dark .style-thumb--soft3d { background: linear-gradient(135deg, #0f172a 0%, #121a2e 55%, #1e1b4b 100%); }
+    .style-thumb--soft3d .st-card { border-color: transparent; border-radius: 9px !important; box-shadow: 0 4px 8px rgba(99, 102, 241, 0.22), inset 0 2px 3px rgba(255, 255, 255, 0.95), inset 0 -2px 3px rgba(15, 23, 42, 0.08); }
+    .style-thumb--soft3d .st-side { background: #1b2540; border-radius: 9px !important; box-shadow: 0 4px 8px rgba(15, 23, 42, 0.3), inset 0 2px 3px rgba(255, 255, 255, 0.1); }
+    .dark .style-thumb--soft3d .st-card { background: #1b2540; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5), inset 0 2px 3px rgba(255, 255, 255, 0.08), inset 0 -2px 3px rgba(0, 0, 0, 0.35); }
+
+    /* Japon : la peinture du thème en fond de vignette, sidebar ardoise, sceau rouge — toujours clair */
+    .style-thumb--japon, .dark .style-thumb--japon {
+        background: url("{{ url_for('static', filename='img/theme_japon.jpg', v='1') }}") center / cover no-repeat, #ece6d8;
+        border-radius: 5px !important;
+    }
+    .style-thumb--japon .st-side { background: #3f4357; border-radius: 3px !important; }
+    .style-thumb--japon .st-card { background: rgba(247, 243, 235, 0.72); border: 1px solid #b9b1a3; border-radius: 3px !important; }
+    .style-thumb--japon .st-c { position: relative; }
+    .style-thumb--japon .st-c::after { content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; background: #b5413b; }
 </style>
 {% endblock %}
