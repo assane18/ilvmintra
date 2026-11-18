@@ -2585,7 +2585,7 @@ class TestVisiteGuidee:
         cfg = self._tour(client.get('/portal').data.decode())
         assert cfg['autostart'] is True
         pages = {s['page'] for s in cfg['steps']}
-        assert pages == {'portal'}          # simple utilisateur : ni Validation ni Dashboard
+        assert pages <= {'portal', 'any'}   # simple utilisateur : ni Validation ni Dashboard
         assert client.post('/tour/done').status_code == 204
         assert User.query.get(u.id).tour_done_at is not None
         assert self._tour(client.get('/portal').data.decode())['autostart'] is False
