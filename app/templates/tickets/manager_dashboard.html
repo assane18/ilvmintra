@@ -37,7 +37,7 @@
     {% endif %}
 
     <!-- KPI MANAGER -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+    <div data-tour="val-kpi" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 p-4">
             <p class="text-[9px] font-bold uppercase text-slate-400 tracking-widest">À valider</p>
             <p class="text-2xl font-black text-slate-900 dark:text-white tabular-nums">{{ kpi.pending }}</p>
@@ -58,10 +58,10 @@
     </div>
 
     <!-- TABS -->
-    <form method="POST" action="{{ url_for('tickets.manager_batch_validate') }}" id="batch-form" x-data="{ activeTab: 'n1', selected: 0 }" @change="selected = $el.querySelectorAll('input.batch-check:checked').length" class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden min-h-[600px]">
+    <form data-tour="val-list" method="POST" action="{{ url_for('tickets.manager_batch_validate') }}" id="batch-form" x-data="{ activeTab: 'n1', selected: 0 }" @change="selected = $el.querySelectorAll('input.batch-check:checked').length" class="bg-white dark:bg-slate-900 shadow-sm border border-gray-200 dark:border-slate-800 overflow-hidden min-h-[600px]">
 
         <!-- Tab Headers -->
-        <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950" role="tablist" aria-label="Files de validation">
+        <div class="flex border-b border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-950" data-tour="val-tabs" role="tablist" aria-label="Files de validation">
             <button type="button" @click="activeTab = 'n1'" role="tab" id="mgr-tab-n1" aria-controls="mgr-panel-n1" :aria-selected="activeTab === 'n1'"
                 :class="{ 'border-b-2 border-accent-500 text-accent-600 bg-white dark:bg-slate-900 dark:text-accent-400': activeTab === 'n1', 'text-slate-500 hover:text-slate-700 dark:text-slate-400': activeTab !== 'n1' }"
                 class="flex-1 py-4 text-center font-bold text-sm transition relative">

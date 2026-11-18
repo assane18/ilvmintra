@@ -144,6 +144,7 @@ class User(UserMixin, db.Model):
     density = db.Column(db.String(12), default='comfortable')   # comfortable | compact
     high_contrast = db.Column(db.Boolean, default=False)
     theme_style = db.Column(db.String(10), default='flat')      # flat | glass
+    tour_done_at = db.Column(db.DateTime, nullable=True)        # visite guidée terminée ou passée (None = à proposer)
 
     # Préférence e-mail (page /profile) : all = chaque événement (défaut),
     # important = clôture / validation / affectation mais pas chaque message du

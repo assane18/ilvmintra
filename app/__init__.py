@@ -96,6 +96,9 @@ def create_app(config_name='default'):
     from .routes.forms import forms_bp
     app.register_blueprint(forms_bp)
 
+    from .routes.tour import tour_bp  # Visite guidée interactive
+    app.register_blueprint(tour_bp)
+
     # Application des correctifs Proxy
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
     app.wsgi_app = ForceHostFix(app.wsgi_app) # Indispensable pour votre serveur

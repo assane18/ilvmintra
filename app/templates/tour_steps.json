@@ -1,0 +1,79 @@
+{#- Étapes de la visite guidée selon le rôle, servies en JSON par /tour/steps ;
+    moteur dans
+    static/js/tour.js. La visite ne fait que montrer : un voile intercepte tous
+    les clics et le clavier, aucune action réelle n'est possible pendant qu'elle
+    est ouverte. Lancement automatique à la première connexion (tour_done_at
+    vide), relance depuis Aide / Tuto (bouton [data-tour-start]). -#}
+{%- set role = current_user.role.value -%}
+{%- set services = (current_user.get_allowed_services() or []) -%}
+{%- set is_admin = role == 'ADMIN' -%}
+{%- set is_manager = role in ['MANAGER', 'DIRECTEUR'] -%}
+{%- set has_dashboard = role in ['SOLVER', 'ADMIN'] or (is_manager and services) -%}
+{%- set has_validation = is_manager or is_admin -%}
+{%- set is_comm = is_admin or 'COMMUNICATION' in (services + (current_user.get_origin_services() or [])) -%}
+{%- set steps = [] -%}
+
+{#- ---------- Accueil et portail : tout le monde ---------- -#}
+{%- set _ = steps.append({'page': 'portal', 'title': "Bienvenue sur L'Agora 👋",
+    'text': "Cette visite vous montre l'essentiel en quelques étapes" ~ (", adaptées à votre rôle" if role != 'USER' else "") ~ ". Pendant la visite, <strong>rien n'est cliquable</strong> : vous ne pouvez rien modifier par erreur.<br><br>Avancez avec <strong>Suivant</strong> (ou la flèche →), ou passez la visite. Vous pourrez la relancer à tout moment depuis <strong>Aide / Tuto</strong>."}) -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '#app-sidebar nav, #app-sidebar', 'mobile': '#sidebar-mobile-toggle', 'title': 'Le menu',
+    'text': "Le menu donne accès au <strong>Portail</strong>, à l'<strong>Aide / Tuto</strong> et à <strong>Mon profil</strong>" ~ (", ainsi qu'aux espaces liés à votre rôle" if role != 'USER' else "") ~ ". La flèche en bas le replie pour ne garder que les icônes ; un clic sur la barre le rouvre. Sur téléphone, il se trouve derrière le bouton ☰."}) -%}
+{%- if is_comm -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '#app-sidebar a[title="Annonces"]', 'title': 'Annonces',
+    'text': "Publiez ici les bandeaux d'information affichés en haut du portail de tous les agents (information, avertissement ou urgence), avec une date de fin."}) -%}
+{%- endif -%}
+{%- if role in ['DIRECTEUR', 'ADMIN'] -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '#app-sidebar a[title="Statistiques"]', 'title': 'Statistiques',
+    'text': "Volumes, délais de traitement, respect des délais cibles et satisfaction, par service et par période, avec export."}) -%}
+{%- endif -%}
+{%- if is_admin -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '#app-sidebar a[title="Administration"]', 'title': 'Administration',
+    'text': "Comptes et rôles, formulaires, délais cibles (SLA), pilotage, journal d'audit, RGPD et rapports mensuels."}) -%}
+{%- endif -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '#global-search', 'title': 'La recherche',
+    'text': "Retrouvez une demande par son numéro, son titre ou un mot de sa description. Les résultats s'affichent dès les premières lettres."}) -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '#notif-container', 'title': 'Les notifications',
+    'text': "La cloche vous prévient quand le service vous répond, quand une demande est validée, refusée, prise en charge ou terminée, et quand un rendez-vous vous est proposé."}) -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '[data-tour="portal-open"]', 'title': 'Mes demandes en cours',
+    'text': "Vos demandes non terminées s'affichent ici, en haut du portail, avec leur statut en clair. Un clic ouvre le détail.",
+    'missing': "Quand vous aurez des demandes en cours, elles s'afficheront en haut du portail avec leur statut en clair. Un clic ouvrira le détail."}) -%}
+{%- set _ = steps.append({'page': 'portal', 'sel': '[data-tour="portal-cards"]', 'title': 'Faire une demande',
+    'text': "Choisissez la carte qui correspond à votre besoin : Informatique, DRH, DAF, Services techniques, Imago… Les cartes marquées « Manager/Directeur » sont réservées à ces rôles."}) -%}
+{%- set _ = steps.append({'page': 'portal', 'img': url_for('static', filename='tutos/formulaire-recap.png'), 'title': 'Remplir, vérifier, envoyer',
+    'text': "Le formulaire garde un brouillon de votre saisie. Avant l'envoi, un <strong>récapitulatif</strong> vous laisse corriger ; si vous avez déjà une demande très proche en cours, L'Agora vous le signale pour éviter les doublons."}) -%}
+{%- set _ = steps.append({'page': 'portal', 'img': url_for('static', filename='tutos/frise.png'), 'title': 'Suivre sa demande',
+    'text': "Chaque demande affiche une <strong>frise de suivi</strong> et un fil de discussion avec le service. Tant qu'elle n'est pas terminée, le bouton <strong>« Modifier ma demande »</strong> permet de la corriger. À la fin, donnez votre avis ou rouvrez-la sous 7 jours si le problème revient."}) -%}
+
+{#- ---------- Validation : managers, directeurs, ADMIN ---------- -#}
+{%- if has_validation -%}
+{%- set _ = steps.append({'page': 'validation', 'sel': '[data-tour="val-kpi"]', 'title': 'Validation : vos indicateurs',
+    'text': "Le menu <strong>Validation</strong> regroupe les demandes qui attendent votre accord. En haut : à valider, en attente depuis plus de 48 h, votre délai de validation et les tickets hors délai de votre service."}) -%}
+{%- set _ = steps.append({'page': 'validation', 'sel': '[data-tour="val-tabs"]', 'title': 'Trois files',
+    'text': "Validation d'équipe (N1), validation technique ou budgétaire (N2, directeurs) et recrutements (FCPI)."}) -%}
+{%- set _ = steps.append({'page': 'validation', 'sel': '[data-tour="val-list"]', 'title': 'Valider ou refuser',
+    'text': "<strong>Valider</strong> envoie la demande au service compétent ; cochez plusieurs lignes pour valider en lot (sauf bons DAF). <strong>Refuser</strong> demande un motif, transmis au demandeur. Pendant vos absences, vous pouvez déléguer vos validations à un collègue."}) -%}
+{%- set _ = steps.append({'page': 'validation', 'img': url_for('static', filename='tutos/pilotage.png'), 'title': 'Piloter une demande validée',
+    'text': "Dans le détail d'une demande de votre équipe (hors bons DAF), le bloc <strong>Pilotage de la demande</strong> permet encore de la refuser ou de la supprimer, même une fois dans la file d'un service. Les avis laissés par les demandeurs ne sont visibles que des managers et directeurs."}) -%}
+{%- endif -%}
+
+{#- ---------- Dashboard : solvers (et managers / directeurs d'un service) ---------- -#}
+{%- if has_dashboard -%}
+{%- set _ = steps.append({'page': 'dashboard', 'sel': '[data-tour="dash-counters"]', 'title': 'Le Dashboard',
+    'text': "Votre espace de traitement. Les compteurs résument la charge : tickets à attribuer, vos dossiers, tickets clôturés et en retard."}) -%}
+{%- set _ = steps.append({'page': 'dashboard', 'sel': '[data-tour="dash-pool"]', 'title': "La file d'attente",
+    'text': "Les demandes validées pour vos services arrivent ici. <strong>Prendre en charge</strong> vous attribue le ticket et prévient le demandeur. Les badges signalent les échéances et les retards."}) -%}
+{%- set _ = steps.append({'page': 'dashboard', 'sel': '[data-tour="dash-mine"]', 'title': 'Mes tickets en cours',
+    'text': ("Vos tickets et ceux pris en charge par votre équipe, avec le nom du solver. " if is_manager or is_admin else "Les tickets dont vous vous occupez. ") ~ "Le menu <strong>Actions</strong> permet de clôturer, de <strong>remettre dans le pool</strong>, de transférer à un autre service ou d'assigner à un collègue."}) -%}
+{%- set _ = steps.append({'page': 'dashboard', 'sel': '[data-tour="dash-planning"]', 'title': 'Rendez-vous et planning',
+    'text': "Depuis un ticket, proposez un rendez-vous au demandeur : il accepte, refuse ou envoie ses disponibilités, et chacun reçoit un rappel le jour J à 9 h. Le <strong>Planning</strong> regroupe les rendez-vous du service."}) -%}
+{%- set _ = steps.append({'page': 'dashboard', 'sel': '[data-tour="dash-chat"]', 'title': "Le chat d'équipe",
+    'text': "Un fil réservé aux membres de votre service, invisible des demandeurs, pour s'entraider sur un dossier."}) -%}
+{%- endif -%}
+
+{#- ---------- Fin ---------- -#}
+{%- set _ = steps.append({'page': 'any', 'sel': '#app-sidebar a[title="Mon profil"]', 'mobile': '#profile-trigger', 'title': 'Votre profil',
+    'text': "Coordonnées, e-mails que vous souhaitez recevoir, et apparence : clair ou sombre, couleur, style visuel, taille du texte."}) -%}
+{%- set _ = steps.append({'page': 'any', 'sel': '#app-sidebar a[title="Aide / Tuto"]', 'mobile': '#sidebar-mobile-toggle', 'title': "C'est parti !",
+    'text': "Tutoriels détaillés, FAQ et contacts sont dans <strong>Aide / Tuto</strong>. Le bouton <strong>« Lancer la visite guidée »</strong> y relance cette visite quand vous voulez."}) -%}
+
+{{ steps|tojson }}

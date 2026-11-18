@@ -2560,6 +2560,64 @@ class TestModificationDemande:
 #  RÉSUMÉ RAPIDE (sans pytest)
 # ===========================================================================
 
+class TestVisiteGuidee:
+    """Visite guidée interactive : lancement auto à la première connexion,
+    étapes selon le rôle, mémorisation de la fin, relance depuis l'aide."""
+
+    _client = None
+
+    def _tour(self, html):
+        """Config de la page + étapes servies par /tour/steps."""
+        import json, re
+        m = re.search(r'<script type="application/json" id="agora-tour-data">(.*?)</script>', html, re.S)
+        assert m, 'données de visite absentes'
+        cfg = json.loads(m.group(1))
+        r = self._client.get('/tour/steps')
+        assert r.status_code == 200 and r.mimetype == 'application/json'
+        cfg['steps'] = r.get_json()
+        return cfg
+
+    def test_autostart_puis_fin(self, client, db_session, app):
+        self._client = client
+        from app.models import User
+        u = make_user(UserRole.USER, username='tour_user')
+        login(client, 'tour_user')
+        cfg = self._tour(client.get('/portal').data.decode())
+        assert cfg['autostart'] is True
+        pages = {s['page'] for s in cfg['steps']}
+        assert pages == {'portal'}          # simple utilisateur : ni Validation ni Dashboard
+        assert client.post('/tour/done').status_code == 204
+        assert User.query.get(u.id).tour_done_at is not None
+        assert self._tour(client.get('/portal').data.decode())['autostart'] is False
+
+    def test_etapes_selon_le_role(self, client, db_session, app):
+        self._client = client
+        make_user(UserRole.SOLVER, username='tour_solver', allowed_services=[ServiceType.INFO])
+        login(client, 'tour_solver')
+        pages = {s['page'] for s in self._tour(client.get('/portal').data.decode())['steps']}
+        assert 'dashboard' in pages and 'validation' not in pages
+
+        mgr = make_user(UserRole.MANAGER, username='tour_mgr')
+        mgr.set_allowed_services([]); db.session.commit()   # manager sans service technique
+        login(client, 'tour_mgr')
+        pages = {s['page'] for s in self._tour(client.get('/portal').data.decode())['steps']}
+        assert 'validation' in pages and 'dashboard' not in pages
+
+        make_user(UserRole.ADMIN, username='tour_admin', allowed_services=[ServiceType.INFO])
+        login(client, 'tour_admin')
+        steps = self._tour(client.get('/portal').data.decode())['steps']
+        titres = [s['title'] for s in steps]
+        assert 'Administration' in titres and 'Statistiques' in titres and 'Annonces' in titres
+        assert {'portal', 'validation', 'dashboard'} <= {s['page'] for s in steps}
+
+    def test_bouton_relance_dans_aide(self, client, db_session, app):
+        self._client = client
+        make_user(UserRole.USER, username='tour_help')
+        login(client, 'tour_help')
+        html = client.get('/help').data.decode()
+        assert 'data-tour-start' in html and 'js/tour.js' in html
+
+
 def run_quick_check():
     """
     Vérification rapide : imports, création de l'app, accessibilité des routes.

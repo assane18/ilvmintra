@@ -54,7 +54,7 @@
 
     {% if open_items %}
     <!-- Mes demandes en cours (en tête : on revient sur le portail surtout pour suivre) -->
-    <div class="mb-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 border-l-4 border-l-accent-500 shadow-sm">
+    <div data-tour="portal-open" class="mb-8 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 border-l-4 border-l-accent-500 shadow-sm">
         <div class="px-6 py-4 flex items-center justify-between gap-4 border-b border-gray-200 dark:border-slate-800">
             <h2 class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <i data-lucide="activity" class="w-4 h-4 text-accent-600 dark:text-accent-400"></i>
@@ -80,7 +80,7 @@
     {% endif %}
 
     <!-- Grille Services -->
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+    <div data-tour="portal-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
 
         <!-- Informatique -->
         <a href="{{ url_for('forms.new_submission', slug='info-v2') }}" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm hover:border-accent-400 dark:hover:bg-slate-800 dark:hover:border-slate-600 transition-colors p-6 group">

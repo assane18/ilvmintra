@@ -26,7 +26,7 @@
                     </div>
                 </div>
                 <a href="{{ url_for('wallboard.wallboard') }}" target="_blank" class="flex items-center gap-2 px-4 py-3 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold uppercase tracking-wide transition" title="Écran mural du service (plein écran, auto-rafraîchi)"><i data-lucide="monitor" class="w-4 h-4 text-cyan-400"></i> Écran mural</a>
-                <a href="{{ url_for('tech_extras.planning') }}" class="flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase tracking-wide transition" title="Planning hebdomadaire des interventions"><i data-lucide="calendar-days" class="w-4 h-4 text-accent-600 dark:text-accent-400"></i> Planning</a>
+                <a data-tour="dash-planning" href="{{ url_for('tech_extras.planning') }}" class="flex items-center gap-2 px-4 py-3 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 hover:bg-gray-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase tracking-wide transition" title="Planning hebdomadaire des interventions"><i data-lucide="calendar-days" class="w-4 h-4 text-accent-600 dark:text-accent-400"></i> Planning</a>
                 <div class="hidden sm:block bg-white dark:bg-slate-900 px-6 py-3 border border-gray-200 dark:border-slate-800 shadow-sm text-sm font-bold text-slate-600 dark:text-slate-300" id="liveClock">--:--:--</div>
             </div>
 
@@ -51,7 +51,7 @@
         </div>
 
         <!-- KPI : 4 cartes identiques, blanches, bordure fine, ombre légère (données réelles, aucune requête backend ajoutée) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div data-tour="dash-counters" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm p-6 flex items-center gap-4">
                 <div class="w-11 h-11 bg-orange-50 dark:bg-slate-800 text-orange-600 dark:text-cyan-400 flex items-center justify-center shrink-0"><i data-lucide="inbox" class="w-5 h-5"></i></div>
                 <div>
@@ -85,7 +85,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             <!-- LISTE DES TICKETS ATTRIBUÉS (EN COURS) -->
-            <div class="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[600px]">
+            <div data-tour="dash-mine" class="lg:col-span-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[600px]">
                 <div class="p-6 border-b border-gray-200 dark:border-slate-800 flex justify-between items-center">
                     <h2 class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                         <i data-lucide="activity" class="w-5 h-5 text-accent-500"></i> Mes Tickets en cours
@@ -191,7 +191,7 @@
             </div>
 
             <!-- FILE D'ATTENTE (POOL) -->
-            <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[600px]">
+            <div data-tour="dash-pool" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col h-[600px]">
                 <div class="p-6 border-b border-gray-200 dark:border-slate-800 flex flex-col gap-3 sticky top-0 bg-white dark:bg-slate-900 z-10">
                     <div class="flex justify-between items-center">
                         <h2 class="font-bold text-slate-800 dark:text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
@@ -404,7 +404,7 @@
         </div>
 
         <!-- Chat Équipe (fonctionnel, API /api/team_chat inchangée) -->
-        <div class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm flex-1 flex flex-col overflow-hidden">
+        <div data-tour="dash-chat" class="bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-sm flex-1 flex flex-col overflow-hidden">
             <div class="p-4 bg-slate-900 dark:bg-slate-950 text-white flex justify-between items-center gap-2">
                 <span class="text-xs font-bold uppercase tracking-wider flex items-center gap-2 shrink-0"><i data-lucide="message-circle" class="w-4 h-4"></i> Chat Équipe</span>
                 <select id="teamChatServiceSelect" class="hidden bg-slate-800 text-white text-[11px] font-bold px-2 py-1 border border-slate-700 focus:outline-none max-w-[45%]"></select>

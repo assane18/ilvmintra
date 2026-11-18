@@ -1,0 +1,19 @@
+{#- Visite guidée interactive (2026-11-18) : configuration minimale, les étapes
+    (selon le rôle) sont chargées à la demande depuis /tour/steps par
+    static/js/tour.js. La visite ne fait que montrer : un voile intercepte tous
+    les clics et le clavier. Lancement automatique à la première connexion
+    (tour_done_at vide), relance depuis Aide / Tuto ([data-tour-start]). -#}
+{% if current_user.is_authenticated %}
+{%- set tour_autostart = (current_user.tour_done_at is defined) and (current_user.tour_done_at is none) -%}
+<script type="application/json" id="agora-tour-data">{{ {
+    'pages': {
+        'portal': url_for('main.user_portal'),
+        'validation': url_for('tickets.manager_dashboard'),
+        'dashboard': url_for('tickets.solver_dashboard'),
+    },
+    'autostart': tour_autostart,
+    'doneUrl': request.script_root ~ '/tour/done',
+    'stepsUrl': request.script_root ~ '/tour/steps',
+}|tojson }}</script>
+<script src="{{ url_for('static', filename='js/tour.js') }}?v=2" defer></script>
+{% endif %}
