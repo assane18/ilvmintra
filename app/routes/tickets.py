@@ -1907,21 +1907,25 @@ def solver_dashboard():
             return val in ('DRH', 'GS-DRH') or val.startswith('DRH-')
 
         pool_imago = [t for t in pending_tickets if str(t.target_service) == 'IMAGO' or t.target_service == ServiceType.IMAGO]
-        
-        pool_standard = [
-            t for t in pending_tickets 
-            if (not t.category_ticket or t.category_ticket in ['Standard', 'Incident Standard', 'Demande RH']) 
-            and str(t.target_service) != 'IMAGO' and t.target_service != ServiceType.IMAGO
-            and not is_drh(t)
-        ]
-        
+
         pool_users = [t for t in pending_tickets if t.category_ticket == 'Nouvel Utilisateur']
         pool_materiel = [t for t in pending_tickets if t.category_ticket == 'Matériel' or t.category_ticket == 'Demande Matériel']
 
         pool_bons = [t for t in pending_tickets if t.category_ticket in ['Bon de Commande', 'Bon de Commande (Délégation)']]
-        
+
         pool_drh = [t for t in pending_tickets if is_drh(t)]
-        
+
+        # Standard = filet de sécurité : tout ticket en attente qui ne tombe dans
+        # AUCUNE autre file ci-dessus, quelle que soit sa catégorie (y compris une
+        # catégorie libre créée via un formulaire no-code ou un futur module).
+        # Avant ce correctif, pool_standard était une liste blanche de catégories
+        # connues ("Standard", "Incident Standard", ...) : toute catégorie non
+        # listée (ex: "Bug Intranet", "Dossier de Séjour" vers DAF/SG) disparaissait
+        # silencieusement de la file d'attente tout en restant comptée dans
+        # stats.pending — incident constaté le 2026-11-16.
+        _dispatched_ids = {t.id for t in pool_imago + pool_users + pool_materiel + pool_bons + pool_drh}
+        pool_standard = [t for t in pending_tickets if t.id not in _dispatched_ids]
+
         mine = Ticket.query.filter_by(solver_id=current_user.id, status=TicketStatus.IN_PROGRESS).all()
         # Pilotage (2026-11-16) : managers / directeurs / ADMIN voient aussi, dans
         # « Tickets en cours », les tickets de leurs services pris en charge par
