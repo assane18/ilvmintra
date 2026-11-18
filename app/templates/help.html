@@ -4,7 +4,7 @@
 {% block content %}
 <div class="flat bg-gray-50 dark:bg-slate-950 min-h-screen transition-colors duration-300">
     <style>
-        /* Même DA stricte que l'Espace Tech : zéro arrondi, absolument partout. */
+        /* Même DA stricte que le Dashboard : zéro arrondi, absolument partout. */
         .flat, .flat * { border-radius: 0 !important; }
 
         /* Style pour les placeholders d'images dans les tutos */
@@ -105,7 +105,7 @@
                 </div>
                 <input type="text" id="searchInput" onkeyup="filterContent()"
                     class="block w-full pl-12 pr-4 py-3 border border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-800 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 shadow-sm text-sm"
-                    placeholder="Rechercher (ex: mot de passe, délégation, wifi...)">
+                    placeholder="Rechercher (ex : mot de passe, délégation, rendez-vous, doublon…)">
             </div>
         </div>
 
@@ -118,6 +118,12 @@
             <button onclick="filterCategory('tech')" class="filter-btn px-5 py-2.5 rounded-full bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-200 font-medium shadow-sm hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"><i class="fa-solid fa-toolbox mr-2 text-gray-500"></i>Dashboard</button>
         </div>
 
+        {% macro fig(name, caption) -%}
+                            <figure class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700 not-prose">
+                                <img src="{{ url_for('static', filename='tutos/' ~ name) }}?v=agora2" alt="{{ caption }}" loading="lazy" class="w-full rounded-lg shadow border border-slate-200 dark:border-slate-700">
+                                <figcaption class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">{{ caption }}</figcaption>
+                            </figure>
+        {%- endmacro %}
         <!-- GRID DES CARTES TUTOS -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-20" id="tutoContainer">
 
@@ -126,8 +132,8 @@
                 <div class="h-2 bg-blue-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-slate-800 text-blue-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-key"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Première Connexion</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Accès via Active Directory, gestion des mots de passe et lien Windows.</p>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Première connexion</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Identifiant Windows, bouton SharePoint, mot de passe et accès mobile.</p>
                 </div>
             </div>
 
@@ -136,8 +142,8 @@
                 <div class="h-2 bg-purple-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-slate-800 text-purple-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-desktop"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Découverte du Portail</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Dashboard, notifications, suivi des demandes et menu latéral.</p>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Découverte de L'Agora</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Portail, menu latéral repliable, recherche, notifications et annonces.</p>
                 </div>
             </div>
 
@@ -146,88 +152,98 @@
                 <div class="h-2 bg-green-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-green-100 dark:bg-slate-800 text-green-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-plus-circle"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">Support & Demandes</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Créer un ticket pour l'informatique, les RH ou Imago.</p>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">Créer une demande</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Choisir le bon formulaire, pièces jointes, brouillon, récapitulatif et doublons.</p>
                 </div>
             </div>
 
-            <!-- 3. Guide des Statuts   -->
+            <!-- 4. GUIDE DES STATUTS -->
             <div onclick="openModal('modal-status')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-pink-500 w-full"></div>
                 <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-slate-800 text-pink-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-plus-circle"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">Guide des Statuts</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Guide des statuts de validation dans le système.</p>
+                    <div class="w-14 h-14 rounded-2xl bg-pink-100 dark:bg-slate-800 text-pink-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-route"></i></div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors">Guide des statuts</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Comprendre la frise de suivi : validation, prise en charge, terminée, refusée.</p>
                 </div>
             </div>
 
-            <!-- 4. DAF STANDARD -->
-            <div onclick="openModal('modal-daf-standard')" class="tuto-card daf user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
-                <div class="h-2 bg-orange-500 w-full"></div>
-                <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-slate-800 text-orange-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-file-invoice"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">DAF : Bon de Commande</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Comprendre l'avancement de vos demandes (En attente, Validé, Terminé...).</p>
-                </div>
-            </div>
-
-            <!-- 5. DAF DÉLÉGATION -->
-            <div onclick="openModal('modal-daf-delegation')" class="tuto-card daf user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
-                <div class="h-2 bg-yellow-500 w-full"></div>
-                <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-yellow-100 dark:bg-slate-800 text-yellow-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-signature"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">DAF : Délégation (< 400€)</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Procédure accélérée sans validation hiérarchique.</p>
-                </div>
-            </div>
-
-            <!-- 6. RESPONSABLE VALIDATION -->
-            <div onclick="openModal('modal-validation')" class="tuto-card responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
-                <div class="h-2 bg-red-500 w-full"></div>
-                <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-slate-800 text-red-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-check-double"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Responsable : Validation</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Valider ou refuser les demandes des équipes (N1).</p>
-                </div>
-            </div>
-
-            <!-- 7. RESPONSABLE FCPI -->
-            <div onclick="openModal('modal-fcpi')" class="tuto-card responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
-                <div class="h-2 bg-indigo-500 w-full"></div>
-                <div class="p-6">
-                    <div class="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-slate-800 text-indigo-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-plus"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Responsable : Recrutement</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Formulaire FCPI pour gérer une arrivée de A à Z.</p>
-                </div>
-            </div>
-
-            <!-- 8. SUIVI & CHAT -->
+            <!-- 5. SUIVI & DISCUSSION -->
             <div onclick="openModal('modal-chat')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-teal-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-teal-100 dark:bg-slate-800 text-teal-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-comments"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">Suivi & Discussion</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Historique des demandes et chat en direct avec les techniciens.</p>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-teal-600 dark:group-hover:text-teal-400 transition-colors">Suivre et modifier ma demande</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Historique, discussion avec le service, modification, rendez-vous et avis final.</p>
                 </div>
             </div>
 
-            <!-- 9. ESPACE TECH -->
+            <!-- 6. PROFIL -->
+            <div onclick="openModal('modal-profil')" class="tuto-card user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+                <div class="h-2 bg-sky-500 w-full"></div>
+                <div class="p-6">
+                    <div class="w-14 h-14 rounded-2xl bg-sky-100 dark:bg-slate-800 text-sky-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-palette"></i></div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">Mon profil et l'affichage</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Coordonnées, e-mails reçus, mode clair/sombre, thème Verre, taille du texte.</p>
+                </div>
+            </div>
+
+            <!-- 7. DAF STANDARD -->
+            <div onclick="openModal('modal-daf-standard')" class="tuto-card daf user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+                <div class="h-2 bg-orange-500 w-full"></div>
+                <div class="p-6">
+                    <div class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-slate-800 text-orange-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-file-invoice"></i></div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-orange-600 dark:group-hover:text-orange-400 transition-colors">DAF : bon de commande</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Fournisseur, UF, lignes de commande, devis obligatoire et circuit de signature.</p>
+                </div>
+            </div>
+
+            <!-- 8. DAF DÉLÉGATION -->
+            <div onclick="openModal('modal-daf-delegation')" class="tuto-card daf user group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+                <div class="h-2 bg-yellow-500 w-full"></div>
+                <div class="p-6">
+                    <div class="w-14 h-14 rounded-2xl bg-yellow-100 dark:bg-slate-800 text-yellow-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-signature"></i></div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-yellow-600 dark:group-hover:text-yellow-400 transition-colors">DAF : délégation (&lt; 400 €)</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Procédure accélérée des managers et directeurs, sans validation hiérarchique.</p>
+                </div>
+            </div>
+
+            <!-- 9. RESPONSABLE VALIDATION -->
+            <div onclick="openModal('modal-validation')" class="tuto-card responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+                <div class="h-2 bg-red-500 w-full"></div>
+                <div class="p-6">
+                    <div class="w-14 h-14 rounded-2xl bg-red-100 dark:bg-slate-800 text-red-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-check-double"></i></div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">Responsable : validation et pilotage</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Valider en lot, refuser avec motif, supprimer une demande, suivre son équipe.</p>
+                </div>
+            </div>
+
+            <!-- 10. RESPONSABLE FCPI -->
+            <div onclick="openModal('modal-fcpi')" class="tuto-card responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
+                <div class="h-2 bg-indigo-500 w-full"></div>
+                <div class="p-6">
+                    <div class="w-14 h-14 rounded-2xl bg-indigo-100 dark:bg-slate-800 text-indigo-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-user-plus"></i></div>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">Responsable : recrutement (FCPI)</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Fiche de création de poste : une arrivée gérée de A à Z, tickets générés automatiquement.</p>
+                </div>
+            </div>
+
+            <!-- 11. DASHBOARD SOLVERS -->
             <div onclick="openModal('modal-tech')" class="tuto-card tech group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1">
                 <div class="h-2 bg-gray-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-toolbox"></i></div>
-                    <h3 class="text-xl font-bold mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">Solvers : Dashboard</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Gestion du Pool, assignation et outils d'administration.</p>
+                    <h3 class="text-xl font-bold mb-2 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">Solvers : le Dashboard</h3>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Pool, prise en charge, remise dans le pool, transfert, rendez-vous, clôture, chat d'équipe.</p>
                 </div>
             </div>
 
-            <!-- 10. CIRCUITS DE VALIDATION -->
-            <a href="{{ url_for('main.doc_circuits_validation') }}" target="_blank" rel="noopener" class="tuto-card user tech group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1 block">
+            <!-- 12. CIRCUITS DE VALIDATION -->
+            <a href="{{ url_for('main.doc_circuits_validation') }}" target="_blank" rel="noopener" class="tuto-card user tech responsable group bg-white dark:bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-200 dark:border-slate-800 dark:hover:bg-slate-800 dark:hover:border-slate-600 cursor-pointer overflow-hidden transform hover:-translate-y-1 block">
                 <div class="h-2 bg-cyan-500 w-full"></div>
                 <div class="p-6">
                     <div class="w-14 h-14 rounded-2xl bg-cyan-100 dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 flex items-center justify-center mb-4 text-2xl group-hover:scale-110 transition-transform"><i class="fa-solid fa-diagram-project"></i></div>
                     <h3 class="text-xl font-bold mb-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">Circuits de validation</h3>
-                    <p class="text-slate-500 dark:text-slate-400 text-sm">Qui dépose, qui valide, qui reçoit — le circuit complet des 10 demandes de l'intranet.</p>
+                    <p class="text-slate-500 dark:text-slate-400 text-sm">Qui dépose, qui valide, qui reçoit : le circuit complet de chaque type de demande (s'ouvre dans un nouvel onglet).</p>
                 </div>
             </a>
         </div>
@@ -238,212 +254,58 @@
                 <i class="fa-solid fa-circle-question mr-3 text-accent-600"></i>Résultats FAQ
             </h2>
             <div class="space-y-4" id="faq-list">
-
-                <!-- FAQ 1-5 : Accès & Compte -->
+            {% set faq = [
+                ('Accès & compte', [
+                    ("Mon mot de passe ne fonctionne pas", "Votre mot de passe est <strong>celui de votre session Windows</strong>. Si vous l'avez changé ce matin, c'est le nouveau qu'il faut utiliser. Depuis SharePoint, le bouton « Accès à l'intranet » vous connecte directement avec votre compte Microsoft, sans rien saisir. En cas de blocage, contactez le Service Informatique."),
+                    ("Erreur 403 « Accès refusé »", "Votre compte n'a pas les droits nécessaires pour cette page (par exemple un utilisateur qui ouvre le menu Validation, réservé aux responsables). Si vous pensez devoir y accéder, ouvrez une demande Informatique."),
+                    ("Comment trouver le nom de mon PC ou mon bureau ?", "Dans le formulaire, le champ <strong>Service / Bureau</strong> sert à vous localiser : indiquez simplement votre bâtiment, étage et numéro de bureau (ex : « Bât. B, 2e étage, bureau 204 »). Le nom du PC figure sur l'étiquette collée dessus (ex : <code>PORTABLE-042</code>)."),
+                    ("Je ne reçois pas les notifications par e-mail", "Vérifiez d'abord votre dossier « Courrier indésirable » dans Outlook. Vérifiez ensuite dans <strong>Mon profil → Compte</strong> le réglage des e-mails que vous souhaitez recevoir : vous avez peut-être choisi de ne garder que les notifications dans L'Agora."),
+                    ("L'Agora est-il accessible sur mobile ?", "Oui, depuis le réseau de l'institut (Wi-Fi interne). L'interface s'adapte aux petits écrans : le menu se trouve derrière le bouton ☰ en haut à gauche et les tableaux défilent horizontalement."),
+                ]),
+                ('Mes demandes', [
+                    ("Puis-je modifier une demande après l'avoir envoyée ?", "Oui. Ouvrez la demande et cliquez sur <strong>« Modifier ma demande »</strong> : titre, description, lieu, téléphone, lignes d'un bon de commande et pièces jointes supplémentaires. Chaque modification est ajoutée au fil de la demande et la personne qui la traite est prévenue. Ce n'est plus possible une fois la demande terminée ou refusée."),
+                    ("Comment annuler une demande ?", "Écrivez-le dans le fil de discussion de la demande : le service la clôturera. Votre manager ou directeur peut aussi la refuser (avec un motif) ou la supprimer depuis son détail, sauf pour les bons de commande DAF qui suivent leur propre circuit."),
+                    ("J'ai oublié de joindre le devis ou une capture d'écran", "Ouvrez votre demande puis <strong>« Modifier ma demande »</strong> et ajoutez le fichier dans « Ajouter des pièces jointes ». Vous pouvez aussi joindre un fichier directement à un message du fil de discussion."),
+                    ("Quelle est la taille maximale des fichiers ?", "<strong>20 Mo</strong> par envoi. Pour une vidéo ou un gros fichier, déposez-le sur OneDrive ou SharePoint et collez le lien dans la description."),
+                    ("Pourquoi L'Agora me dit qu'une demande similaire existe déjà ?", "Avant l'envoi, L'Agora compare votre titre et votre description à vos demandes des 30 derniers jours. Si une demande proche est encore ouverte, une fenêtre vous propose de l'ouvrir plutôt que d'en créer une nouvelle. Vous restez libre de continuer : rien n'est fusionné automatiquement."),
+                    ("Qu'est-ce que le statut « Réponse attendue » ?", "Le service a besoin d'une précision de votre part : lisez le dernier message du fil et répondez-y. La demande repasse ensuite « En cours »."),
+                    ("Quel est le délai de réponse ?", "Les demandes sont traitées dans l'ordre d'arrivée selon la disponibilité des équipes. En général, une première réponse arrive sous <strong>24 à 48 heures ouvrées</strong>. Les pannes bloquantes sont prioritaires : précisez-le dans le titre."),
+                    ("Ma demande est terminée mais le problème revient", "Pendant <strong>7 jours</strong> après la clôture, vous pouvez rouvrir la demande depuis son détail. Au-delà, créez une nouvelle demande."),
+                    ("Qui voit l'avis que je donne à la fin ?", "Votre note et votre commentaire sont réservés aux <strong>managers et directeurs</strong>, pour le suivi de la qualité de service. Le solver qui a traité la demande ne les voit pas."),
+                    ("Puis-je exporter mes demandes ?", "Oui : dans <strong>Historique</strong>, filtrez par statut ou période puis utilisez les boutons d'export CSV ou Excel."),
+                ]),
+                ('Achats & RH', [
+                    ("C'est quoi la « délégation » DAF ?", "Une procédure simplifiée réservée aux managers et directeurs pour les achats de moins de <strong>400 € TTC</strong> (380 € HT). La demande part directement au service DAF, sans validation hiérarchique."),
+                    ("Quelle UF choisir sur un bon de commande ?", "L'<strong>unité fonctionnelle</strong> est le service qui porte la dépense. La liste contient tous les services de l'institut : choisissez le vôtre, ou celui pour lequel vous commandez."),
+                    ("Qui valide mes congés ?", "L'Agora gère les demandes techniques et administratives. Pour les congés, rapprochez-vous de votre responsable."),
+                    ("Comment recruter un stagiaire ?", "Utilisez la <strong>Fiche de création de poste (FCPI)</strong> comme pour un salarié et précisez « Stagiaire » dans le type de contrat."),
+                    ("Puis-je avoir un Mac au lieu d'un PC ?", "Toute demande hors catalogue standard passe par le formulaire <strong>Demande Matériel</strong> (managers et directeurs), doit être justifiée et est soumise à validation budgétaire."),
+                ]),
+                ('Responsables', [
+                    ("Je suis responsable mais je ne vois pas le menu Validation", "Votre compte n'a probablement pas le rôle Manager ou Directeur dans l'annuaire. Ouvrez une demande Informatique pour régulariser vos droits."),
+                    ("Un collaborateur n'apparaît pas dans mes demandes à valider", "Son service dans l'annuaire est différent du vôtre. Contactez le Service Informatique pour corriger son affectation."),
+                    ("Je pars en congés : qui valide à ma place ?", "Vous pouvez <strong>déléguer vos validations</strong> à un collègue pour une période donnée. Pendant cette période, il voit et valide tout ce que vous auriez pu valider, et la trace indique « validé par X pour le compte de Y »."),
+                    ("Puis-je supprimer une demande de mon équipe ?", "Oui, hors bons de commande DAF : depuis le détail de la demande, le bloc <strong>Pilotage de la demande</strong> permet de la refuser (motif obligatoire, le demandeur est prévenu) ou de la supprimer définitivement, même si elle est déjà dans le pool d'un service."),
+                ]),
+                ('Divers', [
+                    ("Le mode sombre ou le thème ne reste pas activé", "Vos préférences d'affichage sont enregistrées sur votre profil et vous suivent sur tous vos appareils. Vérifiez dans <strong>Mon profil → Apparence</strong> : en mode « Automatique », L'Agora suit le réglage clair/sombre de Windows. Le thème Verre, lui, est toujours sombre."),
+                    ("Le menu de gauche a disparu, il ne reste que des icônes", "Vous l'avez replié. Cliquez n'importe où sur la barre d'icônes (ou sur la flèche en bas) pour le rouvrir. Ce choix est mémorisé sur votre navigateur."),
+                    ("Urgence vitale (feu, accident)", "<strong>N'OUVREZ PAS DE DEMANDE !</strong> Appelez immédiatement les secours (18 ou 112) et le PC Sécurité."),
+                    ("Où sont stockées mes données ?", "L'Agora est hébergé sur les serveurs internes de l'institut (sur site), ce qui garantit la confidentialité et le respect du RGPD. Les demandes anciennes sont purgées selon la politique de conservation."),
+                ]),
+            ] %}
+            {% for theme, items in faq %}
+                <p class="text-[11px] font-black uppercase tracking-widest text-slate-400 pt-4">{{ theme }}</p>
+                {% for q, a in items %}
                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
                     <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Mon mot de passe ne fonctionne pas</span>
+                        <span class="font-bold text-lg {% if 'Urgence' in q %}text-red-600{% else %}text-slate-700 dark:text-slate-200{% endif %}">{{ q }}</span>
                         <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
                     </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Votre mot de passe est <strong>synchronisé avec Windows</strong>. Si vous l'avez changé pour ouvrir votre session ce matin, c'est le nouveau qu'il faut utiliser. En cas de blocage, contactez le Service Informatique.
-                    </div>
+                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">{{ a|safe }}</div>
                 </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Erreur "Catdance" ou 403 Forbidden</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Cette erreur signifie que votre compte Active Directory n'a pas les droits nécessaires pour accéder à cette page (ex: un utilisateur qui tente d'accéder au menu Validation Responsable).
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment trouver le nom de mon PC (Hostname) ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Le formulaire de ticket tente de le détecter automatiquement. (ex: <code>PORTABLE-042</code>).
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Je ne reçois pas les notifications mail</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Vérifiez votre dossier "Indésirables" (Spam) dans Outlook. Si le problème persiste, contactez le Service Informatique.
-                    </div>
-                </details>
-
-                <!-- FAQ 6-10 : Tickets -->
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Puis-je modifier un ticket après envoi ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Non, le ticket est verrouillé pour garantir la traçabilité. Cependant, vous pouvez ajouter des informations ou des fichiers supplémentaires via la zone de <strong>Chat</strong> en bas du ticket.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment annuler une demande ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Vous ne pouvez pas supprimer un ticket vous-même. Demandez l'annulation au technicien via le chat, ou demandez à votre Responsable de le "Refuser" lors de la validation.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Quelle est la taille maximale des fichiers ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        La limite est fixée à <strong>20 Mo</strong> par fichier. Si vous devez envoyer une vidéo ou un gros fichier, utilisez un lien OneDrive/Sharepoint dans la description.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Quel est le délai de réponse moyen ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Il n'y a pas de délai fixe de réponse. Les tickets sont traités dans l'ordre d'arrivée, selon la disponibilité des techniciens.
-                        En général, vous pouvez vous attendre à une première réponse dans les <strong>24 à 48 heures</strong> ouvrées. Les demandes urgentes (ex: panne complète) sont prioritaires.
-                    </div>
-                </details>
-
-                <!-- FAQ 11-15 : DAF & RH -->
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">C'est quoi la "Délégation" DAF ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        C'est une procédure simplifiée pour les achats inférieurs à <strong>400€</strong>. En accédan a ce formulaire, votre demande contourne la validation hiérarchique pour être traitée plus vite par la DAF.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">J'ai oublié de joindre le devis</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Pas de panique. Ouvrez votre ticket dans l'historique et ajoutez le fichier PDF via la zone de discussion en bas de page. (A venir)
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Qui valide mes congés ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        L'intranet gère les demandes techniques et administratives. Pour les congés, veuillez vous rapprocher de votre Responsable.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment recruter un stagiaire ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Utilisez le formulaire <strong>FCPI (Fiche Création Poste)</strong> exactement comme pour un salarié classique. Précisez "Stagiaire" dans le type de contrat.
-                    </div>
-                </details>
-
-                <!-- FAQ 16-20 : Divers -->
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Je suis Responsable mais je ne vois pas le menu Validation</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Il vous manque probablement le groupe de sécurité <code>RESPONSABLE</code> dans le serveur. Ouvrez un ticket support pour régulariser vos droits.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Mon collaborateur n'apparait pas dans ma liste</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Cela signifie que son affectation "Service" dans l'AD est différente de la vôtre. Contactez le <strong>Service informatique</strong> pour corriger le probléme.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">L'intranet est-il accessible sur mobile ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Oui, si votre téléphone est connecté au Wi-Fi de l'entreprise. L'interface est "responsive" et s'adapte aux petits écrans.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Le mode sombre ne reste pas activé</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Le choix du thème est enregistré dans votre navigateur. Si vous changez de PC ou effacez vos cookies, il se réinitialise.
-                    </div>
-                </details>
-
-                <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-red-600">Urgence vitale (Feu, Accident)</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        <strong>N'OUVREZ PAS DE TICKET !</strong> Appelez immédiatement les secours (18 ou 112) et le PC Sécurité.
-                    </div>
-                </details>
-
-                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Puis-je avoir un Mac au lieu d'un PC ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                        Toute demande de matériel hors catalogue standard doit être dûment justifiée dans le ticket "Demande Matériel" et est soumise à validation budgétaire stricte.
-                    </div>
-                </details>
-                
-                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Comment exporter mes tickets ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                       Il n'y a pas d'export Excel côté utilisateur pour le moment. Si vous avez besoin d'un rapport annuel, faites une demande au service Informatique.
-                    </div>
-                </details>
-                
-                 <details class="faq-item group bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden">
-                    <summary class="flex justify-between items-center p-5 cursor-pointer bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition">
-                        <span class="font-bold text-lg text-slate-700 dark:text-slate-200">Où sont stockées mes données ?</span>
-                        <span class="transform group-open:rotate-180 transition-transform"><i class="fa-solid fa-chevron-down text-slate-400"></i></span>
-                    </summary>
-                    <div class="p-5 text-slate-600 dark:text-slate-400 border-t border-gray-200 dark:border-slate-800">
-                       L'intranet est hébergé sur des serveurs internes sécurisés dans nos locaux (On-Premise), garantissant la confidentialité et le respect du RGPD.
-                    </div>
-                </details>
-
+                {% endfor %}
+            {% endfor %}
             </div>
         </div>
 
@@ -528,656 +390,319 @@
     </div>
 
     <!-- ================= MODALES (POPUPS) DÉTAILLÉES ================= -->
+    {% macro modal_open(id, color, icon, title) -%}
+    <div id="{{ id }}" class="modal hidden fixed inset-0 z-50 overflow-y-auto" role="dialog" aria-modal="true" aria-labelledby="{{ id }}-title">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('{{ id }}')"></div>
+            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
+                <div class="{{ color }} px-6 py-4 flex justify-between items-center">
+                    <h3 id="{{ id }}-title" class="text-xl font-bold text-white"><i class="fa-solid {{ icon }} mr-2"></i> {{ title }}</h3>
+                    <button onclick="closeModal('{{ id }}')" class="text-white hover:text-gray-200" aria-label="Fermer"><i class="fa-solid fa-times text-xl"></i></button>
+                </div>
+                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
+                    <div class="prose dark:prose-invert max-w-none">
+    {%- endmacro %}
+    {% macro modal_close() -%}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {%- endmacro %}
+    {% macro tip(title, text, color='blue') -%}
+                        <div class="bg-{{ color }}-50 dark:bg-slate-800 border-l-4 border-{{ color }}-500 p-4 my-4 not-prose">
+                            <p class="font-bold text-{{ color }}-800 dark:text-{{ color }}-200">{{ title }}</p>
+                            <p class="text-sm text-{{ color }}-700 dark:text-{{ color }}-100/80">{{ text|safe }}</p>
+                        </div>
+    {%- endmacro %}
 
     <!-- MODAL 1: CONNEXION -->
-    <div id="modal-connexion" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-connexion')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-blue-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-key mr-2"></i> Guide de Connexion</h3>
-                    <button onclick="closeModal('modal-connexion')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <h4 class="text-2xl font-bold text-blue-600 mb-4">1. Identification Windows (SSO)</h4>
-                        <p>L'intranet ILVM est directement relié au serveur. Vous n'avez <strong>pas de compte spécifique</strong> à créer.</p>
+    {{ modal_open('modal-connexion', 'bg-blue-600', 'fa-key', 'Guide de connexion') }}
+                        <h4 class="text-2xl font-bold text-blue-600 mb-4">1. Vos identifiants Windows</h4>
+                        <p>L'Agora est relié à l'annuaire de l'institut : vous n'avez <strong>aucun compte à créer</strong>.</p>
                         <ul class="list-disc pl-5 mb-4">
-                            <li><strong>Identifiant :</strong> Utilisez votre identifiant de session Windows <strong>pnom</strong> (ex: <code>atraore</code>).</li>
-                            <li><strong>Mot de Passe :</strong> C'est le même que celui pour ouvrir votre session Windows.</li>
+                            <li><strong>Identifiant :</strong> le même que pour ouvrir votre session Windows, au format <code>nprenom</code>.</li>
+                            <li><strong>Mot de passe :</strong> votre mot de passe Windows. Si vous le changez, L'Agora le prend en compte immédiatement.</li>
                         </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/login.png"
-                                    alt="Écran de connexion L'Agora"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Écran de connexion à L’Agora
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-blue-600 mb-4">2. Gestion du Mot de Passe</h4>
-                        <p>Si vous changez votre mot de passe Windows, il est <strong>immédiatement</strong> mis à jour sur l'intranet. Inutile d'appeler le support.</p>
-                        <div class="bg-blue-50 dark:bg-slate-800 border-l-4 border-blue-500 p-4 my-4">
-                            <p class="font-bold">Problème de connexion ?</p>
-                            <p>Si votre mot de passe fonctionne sur Windows mais pas sur L'Agora, vérifiez que votre compte n'est pas verrouillé ou contactez le Service Informatique.</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        {{ fig('login.png', "Écran de connexion à L'Agora") }}
+                        <h4 class="text-2xl font-bold text-blue-600 mb-4">2. Avec votre compte Microsoft 365</h4>
+                        <p>Sous le bouton Connexion, <strong>« Connexion avec mon compte Microsoft 365 »</strong> vous connecte sans saisir de mot de passe si votre poste est déjà connecté à Microsoft 365. Le bouton <strong>« Accès à l'intranet »</strong> du site SharePoint de l'institut fait de même.</p>
+                        <h4 class="text-2xl font-bold text-blue-600 mb-4">3. Sur mobile et tablette</h4>
+                        <p>L'adresse est la même, depuis le réseau de l'institut. Le menu se trouve derrière le bouton <strong>☰</strong> en haut à gauche et les pages s'adaptent à la largeur de l'écran.</p>
+                        {{ tip('Problème de connexion ?', "Si votre mot de passe fonctionne sur Windows mais pas sur L'Agora, votre compte est peut-être verrouillé : contactez le Service Informatique.") }}
+    {{ modal_close() }}
 
     <!-- MODAL 2: PORTAIL -->
-    <div id="modal-portail" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-portail')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-purple-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-desktop mr-2"></i> Le Portail Utilisateur</h3>
-                    <button onclick="closeModal('modal-portail')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <h4 class="text-2xl font-bold text-purple-600 mb-4">1. Le Portail </h4>
-                        <p>Dès votre connexion, vous accédez à votre espace personnel. Il est composé de trois zones :</p>
-                        <ul class="list-disc pl-5 mb-6">
-                            <li><strong>Nav Bar (Haut) :</strong> Accès rapide à l'espace Solver, Espace Validation et les notifications.</li>
-                            <li><strong>Zone d'Actions (Milieu) :</strong> Les cartes colorées pour créer une demande.</li>
-                            <li><strong>Zone de Suivi (Bas) :</strong> Le tableau "Mes dernières demandes" avec leur statut en temps réel.</li>
-                        </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/portail.png"
-                                    alt="Portail ILVM"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Portail ILVM
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-purple-600 mb-4">2. Les Notifications</h4>
-                        <p>En haut à droite, l'icône <i class="fa-solid fa-bell"></i> vous alerte quand :</p>
-                        <ul class="list-disc pl-5 mb-6">
-                            <li>Un technicien a répondu à votre ticket.</li>
-                            <li>Votre demande a été validée par votre Responsable.</li>
-                            <li>Le statut de votre ticket a changé (ex: Terminé).</li>
-                        </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/notif.png"
-                                    alt="Volet de Notifications"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Volet de Notifications
-                                </p>
-                            </div>                    
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 3: TICKET -->
-    <div id="modal-ticket" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-ticket')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-green-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-plus-circle mr-2"></i> Créer une Demande</h3>
-                    <button onclick="closeModal('modal-ticket')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <h4 class="text-2xl font-bold text-green-600 mb-4">1. Choisir le bon formulaire</h4>
-                        <p>Sur l'accueil, cliquez sur la carte correspondant à votre besoin :</p>
-                        <div class="grid grid-cols-2 gap-4 mb-6">
-                            <div class="bg-slate-100 p-3 rounded border"><strong>Support Informatique</strong> : Panne PC, écran, réseau, logiciel...</div>
-                            <div class="bg-slate-100 p-3 rounded border"><strong>Dépannage Imago</strong> : Problèmes spécifiques au logiciel métier.</div>
-                        </div>
-
-                        <h4 class="text-2xl font-bold text-green-600 mb-4">2. Remplir les champs</h4>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/form.png"
-                                    alt="Formualire de création de ticket"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formualire de création de ticket
-                                </p>
-                            </div>                        <ul class="list-disc pl-5 mb-6">
-                            <li><strong>Titre :</strong> Résumez le problème (ex: "PC très lent au démarrage").</li>
-                            <li><strong>Description :</strong> Détaillez le probléme. Et precisez ou vous vous trouvez dans le champs Service/Bureau.</li>
-                            <li><strong>Pièce Jointe :</strong> Ajoutez une capture d'écran du message d'erreur si possible.</li>
-                        </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/form-complet.png"
-                                    alt="Exemple de formulaire complété"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple de formulaire complété
-                                </p>
-                            </div>                    
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-<!-- MODAL 3: status -->
-    <div id="modal-status" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <!-- Overlay background -->
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-status')"></div>
-            
-            <!-- Modal panel -->
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                
-                <!-- Header (Vert comme demandé) -->
-                <div class="bg-pink-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-plus-circle mr-2"></i> Guide des Statuts</h3>
-                    <button onclick="closeModal('modal-status')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-
-                <!-- Content Body -->
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        
-                        <!-- Contenu inséré (Liste des statuts sans images) -->
-                        <div>
-                            <h4 class="font-bold text-slate-800 dark:text-white mb-3 border-b pb-2 border-slate-200 dark:border-slate-700">1. Tickets Standards (Support, Imago, DAF)</h4>
-                            <div class="space-y-4">
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-yellow-100 text-yellow-800 border border-yellow-200">ATTENTE_VALIDATION</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">En attente du Responsable (N1)</p>
-                                        <p class="text-slate-500">Votre demande a été envoyée mais nécessite l'approbation de votre responsable hiérarchique avant d'être traitée. (Ex: Achat DAF, Matériel).</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-orange-100 text-orange-800 border border-orange-200">ATTENTE_VALIDATION_N2</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">En attente de Direction (N2)</p>
-                                        <p class="text-slate-500">Validation supplémentaire requise (ex: DAF > seuil budgétaire) par un Directeur.</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-blue-100 text-blue-800 border border-blue-200 shrink-0">EN_ATTENTE</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">Validé / En attente de technicien</p>
-                                        <p class="text-slate-500">La demande est validée (ou n'avait pas besoin de validation). Elle est dans la file d'attente du service technique (Pool) et attend qu'un technicien se libère.</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-purple-100 text-purple-800 border border-purple-200 shrink-0">EN_COURS</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">Pris en charge</p>
-                                        <p class="text-slate-500">Un technicien (Solver) travaille actuellement sur votre dossier.</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-green-100 text-green-800 border border-green-200 shrink-0">TERMINE</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">Résolu / Livré</p>
-                                        <p class="text-slate-500">L'intervention est finie. Le ticket est archivé.</p>
-                                    </div>
-                                </div>
-
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-red-100 text-red-800 border border-red-200 shrink-0">REFUSE</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">Rejeté</p>
-                                        <p class="text-slate-500">Votre responsable ou la direction a refusé la demande. Le motif du refus vous a été envoyé par email.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- SECTION 2 : FCPI -->
-                        <div class="mt-8">
-                            <h4 class="font-bold text-slate-800 dark:text-white mb-3 border-b pb-2 border-slate-200 dark:border-slate-700">2. Recrutement (FCPI)</h4>
-                            <div class="space-y-4">
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-pink-100 text-pink-800 border border-pink-200 shrink-0">VALIDATION_RH / DRH</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">Validation RH</p>
-                                        <p class="text-slate-500">Le dossier est en cours de signature par les Ressources Humaines.</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-start gap-3">
-                                    <span class="badge-status bg-indigo-100 text-indigo-800 border border-indigo-200 shrink-0">SIGNED</span>
-                                    <div class="text-sm">
-                                        <p class="font-semibold dark:text-white">Signé & Actif</p>
-                                        <p class="text-slate-500">La fiche est validée. Les 4 tickets techniques (Info, Sécu, etc.) ont été générés automatiquement.</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <!-- MODAL 4: DAF STANDARD -->
-    <div id="modal-daf-standard" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-daf-standard')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-orange-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-file-invoice mr-2"></i> DAF : Bon de Commande Standard</h3>
-                    <button onclick="closeModal('modal-daf-standard')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <div class="bg-orange-5 border-l-4 border-orange-500 p-4 mb-6">
-                            <p class="font-bold text-orange-800">IMPORTANT</p>
-                            <p class="text-orange-700">Ce ticket nécessitant une validation hiérarchique.</p>
-                        </div>
-
-                        <h4 class="text-2xl font-bold text-orange-600 mb-4">1. Saisie de la demande</h4>
-                        <p>Dans le formulaire "Bon de Commande DAF", remplissez le montant HT/TTC, le fournisseur et l'objet de la dépense.</p>
-                        <p><strong>IMPORTANT :</strong>Ne laissez rien de vide.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/formulaire DAF.png"
-                                    alt="Formulaire DAF"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                     Formulaire DAF
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-orange-600 mb-4">2. Ajout du Devis</h4>
-                        <p>L'ajout du devis (PDF ou Image) est <strong>obligatoire</strong> pour valider le formulaire.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/formulaire DAF devis.png"
-                                    alt="Formulaire DAF avec devis"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formulaire DAF avec un devis ajouté
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-orange-600 mb-4">3. Circuit de Validation</h4>
-                        <ol class="list-decimal pl-5 mb-4">
-                            <li>Vous envoyez la demande.</li>
-                            <li>Statut : <strong>ATTENTE VALIDATION HIERARCHIQUE </strong>. Votre responsable reçoit une notification.</li>
-                            <li>Une fois validé par le Responsable, la demande part au service DAF pour traitement.</li>
-                        </ol>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/status daf.png"
-                                    alt="Formulaire DAF avec devis"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formulaire DAF avec un devis ajouté
-                                </p>
-                            </div>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/worflow.png"
-                                    alt="Formulaire DAF avec devis"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formulaire DAF avec un devis ajouté
-                                </p>
-                            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 5: DAF DÉLÉGATION -->
-    <div id="modal-daf-delegation" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-daf-delegation')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-yellow-500 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-signature mr-2"></i> DAF : Délégation (< 400€)</h3>
-                    <button onclick="closeModal('modal-daf-delegation')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <div class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
-                            <p class="font-bold text-yellow-800">Avantage "Fast-Track"</p>
-                            <p class="text-yellow-700">Pour les petits montants (inférieurs à 400€), la validation HIERARCHIQUE  est contournée pour accélérer les achats courants.</p>
-                        </div>
-
-                        <h4 class="text-2xl font-bold text-yellow-600 mb-4">1. Activer la Délégation</h4>
-                        <p>Dans le formulaire DAF :</p>
+    {{ modal_open('modal-portail', 'bg-purple-600', 'fa-desktop', "Découverte de L'Agora") }}
+                        <h4 class="text-2xl font-bold text-purple-600 mb-4">1. Le portail</h4>
+                        <p>Dès votre connexion, vous arrivez sur le portail. De haut en bas :</p>
                         <ul class="list-disc pl-5 mb-4">
-                            <li><strong>Acceder a la carte :</strong> <code>Bon de commande:Délégation de signature</code>. Depuis votre portail ILVM. <strong>Accesible uniquement au responsable et Directeur</strong>.</li>
-                            <li>Seul les montant inférieur à 400€ TTC sont autorisés.</li>
-                            <li>Le formulaire est idendique au formulaire standard DAF.</li>                         
+                            <li><strong>Annonces :</strong> les informations importantes diffusées par la Communication ou la DSI.</li>
+                            <li><strong>Mes demandes en cours :</strong> vos demandes non terminées, avec leur statut en clair. Un clic ouvre le détail.</li>
+                            <li><strong>Les cartes de demande :</strong> une carte par type de besoin (Informatique, DRH, DAF, Services techniques, Imago…). Certaines cartes sont réservées aux managers et directeurs et portent une étiquette.</li>
+                            <li><strong>Mes dernières demandes :</strong> le récapitulatif, avec le lien vers l'historique complet.</li>
                         </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/formulaire delegation.png"
-                                    alt="Formulaire DAF"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formulaire DAF
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-yellow-600 mb-4">2. Traitement Direct</h4>
-                        <p>Dès que vous cliquez sur "Envoyer", le statut passe directement à <strong>EN COURS (DAF)</strong>.</p>
-                        <p>Votre responsable n'a pas besoin de valider, mais il sera notifié pour information.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/status.png"
-                                    alt="Worflow DAF"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple de statut DAF
-                                </p>
-                            </div>                    
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 6: VALIDATION RESPONSABLE -->
-    <div id="modal-validation" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-validation')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-red-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-check-double mr-2"></i> Responsable : Valider une demande</h3>
-                    <button onclick="closeModal('modal-validation')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <h4 class="text-2xl font-bold text-red-600 mb-4">1. Accéder aux demandes</h4>
-                        <p>Dans le menu de gauche, cliquez sur <strong>"Validation Responsable"</strong>. Vous verrez la liste de toutes les demandes en attente provenant de votre equipe.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/validation.png"
-                                    alt="validation responsable"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran de validation responsable
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-red-600 mb-4">2. Valider ou Refuser</h4>
-                        <p>Pour chaque ligne, deux boutons sont disponibles :</p>
-                        <ul class="list-disc pl-5 mb-6">
-                            <li><span class="text-green-600 font-bold">Valider</span> : Transmet immédiatement le ticket au service technique compétent.</li>
-                            <li><span class="text-red-600 font-bold">Refuser</span> : Ouvre une pop-up.</li>
-                        </ul>
-
-                        <h4 class="text-2xl font-bold text-red-600 mb-4">3. En cas de Refus</h4>
-                        <p>Vous <strong>devez</strong> saisir un motif (ex: "Budget dépassé", "Pas prioritaire"). Ce motif sera envoyé par email au collaborateur.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/refus validation.png"
-                                    alt="Écran de refus de validation"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran de refus de validation
-                                </p>
-                            </div>                    
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL 7: FCPI -->
-    <div id="modal-fcpi" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-fcpi')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-indigo-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-user-plus mr-2"></i> Responsable : Fiche Création de Poste</h3>
-                    <button onclick="closeModal('modal-fcpi')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-
-                        <h4 class="text-2xl font-bold text-indigo-600 mb-4">1. Le Formulaire Unique</h4>
-                        <p>Remplissez les informations du nouvel arrivant :</p>
+                        {{ fig('portail.png', "Le portail : annonces, demandes en cours et cartes de demande") }}
+                        <h4 class="text-2xl font-bold text-purple-600 mb-4">2. Le menu latéral</h4>
+                        <p>À gauche, le menu donne accès au <strong>Portail</strong>, à l'<strong>Aide / Tuto</strong>, à <strong>Mon profil</strong> et, selon votre rôle, au <strong>Dashboard</strong> (solvers), à la <strong>Validation</strong> (managers et directeurs), aux <strong>Annonces</strong>, aux <strong>Statistiques</strong> et à l'<strong>Administration</strong>.</p>
+                        <p>Le bouton en bas du menu le <strong>replie</strong> pour ne garder que les icônes et gagner de la place. Pour le rouvrir, cliquez n'importe où sur la barre d'icônes. Ce choix est mémorisé sur votre navigateur.</p>
+                        {{ fig('menu-replie.png', "Le menu replié : seules les icônes restent visibles") }}
+                        <h4 class="text-2xl font-bold text-purple-600 mb-4">3. La recherche</h4>
+                        <p>En haut de l'écran, la zone <strong>Rechercher…</strong> retrouve une demande par son numéro, son titre ou un mot de sa description, en tapant quelques lettres. Les résultats s'affichent au fur et à mesure.</p>
+                        {{ fig('recherche.png', "La recherche globale, depuis n'importe quelle page") }}
+                        <h4 class="text-2xl font-bold text-purple-600 mb-4">4. Les notifications</h4>
+                        <p>La cloche <i class="fa-solid fa-bell"></i> en haut à droite vous prévient quand :</p>
                         <ul class="list-disc pl-5 mb-4">
-                            <li><strong>RH :</strong> Nom, Prénom, Date d'arrivée.</li>
-                            <li><strong>IT :</strong> Type de PC (Fixe/Portable), Logiciels spécifiques.</li>
-                            <li><strong>Sécurité :</strong> Accès parking, Badge.</li>
+                            <li>le service a répondu dans le fil de votre demande ;</li>
+                            <li>votre demande a été validée, refusée ou prise en charge ;</li>
+                            <li>un rendez-vous vous est proposé ou votre demande est terminée.</li>
                         </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/fcpi1.png"
-                                    alt="Formulaire FCPI"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formulaire FCPI
-                                </p>
-                            </div>
-                                <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/fcpi2.png"
-                                    alt="Formulaire FCPI"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Formulaire FCPI
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-indigo-600 mb-4">2. Circuit de Validation</h4>
-                        <p>Une fois soumis, le dossier part chez le DRH pour signature contractuelle.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/worflow fcpi.png"
-                                    alt="Worflow FCPI"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Workflow FCPI
-                                </p>
-                            </div>
+                        <p>Les mêmes événements vous parviennent par e-mail, selon le réglage choisi dans <strong>Mon profil</strong>.</p>
+                        {{ fig('notifications.png', "Le volet des notifications") }}
+    {{ modal_close() }}
 
-                        <h4 class="text-2xl font-bold text-indigo-600 mb-4">3. Automatisation</h4>
-                        <p>Dès la signature DRH, l'intranet génère <strong>4 tickets distincts</strong> :</p>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="border p-2 rounded bg-gray-50">1. Ticket Info (Préparation PC)</div>
-                            <div class="border p-2 rounded bg-gray-50">2. Ticket Sécurité (Badge)</div>
-                            <div class="border p-2 rounded bg-gray-50">3. Ticket Imago (Compte métier)</div>
-                            <div class="border p-2 rounded bg-gray-50">4. Ticket RH (Contrat)</div>
+    <!-- MODAL 3: CRÉER UNE DEMANDE -->
+    {{ modal_open('modal-ticket', 'bg-green-600', 'fa-plus-circle', 'Créer une demande') }}
+                        <h4 class="text-2xl font-bold text-green-600 mb-4">1. Choisir la bonne carte</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6 not-prose text-sm">
+                            <div class="bg-slate-100 dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700"><strong>Informatique</strong> : panne PC, écran, imprimante, réseau, logiciel, accès.</div>
+                            <div class="bg-slate-100 dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700"><strong>DRH</strong> : documents administratifs, coordonnées, rendez-vous RH.</div>
+                            <div class="bg-slate-100 dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700"><strong>DAF / Achats</strong> : bon de commande avec devis (voir le tuto DAF).</div>
+                            <div class="bg-slate-100 dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700"><strong>Services techniques</strong> : travaux, plomberie, maintenance des locaux.</div>
+                            <div class="bg-slate-100 dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700"><strong>Services généraux</strong> : enlèvement de matériel ou d'encombrants.</div>
+                            <div class="bg-slate-100 dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700"><strong>Dépannage Imago</strong> : blocage, erreur ou mot de passe du logiciel métier.</div>
+                            <div class="bg-amber-50 dark:bg-slate-800 p-3 border border-amber-200 dark:border-slate-700 md:col-span-2"><strong>Managers et directeurs :</strong> Bon de commande en délégation, Demande Matériel, Agent recruté (FCPI), Dossier de séjour, Publication d'actualités.</div>
                         </div>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/test.png"
-                                    alt="Écran de connexion L'Agora"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran de connexion à L’Agora
-                                </p>
-                            </div>                    
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        <h4 class="text-2xl font-bold text-green-600 mb-4">2. Remplir le formulaire</h4>
+                        <p>En haut du formulaire, l'encadré <strong>« Avant d'envoyer — avez-vous essayé… »</strong> propose des solutions rapides (redémarrer le poste, compte verrouillé…) : votre problème peut se régler sans attendre. Le volet <strong>« Faire cette demande au nom de quelqu'un d'autre »</strong> permet de déposer pour un collègue, qui sera alors le demandeur.</p>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li><strong>Titre :</strong> une phrase qui résume le besoin (ex : « Écran qui ne s'allume plus »).</li>
+                            <li><strong>Description :</strong> ce qui se passe, depuis quand, ce que vous avez déjà essayé.</li>
+                            <li><strong>Service / Bureau :</strong> où vous trouver (bâtiment, étage, bureau).</li>
+                            <li><strong>Téléphone de contact :</strong> pour être joint rapidement.</li>
+                            <li><strong>Pièces jointes :</strong> glissez vos fichiers dans la zone prévue ou cliquez pour les choisir (20 Mo maximum par envoi). Une capture d'écran du message d'erreur fait gagner beaucoup de temps.</li>
+                        </ul>
+                        {{ fig('formulaire.png', "Le formulaire de demande Informatique") }}
+                        {{ tip('Brouillon automatique', "Ce que vous tapez est mémorisé sur votre navigateur. Si vous quittez la page avant d'envoyer, L'Agora vous proposera de reprendre votre brouillon à votre retour.", 'green') }}
+                        <h4 class="text-2xl font-bold text-green-600 mb-4">3. Vérifier puis envoyer</h4>
+                        <p>Sous les champs, le <strong>parcours</strong> indique par où passera votre demande (validation éventuelle, service destinataire). Au clic sur <strong>Soumettre</strong>, un <strong>récapitulatif</strong> reprend tout ce que vous avez saisi : <strong>Modifier</strong> pour corriger, <strong>Confirmer la création</strong> pour envoyer. La demande reçoit alors un numéro et vous recevez une confirmation.</p>
+                        {{ fig('formulaire-recap.png', "Le récapitulatif avant envoi") }}
+                        <h4 class="text-2xl font-bold text-green-600 mb-4">4. « Demande déjà en cours ? »</h4>
+                        <p>Si une de vos demandes des 30 derniers jours ressemble beaucoup à celle que vous envoyez et qu'elle est encore ouverte, L'Agora vous le signale avant l'envoi. <strong>Voir ma demande en cours</strong> ouvre la demande existante pour y ajouter un message ; <strong>Créer quand même</strong> confirme qu'il s'agit d'une nouvelle demande. Rien n'est fusionné sans vous : le service est simplement informé d'un doublon possible.</p>
+                        {{ fig('doublon.png', "L'alerte de doublon possible avant l'envoi") }}
+    {{ modal_close() }}
 
-    <!-- MODAL 8: CHAT -->
-    <div id="modal-chat" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-chat')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-teal-600 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-comments mr-2"></i> Suivi & Chat</h3>
-                    <button onclick="closeModal('modal-chat')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
+    <!-- MODAL 4: STATUTS -->
+    {{ modal_open('modal-status', 'bg-pink-600', 'fa-route', 'Guide des statuts') }}
+                        <p>Chaque demande affiche une <strong>frise de suivi</strong>, comme le suivi d'un colis : l'étape en cours est mise en avant, les étapes passées sont cochées. Le statut est aussi écrit en clair au-dessus.</p>
+                        {{ fig('frise.png', "La frise de suivi d'une demande en cours de traitement") }}
+                        <h4 class="font-bold text-slate-800 dark:text-white mb-3 border-b pb-2 border-slate-200 dark:border-slate-700">1. Demandes classiques (Informatique, DAF, Matériel…)</h4>
+                        <div class="space-y-4 not-prose text-sm">
+                            {% for badge, cls, title, text in [
+                                ('Validation manager', 'bg-yellow-100 text-yellow-800 border-yellow-200', 'En attente de validation par votre manager', "Votre demande nécessite l'accord de votre responsable hiérarchique avant d'être traitée (achats, matériel…). Il reçoit une notification, puis des rappels automatiques si elle reste en attente."),
+                                ('Validation service', 'bg-orange-100 text-orange-800 border-orange-200', 'En attente de validation par le service', "Une validation supplémentaire par un directeur est requise (ex : demande de matériel)."),
+                                ('Validation DAF', 'bg-orange-100 text-orange-800 border-orange-200', 'En attente de validation par la DAF', "Le bon de commande a été préparé par le service DAF et attend l'accord du manager DAF."),
+                                ('Signature directeur', 'bg-orange-100 text-orange-800 border-orange-200', 'En attente de signature du directeur', "Dernière étape d'un bon de commande : la signature de la direction."),
+                                ('À prendre en charge', 'bg-blue-100 text-blue-800 border-blue-200', 'En attente de prise en charge', "La demande est validée (ou n'avait pas besoin de validation) et se trouve dans la file du service compétent. Un solver va la prendre."),
+                                ('En cours', 'bg-purple-100 text-purple-800 border-purple-200', 'En cours de traitement', "Un solver travaille sur votre demande. Vous connaissez son nom et pouvez discuter avec lui dans le fil."),
+                                ('Réponse attendue', 'bg-amber-100 text-amber-800 border-amber-200', 'En attente de votre réponse', "Le service a besoin d'une précision de votre part : répondez dans le fil de la demande."),
+                                ('Terminée', 'bg-green-100 text-green-800 border-green-200', 'Terminée', "L'intervention est finie. Vous pouvez donner votre avis et, pendant 7 jours, rouvrir la demande si le problème revient."),
+                                ('Refusée', 'bg-red-100 text-red-800 border-red-200', 'Refusée', "Votre manager, la direction ou le service a refusé la demande. Le motif figure dans le fil de la demande et vous a été envoyé par e-mail."),
+                            ] %}
+                            <div class="flex items-start gap-3">
+                                <span class="px-2 py-1 text-[11px] font-black uppercase tracking-wide border shrink-0 {{ cls }}">{{ badge }}</span>
+                                <div>
+                                    <p class="font-semibold text-slate-800 dark:text-white">{{ title }}</p>
+                                    <p class="text-slate-500 dark:text-slate-400">{{ text }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <h4 class="font-bold text-slate-800 dark:text-white mt-8 mb-3 border-b pb-2 border-slate-200 dark:border-slate-700">2. Recrutement (FCPI) et dossiers de séjour</h4>
+                        <div class="space-y-4 not-prose text-sm">
+                            {% for badge, cls, title, text in [
+                                ('Validation RH', 'bg-pink-100 text-pink-800 border-pink-200', 'Validation par le manager puis le directeur RH', "La fiche est examinée par les Ressources Humaines (deux niveaux)."),
+                                ('Validation manager', 'bg-yellow-100 text-yellow-800 border-yellow-200', 'Dossier de séjour : validation du responsable', "Le dossier attend l'accord du responsable avant d'être transmis."),
+                                ('Dispatché aux services', 'bg-indigo-100 text-indigo-800 border-indigo-200', 'Transmis aux services', "La fiche est validée : les tickets techniques (DRH, Informatique, Sécurité, Imago) ont été créés automatiquement et sont suivis chacun dans son service."),
+                                ('Terminé', 'bg-green-100 text-green-800 border-green-200', 'Terminé', "Tous les tickets générés sont clôturés."),
+                            ] %}
+                            <div class="flex items-start gap-3">
+                                <span class="px-2 py-1 text-[11px] font-black uppercase tracking-wide border shrink-0 {{ cls }}">{{ badge }}</span>
+                                <div>
+                                    <p class="font-semibold text-slate-800 dark:text-white">{{ title }}</p>
+                                    <p class="text-slate-500 dark:text-slate-400">{{ text }}</p>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+    {{ modal_close() }}
+
+    <!-- MODAL 5: SUIVI & DISCUSSION -->
+    {{ modal_open('modal-chat', 'bg-teal-600', 'fa-comments', 'Suivre et modifier ma demande') }}
                         <h4 class="text-2xl font-bold text-teal-600 mb-4">1. Retrouver ses demandes</h4>
-                        <p>Utilisez le menu <strong>"Historique"</strong> pour voir toutes vos demandes passées et actuelles. Cliquez sur une ligne pour voir le détail.</p>
-                        <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                            <img 
-                                src="static/tutos/myhistory.png"
-                                alt="Historique des demandes"
-                                class="w-full rounded-lg shadow"
-                            >
-                            <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                Historique des demandes en attente de validation
-                            </p>
-                        </div>                            
-                        <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/detail ticket.png"
-                                    alt="Détail d’un ticket"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple détail d’un ticket
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-teal-600 mb-4">2. Discuter avec le technicien</h4>
-                        <p>En bas de la fiche ticket, la zone de chat vous permet de répondre aux questions du support (ex: "Pouvez-vous me donner le message d'erreur ?").</p>
-                        <p>Vous pouvez discuter en temps réel avec le technicien.</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/chat bon.png"
-                                    alt="Chat de bon fonctionnement"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran de chat avec le technicien
-                                </p>
-                            </div>              
-                        </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        <p>Le portail affiche vos demandes en cours. Le menu <strong>Historique</strong> (lien « Tout voir ») liste toutes vos demandes, avec des filtres par statut et période et un export CSV ou Excel. Cliquez sur une ligne pour ouvrir le détail.</p>
+                        {{ fig('historique.png', "L'historique de mes demandes, avec filtres et export") }}
+                        <h4 class="text-2xl font-bold text-teal-600 mb-4">2. Le détail d'une demande</h4>
+                        <p>En haut, la frise de suivi et le statut en clair ; puis les informations saisies, les pièces jointes et le nom du solver qui s'en occupe ; en bas, le fil de discussion.</p>
+                        {{ fig('detail-ticket.png', "Le détail d'une demande en cours") }}
+                        <h4 class="text-2xl font-bold text-teal-600 mb-4">3. Discuter avec le service</h4>
+                        <p>Le fil de discussion sert à répondre aux questions du service (« Pouvez-vous me donner le message d'erreur ? ») et à ajouter des précisions ou des fichiers. Chaque message déclenche une notification de l'autre côté.</p>
+                        {{ fig('discussion.png', "Le fil de discussion, vu par le service : les notes internes en jaune ne sont jamais visibles du demandeur") }}
+                        <h4 class="text-2xl font-bold text-teal-600 mb-4">4. Modifier ma demande</h4>
+                        <p>Tant que la demande n'est ni terminée ni refusée, le bouton <strong>« Modifier ma demande »</strong> permet de corriger le titre, la description, le lieu, le téléphone, les lignes d'un bon de commande et d'ajouter des pièces jointes. Les changements sont ajoutés au fil de la demande et la personne qui la traite est prévenue.</p>
+                        {{ fig('modifier-formulaire.png', "Le formulaire de modification d'une demande") }}
+                        <h4 class="text-2xl font-bold text-teal-600 mb-4">5. Rendez-vous</h4>
+                        <p>Quand une intervention sur place est nécessaire, le service peut vous <strong>proposer un rendez-vous</strong>. Depuis le détail, vous l'acceptez, le refusez ou transmettez jusqu'à trois créneaux qui vous conviennent. Un rappel vous est envoyé le jour même à 9 h.</p>
+                        {{ fig('rdv.png', "Une proposition de rendez-vous à accepter, refuser ou renégocier") }}
+                        <h4 class="text-2xl font-bold text-teal-600 mb-4">6. À la fin : votre avis</h4>
+                        <p>Une fois la demande terminée, un clic suffit pour donner votre avis : <strong>Satisfait</strong>, <strong>Moyen</strong> ou <strong>Insatisfait</strong>, avec un commentaire facultatif. Cet avis est réservé aux managers et directeurs. Si le problème revient dans les <strong>7 jours</strong>, l'encadré <strong>« Ce n'est pas résolu ? »</strong> permet d'expliquer ce qui ne va pas et de <strong>rouvrir la demande</strong> sans en créer une nouvelle.</p>
+                        {{ fig('avis.png', "Donner son avis ou rouvrir une demande terminée") }}
+    {{ modal_close() }}
 
-    <!-- MODAL 9: TECH -->
-    <div id="modal-tech" class="modal hidden fixed inset-0 z-50 overflow-y-auto">
-        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div class="fixed inset-0 bg-gray-900 bg-opacity-75" onclick="closeModal('modal-tech')"></div>
-            <div class="modal-content inline-block align-bottom bg-white dark:bg-slate-900 rounded-2xl text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
-                <div class="bg-gray-700 px-6 py-4 flex justify-between items-center">
-                    <h3 class="text-xl font-bold text-white"><i class="fa-solid fa-toolbox mr-2"></i> Espace Technique</h3>
-                    <button onclick="closeModal('modal-tech')" class="text-white hover:text-gray-200"><i class="fa-solid fa-times text-xl"></i></button>
-                </div>
-                <div class="px-8 py-8 max-h-[75vh] overflow-y-auto custom-scrollbar">
-                    <div class="prose dark:prose-invert max-w-none">
-                        <h4 class="text-2xl font-bold text-gray-600 mb-4">1. Le Pool de Tickets</h4>
-                        <p>Tous les tickets validés arrivent dans le "Pool". Ils sont en attente d'attribution.</p>
-                        <p>Cliquez sur le bouton <strong>"Prendre en charge"</strong> pour vous l'assigner. L'utilisateur reçoit un mail : "Votre demande est prise en charge par (ex : Assane)".</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/soolver.png"
-                                    alt="Écran de l'espace Solver"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran de l’espace Solver
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-gray-600 mb-4">2. Vue d'ensemble & Diagramme</h4>
-                        <p> En haut de votre tableau de bord, vous retrouvez les compteurs clés (Total, Ouverts, Clôturés).
-                        Le <strong>Diagramme Circulaire</strong> vous donne une vision instantanée de la charge de travail actuelle (tickets en attente vs résolus).</p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/annalyse.png"
-                                    alt="Compteurs et Diagramme Circulaire"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                 Compteurs et de diagramme circulaire
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-gray-600 mb-4">3. Le Pool (File d'attente)</h4>
-                        <p>
+    <!-- MODAL 6: PROFIL -->
+    {{ modal_open('modal-profil', 'bg-sky-600', 'fa-palette', "Mon profil et l'affichage") }}
+                        <p>Le menu <strong>Mon profil</strong> regroupe trois onglets.</p>
+                        <h4 class="text-2xl font-bold text-sky-600 mb-4">1. Compte</h4>
+                        <p>Vos coordonnées (téléphone, bureau), vos initiales ou votre photo, et le réglage des <strong>e-mails</strong> que vous souhaitez recevoir : tout, seulement l'essentiel, ou rien (les notifications restent visibles dans L'Agora).</p>
+                        <h4 class="text-2xl font-bold text-sky-600 mb-4">2. Apparence</h4>
                         <ul class="list-disc pl-5 mb-4">
-                        <li>Consultez la liste des tickets en attente.</li>
-                        <li>Cliquez sur le bouton <strong>"Prendre en charge"</strong> pour vous attribuer le dossier.</li>
-                        <li>Le ticket disparaît du Pool et rejoint votre liste personnelle ("Mes Tickets en cours").</li>
-                        </ul>   
-                        </p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/Pool.png"
-                                    alt="Écran du Pool"
-                                    class="mx-auto w-full max-w-xl max-h-[300px] object-contain rounded-lg shadow"                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Exemple d’écran du Pool (File d'attente)
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-gray-600 mb-4">4. Mes Tickets (Dossiers en cours)</h4>
-                        <p>
-                            Une fois pris en charge, le ticket est sous votre responsabilité. Vous pouvez :
-                        </p>
-                        <ul class="list-disc pl-5 mb-4">
-                        <li>Voir les détails complets (Description, PJ, Hostname).</li>
-                        <li>Discuter avec l'utilisateur via le <strong>Chat Ticket</strong>.</li>
-                        <li><strong>Clôturer</strong> le ticket une fois résolu (bouton vert).</li>
+                            <li><strong>Mode d'affichage :</strong> clair, sombre ou automatique (suit Windows).</li>
+                            <li><strong>Couleur d'accent :</strong> la couleur des boutons et des liens.</li>
+                            <li><strong>Style visuel :</strong> « Plat » par défaut (cartes opaques, coins nets), ou un des autres styles proposés, comme « Liquid Glass » (verre dépoli, toujours en sombre) ou « Bento ».</li>
+                            <li><strong>Taille du texte, densité et contraste élevé :</strong> pour le confort de lecture.</li>
                         </ul>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/Mes tickets.png"
-                                    alt="Écran de connexion L'Agora"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    File d'attente des tickets assignés
-                                </p>
-                            </div>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/cloture.png"
-                                    alt="Écran de clôture de ticket"
-                                    class="w-full rounded-lg shadow"
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Detail d’un ticket avec option de clôture
-                                </p>
-                            </div>
-                        <h4 class="text-2xl font-bold text-gray-600 mb-4">4. Team Chat</h4>
-                        <p>
-                        Accessible sur la partis droite de l'espace solver, le <strong>Team Chat</strong> est un espace de discussion réservé uniquement aux membres de votre service (Entre Solver uniquement).
-                        <br><em>Les autres utilisateurs ne voient pas ces échanges.</em> Utilisez-le pour demander de l'aide à un collègue sur un dossier ou autre.
-                        </p>
-                            <div class="mb-8 bg-blue-50 dark:bg-slate-900 p-4 rounded-xl border border-blue-200 dark:border-slate-700">
-                                <img 
-                                    src="static/tutos/Chat Team.png"
-                                    alt="Écran du Team Chat"
-                                    class="mx-auto w-full max-w-xl max-h-[600px] object-contain rounded-lg shadow"                                >
-                                >
-                                <p class="text-sm text-blue-700 dark:text-blue-300 mt-3 text-center font-medium">
-                                    Team Chat
-                                </p>
-                            </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+                        <p>Chaque réglage s'applique et s'enregistre immédiatement, sans bouton à valider, et vous suit sur tous vos postes. Le bouton soleil/lune de l'en-tête bascule rapidement entre clair et sombre.</p>
+                        {{ fig('profil-apparence.png', "L'onglet Apparence de Mon profil") }}
+                        <h4 class="text-2xl font-bold text-sky-600 mb-4">3. Signaler un bug</h4>
+                        <p>Un problème dans L'Agora lui-même (page qui ne s'affiche pas, bouton sans effet) ? Décrivez-le ici : une demande Informatique est créée directement avec les informations techniques utiles.</p>
+    {{ modal_close() }}
+
+    <!-- MODAL 7: DAF STANDARD -->
+    {{ modal_open('modal-daf-standard', 'bg-orange-600', 'fa-file-invoice', 'DAF : bon de commande') }}
+                        {{ tip('Important', "Un bon de commande suit un circuit de validation complet (manager, DAF, direction) : prévoyez le délai nécessaire. Les bons DAF se valident toujours un par un.", 'orange') }}
+                        <h4 class="text-2xl font-bold text-orange-600 mb-4">1. Saisir la demande</h4>
+                        <p>Depuis la carte <strong>DAF / Achats</strong> du portail, renseignez :</p>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li><strong>Pour quel service :</strong> si vous gérez plusieurs services, choisissez celui pour lequel vous commandez.</li>
+                            <li><strong>Infos commande :</strong> l'<strong>UF</strong> (unité fonctionnelle, le service qui porte la dépense, choisie parmi tous les services de l'institut), le <strong>budget</strong> (investissement ou fonctionnement) et le <strong>lieu de livraison</strong>.</li>
+                            <li><strong>Le fournisseur :</strong> s'il est déjà référencé, son nom et son e-mail suffisent. Pour un <strong>nouveau</strong> fournisseur, ajoutez son SIRET, son téléphone et son RIB.</li>
+                            <li><strong>Les lignes de commande :</strong> désignation, référence, quantité et prix unitaire ; <strong>« Ajouter une ligne »</strong> pour en créer d'autres. Le total se calcule tout seul. Indiquez si les prix sont HT ou TTC.</li>
+                        </ul>
+                        {{ fig('daf-formulaire.png', "Infos commande (UF, budget, livraison) et fournisseur") }}
+                        {{ fig('daf-lignes.png', "Les lignes de commande, le type de prix et la zone du devis") }}
+                        <h4 class="text-2xl font-bold text-orange-600 mb-4">2. Joindre le devis</h4>
+                        <p>Le devis du fournisseur, en <strong>PDF</strong>, est <strong>obligatoire</strong> : un bon de commande sans devis sera renvoyé. Glissez-le dans la zone « Devis (PDF) ». Si vous l'avez oublié, ajoutez-le ensuite via « Modifier ma demande ».</p>
+                        <h4 class="text-2xl font-bold text-orange-600 mb-4">3. Le circuit de validation</h4>
+                        <ol class="list-decimal pl-5 mb-4">
+                            <li><strong>Validation manager :</strong> votre responsable hiérarchique valide ou refuse (un directeur qui commande saute cette étape).</li>
+                            <li><strong>Préparation par la DAF :</strong> un agent DAF prend la demande, vérifie et prépare le bon de commande.</li>
+                            <li><strong>Validation du manager DAF</strong>, puis <strong>signature du directeur</strong>.</li>
+                            <li><strong>Terminée :</strong> le bon signé est joint à la demande, la commande peut partir.</li>
+                        </ol>
+                        {{ fig('daf-suivi.png', "Le suivi d'un bon de commande en cours de validation") }}
+                        {{ tip('Modifier un bon en cours', "Tant que le bon n'est pas terminé ou refusé, « Modifier ma demande » permet de corriger le fournisseur, l'UF, les lignes ou d'ajouter un devis. Le service DAF est prévenu.", 'orange') }}
+    {{ modal_close() }}
+
+    <!-- MODAL 8: DAF DÉLÉGATION -->
+    {{ modal_open('modal-daf-delegation', 'bg-yellow-500', 'fa-signature', 'DAF : délégation (< 400 €)') }}
+                        {{ tip('Procédure accélérée', "Pour les petits achats (moins de 400 € TTC, soit 380 € HT), la validation hiérarchique est sautée : la demande part directement au service DAF.", 'yellow') }}
+                        <h4 class="text-2xl font-bold text-yellow-600 mb-4">1. Qui et comment</h4>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li>Réservée aux <strong>managers et directeurs</strong> : carte <strong>« Bon de commande : Délégation signature »</strong> sur le portail.</li>
+                            <li>Le formulaire est identique au bon de commande standard (fournisseur, UF, lignes, devis obligatoire).</li>
+                            <li>Si le total dépasse la limite, l'envoi est refusé avec un message : passez par le bon de commande standard.</li>
+                        </ul>
+                        {{ fig('delegation-formulaire.png', "Un bon en délégation : même formulaire, total sous 400 € TTC") }}
+                        <h4 class="text-2xl font-bold text-yellow-600 mb-4">2. Traitement direct</h4>
+                        <p>Dès l'envoi, la demande passe <strong>« À prendre en charge »</strong> dans la file du service DAF, qui la traite sans attendre de validation. Vous suivez son avancement comme n'importe quelle demande.</p>
+    {{ modal_close() }}
+
+    <!-- MODAL 9: VALIDATION RESPONSABLE -->
+    {{ modal_open('modal-validation', 'bg-red-600', 'fa-check-double', 'Responsable : validation et pilotage') }}
+                        <h4 class="text-2xl font-bold text-red-600 mb-4">1. L'écran Validation</h4>
+                        <p>Le menu <strong>Validation</strong> liste les demandes qui attendent votre accord. En haut, un bandeau signale les tickets <strong>hors délai</strong> de votre service, puis quatre indicateurs : demandes <strong>à valider</strong>, demandes <strong>en attente depuis plus de 48 h</strong>, <strong>votre délai</strong> de validation et <strong>tickets hors délai</strong>.</p>
+                        <p>Trois onglets séparent la <strong>validation d'équipe (N1)</strong>, la <strong>validation technique ou budgétaire (N2, directeurs)</strong> et les <strong>recrutements (FCPI)</strong>. Les formulaires apparaissent sous les tickets, avec un bouton <strong>« Voir & Valider »</strong>.</p>
+                        {{ fig('validation.png', "L'écran Validation d'un responsable") }}
+                        <h4 class="text-2xl font-bold text-red-600 mb-4">2. Valider ou refuser</h4>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li><span class="text-green-600 font-bold">Valider</span> : la demande part immédiatement vers le service compétent. Cochez plusieurs lignes puis <strong>« Valider la sélection »</strong> pour valider en lot (les bons de commande DAF se valident un par un).</li>
+                            <li><span class="text-red-600 font-bold">Refuser</span> : le <strong>motif est obligatoire</strong> (« Budget dépassé », « Pas prioritaire »…). Il est ajouté au fil de la demande et envoyé par e-mail au demandeur.</li>
+                        </ul>
+                        {{ fig('validation-refus.png', "Le refus d'une demande, avec son motif") }}
+                        {{ tip('Rappels automatiques', "Une demande qui attend trop longtemps déclenche un rappel aux validateurs, puis une alerte au directeur du service. Pendant vos absences, déléguez vos validations à un collègue : il verra et validera à votre place, avec une trace « pour le compte de ».", 'red') }}
+                        <h4 class="text-2xl font-bold text-red-600 mb-4">3. Piloter une demande déjà validée</h4>
+                        <p>Pour toutes les demandes <strong>sauf les bons de commande DAF</strong>, le bloc <strong>Pilotage de la demande</strong> du détail vous permet, même quand la demande est déjà dans la file d'un service :</p>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li>de la <strong>refuser</strong> avec un motif : le demandeur et le service sont prévenus ;</li>
+                            <li>de la <strong>supprimer définitivement</strong>, messages et pièces jointes compris (irréversible, tracé dans le journal).</li>
+                        </ul>
+                        {{ fig('pilotage.png', "Le bloc Pilotage de la demande, réservé aux managers et directeurs") }}
+                        <h4 class="text-2xl font-bold text-red-600 mb-4">4. Suivre le travail de l'équipe</h4>
+                        <p>Dans le <strong>Dashboard</strong>, la liste « Mes tickets en cours » affiche aussi les tickets pris en charge par les solvers de votre service, avec le nom de chacun. Vous pouvez y remettre un ticket dans le pool ou le transférer. Sur une demande terminée, l'<strong>avis du demandeur</strong> (note et commentaire) n'est visible que par les managers et directeurs.</p>
+                        {{ fig('dashboard-equipe.png', "Les tickets de l'équipe dans le Dashboard, avec le solver en charge") }}
+    {{ modal_close() }}
+
+    <!-- MODAL 10: FCPI -->
+    {{ modal_open('modal-fcpi', 'bg-indigo-600', 'fa-user-plus', 'Responsable : fiche de création de poste (FCPI)') }}
+                        <h4 class="text-2xl font-bold text-indigo-600 mb-4">1. Un formulaire unique</h4>
+                        <p>Depuis la carte <strong>Agent recruté (FCPI)</strong> (managers et directeurs), renseignez tout ce qui concerne l'arrivée :</p>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li><strong>Données de l'agent :</strong> date d'entrée, UF, nom, prénom, fonction, service.</li>
+                            <li><strong>Données RH :</strong> statut contractuel, temps de travail, CV et fiche de poste en PDF, demande de simulation de salaire.</li>
+                            <li><strong>Imago :</strong> cochez si l'agent a besoin d'un compte sur le logiciel métier.</li>
+                            <li><strong>Informatique :</strong> matériel demandé (téléphone, PC fixe ou portable) et accès spécifiques.</li>
+                            <li><strong>Badge & sécurité :</strong> photo (facultative), localisation du poste, besoins en clés ou badge.</li>
+                        </ul>
+                        {{ fig('fcpi1.png', "La fiche FCPI : données de l'agent") }}
+                        {{ fig('fcpi2.png', "La fiche FCPI : données RH, Imago et informatique") }}
+                        {{ fig('fcpi3.png', "La fiche FCPI : badge et sécurité, puis envoi") }}
+                        <h4 class="text-2xl font-bold text-indigo-600 mb-4">2. Le circuit</h4>
+                        <p>La fiche est validée par le <strong>manager RH</strong>, puis par le <strong>directeur RH</strong>. Un refus est motivé et vous revient par e-mail.</p>
+                        <h4 class="text-2xl font-bold text-indigo-600 mb-4">3. Les tickets générés automatiquement</h4>
+                        <p>Dès la validation RH, L'Agora crée un ticket par service, chacun suivi dans son propre Dashboard :</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 not-prose text-sm mb-4">
+                            <div class="border border-slate-200 dark:border-slate-700 p-3 bg-gray-50 dark:bg-slate-800"><strong>DRH</strong> : dossier administratif et contrat.</div>
+                            <div class="border border-slate-200 dark:border-slate-700 p-3 bg-gray-50 dark:bg-slate-800"><strong>Informatique</strong> : matériel, compte et accès.</div>
+                            <div class="border border-slate-200 dark:border-slate-700 p-3 bg-gray-50 dark:bg-slate-800"><strong>Sécurité</strong> : badge et accès physiques.</div>
+                            <div class="border border-slate-200 dark:border-slate-700 p-3 bg-gray-50 dark:bg-slate-800"><strong>Imago</strong> : compte métier (si demandé).</div>
+                        </div>
+                        <p>Ces tickets sont <strong>liés</strong> entre eux : depuis l'un d'eux, vous voyez l'avancement des autres. Le circuit détaillé figure dans la page <a href="{{ url_for('main.doc_circuits_validation') }}" target="_blank" rel="noopener">Circuits de validation</a>.</p>
+    {{ modal_close() }}
+
+    <!-- MODAL 11: DASHBOARD SOLVERS -->
+    {{ modal_open('modal-tech', 'bg-gray-700', 'fa-toolbox', 'Solvers : le Dashboard') }}
+                        <h4 class="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-4">1. Vue d'ensemble</h4>
+                        <p>Le <strong>Dashboard</strong> est l'espace de travail des solvers. En haut : l'<strong>écran mural</strong> (affichage plein écran pour le service), le <strong>Planning</strong> des rendez-vous et les outils (historique et ajout manuel, stock et inventaire, gestion des prêts). Viennent ensuite quatre compteurs (tickets à attribuer, mes dossiers, tickets clôturés, en retard) et le graphique de répartition. Les tickets qui approchent ou dépassent le <strong>délai cible</strong> de leur catégorie portent un badge « Échéance » ou « Hors délai ».</p>
+                        {{ fig('dashboard.png', "Le Dashboard d'un solver") }}
+                        <h4 class="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-4">2. Le pool</h4>
+                        <p>Toutes les demandes validées destinées à votre service arrivent dans la <strong>file d'attente</strong> (le pool), filtrable par service. Cliquez sur <strong>« Prendre en charge »</strong> : le ticket rejoint « Mes tickets en cours » et le demandeur est prévenu par notification et par e-mail.</p>
+                        {{ fig('pool.png', "Le pool : les demandes à prendre en charge") }}
+                        <h4 class="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-4">3. Mes tickets en cours</h4>
+                        <p>Le menu <strong>Actions</strong> d'un ticket (ou l'Espace technique de son détail) permet de :</p>
+                        <ul class="list-disc pl-5 mb-4">
+                            <li><strong>Discuter</strong> avec le demandeur dans le fil (des <strong>réponses types</strong> sont proposées), joindre des fichiers, et laisser des <strong>notes internes</strong> invisibles pour lui.</li>
+                            <li><strong>Proposer un rendez-vous</strong> (date fixée ou à confirmer) : le demandeur accepte, refuse ou envoie ses disponibilités ; rappel automatique à 9 h le jour J. L'onglet <strong>Planning</strong> regroupe les rendez-vous du service.</li>
+                            <li><strong>Remettre dans le pool</strong> un ticket que vous ne pouvez finalement pas traiter : il redevient « À prendre en charge » pour toute l'équipe, avec une trace dans le fil.</li>
+                            <li><strong>Transférer</strong> le ticket à un autre service s'il ne relève pas du vôtre, ou l'<strong>assigner</strong> à un collègue.</li>
+                            <li><strong>Lier</strong> des tickets entre eux. Quand L'Agora détecte un <strong>doublon probable</strong>, un bandeau le propose en un clic.</li>
+                            <li><strong>Clôturer</strong> une fois résolu : le demandeur est invité à donner son avis.</li>
+                        </ul>
+                        {{ fig('mes-tickets.png', "La liste « Mes tickets en cours » et son menu d'actions") }}
+                        {{ fig('cloture.png', "Le détail d'un ticket côté solver : actions et clôture") }}
+                        <h4 class="text-2xl font-bold text-gray-600 dark:text-gray-300 mb-4">4. Chat d'équipe</h4>
+                        <p>Le <strong>Chat Équipe</strong>, à droite du Dashboard, est réservé aux membres de votre service : les demandeurs ne voient jamais ces échanges. Utilisez-le pour demander un coup de main sur un dossier.</p>
+                        {{ fig('chat-equipe.png', "Le chat d'équipe, réservé aux solvers du service") }}
+                        {{ tip('Managers et directeurs', "Votre Dashboard affiche aussi les tickets pris en charge par votre équipe, avec le nom du solver, pour suivre la charge de chacun.", 'gray') }}
+    {{ modal_close() }}
 
     <script>
         // Gestion des Modales
         function openModal(modalId) {
-            document.getElementById(modalId).classList.remove('hidden');
+            const modal = document.getElementById(modalId);
+            // Rattachée au <body> : sinon la fenêtre reste prisonnière du contexte
+            // d'empilement de la zone de contenu et passe sous l'en-tête (thèmes à flou).
+            if (modal.parentElement !== document.body) document.body.appendChild(modal);
+            modal.classList.remove('hidden');
             document.body.style.overflow = 'hidden'; 
         }
 
@@ -1255,11 +780,13 @@
             // 1. Filtrer les Tutos
             const cards = document.querySelectorAll('.tuto-card');
             cards.forEach(card => {
-                const cardTitle = card.querySelector('h3').innerText.toLowerCase();
-                const modalId = card.getAttribute('onclick').match(/'([^']+)'/)[1];
-                const modalContent = document.getElementById(modalId).innerText.toLowerCase();
-                
-                if (cardTitle.includes(filter) || modalContent.includes(filter)) {
+                const cardText = card.innerText.toLowerCase();
+                const onclick = card.getAttribute('onclick') || '';
+                const m = onclick.match(/'([^']+)'/);
+                const modal = m ? document.getElementById(m[1]) : null;
+                const modalContent = modal ? modal.innerText.toLowerCase() : '';
+
+                if (cardText.includes(filter) || modalContent.includes(filter)) {
                     card.style.display = "block";
                 } else {
                     card.style.display = "none";
