@@ -17,7 +17,7 @@
 {%- set _ = steps.append({'page': 'portal', 'title': "Bienvenue sur L'Agora 👋",
     'text': "Cette visite vous montre l'essentiel en quelques étapes" ~ (", adaptées à votre rôle" if role != 'USER' else "") ~ ". Pendant la visite, <strong>rien n'est cliquable</strong> : vous ne pouvez rien modifier par erreur.<br><br>Avancez avec <strong>Suivant</strong> (ou la flèche →), ou passez la visite. Vous pourrez la relancer à tout moment depuis <strong>Aide / Tuto</strong>."}) -%}
 {%- set _ = steps.append({'page': 'portal', 'sel': '#app-sidebar nav, #app-sidebar', 'mobile': '#sidebar-mobile-toggle', 'title': 'Le menu',
-    'text': "Le menu donne accès au <strong>Portail</strong>, à l'<strong>Aide / Tuto</strong> et à <strong>Mon profil</strong>" ~ (", ainsi qu'aux espaces liés à votre rôle" if role != 'USER' else "") ~ ". La flèche en bas le replie pour ne garder que les icônes ; un clic sur la barre le rouvre. Sur téléphone, il se trouve derrière le bouton ☰."}) -%}
+    'text': "Le menu donne accès au <strong>Portail</strong>, à l'<strong>Aide / Tuto</strong> et à <strong>Mon profil</strong>" ~ (", ainsi qu'aux espaces liés à votre rôle" if role != 'USER' else "") ~ ". Il se replie tout seul en icônes : passez la souris dessus ou cliquez pour le déplier, il se referme dès que vous cliquez ailleurs. Sur téléphone, il se trouve derrière le bouton ☰."}) -%}
 {%- if is_comm -%}
 {%- set _ = steps.append({'page': 'portal', 'sel': '#app-sidebar a[title="Annonces"]', 'title': 'Annonces',
     'text': "Publiez ici les bandeaux d'information affichés en haut du portail de tous les agents (information, avertissement ou urgence), avec une date de fin."}) -%}

@@ -35,7 +35,7 @@
         }
         return loading;
     }
-    var root, hole, pop, current = -1, target = null, lastFocus = null;
+    var root, hole, pop, current = -1, target = null, lastFocus = null, sbOpenedByTour = false;
 
     function readState() { try { return JSON.parse(sessionStorage.getItem(KEY)); } catch (e) { return null; } }
     function writeState(s) {
@@ -122,6 +122,7 @@
         window.removeEventListener('resize', place);
         root.remove();
         root = hole = pop = null;
+        if (sbOpenedByTour) { document.documentElement.removeAttribute('data-sb-open'); sbOpenedByTour = false; }
         target = null;
         current = -1;
         if (lastFocus && lastFocus.focus) { try { lastFocus.focus(); } catch (e) { /* élément disparu */ } }
@@ -178,6 +179,12 @@
         build();
         current = i;
         writeState({ i: i });
+        // Étape sur le menu : on le déplie (sur ordinateur il est replié en icônes).
+        var sb = document.getElementById('app-sidebar');
+        var wantMenu = !!(sb && step.sel && /#app-sidebar/.test(step.sel) && window.innerWidth >= 768);
+        if (wantMenu) document.documentElement.setAttribute('data-sb-open', '');
+        else if (sbOpenedByTour) document.documentElement.removeAttribute('data-sb-open');
+        sbOpenedByTour = wantMenu;
         target = step.sel || step.mobile ? findTarget(step) : null;
         var missing = (step.sel && !target);
         root.classList.toggle('agt-center', !target);
@@ -198,6 +205,7 @@
         }
         place();
         setTimeout(place, 60);   // après défilement / chargement des polices
+        setTimeout(place, 260);  // après le dépliage animé du menu
         next.focus({ preventScroll: true });
     }
 

@@ -858,23 +858,37 @@
             window.ILVM_applyThemeMode = apply;
         })();
     </script>
-    <!-- Barre latérale repliable (icônes seules) : état mémorisé localement, appliqué avant le rendu -->
-    <script>(function(){try{if(localStorage.sidebarCollapsed==='1')document.documentElement.setAttribute('data-sidebar','collapsed');}catch(e){}})();</script>
+    <!-- Barre latérale auto-repliable (2026-11-18) : sur ordinateur, icônes seules par
+         défaut ; dépliée au survol, au focus clavier ou au clic, elle passe PAR-DESSUS
+         la page (largeur + marge négative : le contenu ne bouge pas) et se replie dès
+         qu'on la quitte ou qu'on clique ailleurs. Sur mobile : tiroir masqué en entier. -->
     <style>
+        #app-sidebar .sb-logo-mini { display: none; }
         @media (min-width: 768px) {
-            html[data-sidebar="collapsed"] #app-sidebar { width: 4.5rem; }
-            html[data-sidebar="collapsed"] #app-sidebar .sb-label { display: none; }
-            html[data-sidebar="collapsed"] #app-sidebar nav a,
-            html[data-sidebar="collapsed"] #app-sidebar .sb-foot { justify-content: center; padding-left: 0; padding-right: 0; }
-            html[data-sidebar="collapsed"] #app-sidebar .sb-logo-full { display: none; }
-            html[data-sidebar="collapsed"] #app-sidebar .sb-logo-mini { display: block; }
-            html[data-sidebar="collapsed"] #sidebar-collapse .sb-ico-close { display: none; }
-            html[data-sidebar="collapsed"] #sidebar-collapse .sb-ico-open { display: block; }
-            #app-sidebar { transition: width .2s ease, transform .2s ease; }
-            html[data-sidebar="collapsed"] #app-sidebar.sb-collapsible { cursor: e-resize; }
-            html[data-sidebar="collapsed"] #app-sidebar.sb-collapsible a, html[data-sidebar="collapsed"] #app-sidebar.sb-collapsible button { cursor: pointer; }
+            #app-sidebar { position: relative; z-index: 45; width: 4.5rem; overflow: hidden;
+                           transition: width .2s ease, margin .2s ease, box-shadow .2s ease; }
+            html:not([data-sb-open]) #app-sidebar .sb-label { display: none; }
+            html:not([data-sb-open]) #app-sidebar nav a,
+            html:not([data-sb-open]) #app-sidebar .sb-foot { justify-content: center; padding-left: 0; padding-right: 0; }
+            html:not([data-sb-open]) #app-sidebar .sb-logo-full { display: none; }
+            html:not([data-sb-open]) #app-sidebar .sb-logo-mini { display: block; }
+            #app-sidebar .sb-label { white-space: nowrap; }
+            html[data-sb-open] #app-sidebar { width: 16rem; margin-right: calc(var(--sb-gap, 0px) - 11.5rem) !important;
+                                             box-shadow: 12px 0 32px rgba(0, 0, 0, .28); }
+            /* Styles visuels qui décollent la barre du bord : marge droite d'origine */
+            html[data-theme-style="glass"] #app-sidebar { --sb-gap: .75rem; }
+            html[data-theme-style="bento"] #app-sidebar,
+            html[data-theme-style="neo"] #app-sidebar,
+            html[data-theme-style="soft3d"] #app-sidebar { --sb-gap: .5rem; }
         }
-        #app-sidebar .sb-logo-mini, #sidebar-collapse .sb-ico-open { display: none; }
+        @media (max-width: 767px) {
+            /* Tiroir fermé : décalé de sa largeur ET de sa marge éventuelle (styles à
+               barre flottante), puis masqué — plus aucune bande visible à gauche. */
+            #app-sidebar.-translate-x-full { transform: translateX(calc(-100% - 2.5rem)); visibility: hidden; box-shadow: none;
+                                             transition: transform .2s ease, visibility 0s linear .2s; }
+            #app-sidebar { transition: transform .2s ease, visibility 0s; }
+        }
+        @media (prefers-reduced-motion: reduce) { #app-sidebar { transition: none !important; } }
     </style>
 </head>
 <body class="font-sans text-slate-900 antialiased bg-gray-50 dark:bg-slate-950 selection:bg-blue-100 selection:text-blue-900 dark:text-slate-100 dark:selection:bg-blue-900 dark:selection:text-blue-100 transition-colors duration-300">
@@ -946,9 +960,6 @@
                 {% endif %}
             </nav>
 
-            <button type="button" id="sidebar-collapse" class="sb-foot hidden md:flex items-center gap-3 pl-4 pr-3 py-2.5 border-t border-slate-800 text-slate-500 hover:bg-slate-800 hover:text-white transition text-xs w-full shrink-0" title="Replier / déplier le menu" aria-label="Replier ou déplier le menu">
-                <i data-lucide="chevrons-left" class="sb-ico-close w-4 h-4"></i><i data-lucide="chevrons-right" class="sb-ico-open w-4 h-4"></i> <span class="sb-label">Replier le menu</span>
-            </button>
             <a title="Déconnexion" href="{{ url_for('auth.logout') }}" class="sb-foot flex items-center gap-3 pl-4 pr-3 py-3 border-t border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white transition text-sm shrink-0">
                 <i data-lucide="log-out" class="w-4 h-4"></i> <span class="sb-label">Déconnexion</span>
             </a>
@@ -1252,25 +1263,30 @@
             sidebarOverlay.addEventListener('click', closeSidebar);
         }
 
-        // --- BARRE LATÉRALE REPLIABLE (icônes seules, desktop) ---
-        const sidebarCollapseBtn = document.getElementById('sidebar-collapse');
-        function setSidebarCollapsed(collapsed) {
-            if (collapsed) document.documentElement.setAttribute('data-sidebar', 'collapsed');
-            else document.documentElement.removeAttribute('data-sidebar');
-            try { localStorage.sidebarCollapsed = collapsed ? '1' : '0'; } catch (e) {}
-        }
-        if (sidebarCollapseBtn) {
-            sidebarCollapseBtn.addEventListener('click', function (e) {
-                e.stopPropagation();
-                setSidebarCollapsed(document.documentElement.getAttribute('data-sidebar') !== 'collapsed');
+        // --- BARRE LATÉRALE AUTO-REPLIABLE (ordinateur) ---
+        // Survol ou focus : dépliée tant qu'on y est. Clic dedans : reste dépliée
+        // jusqu'au prochain clic ailleurs (ou Échap). Sinon : repliée (icônes).
+        if (appSidebar) {
+            const html = document.documentElement;
+            const desktop = () => window.innerWidth >= 768;
+            let pinned = false, openTimer = null, closeTimer = null;
+            const setOpen = (open) => { if (open) html.setAttribute('data-sb-open', ''); else html.removeAttribute('data-sb-open'); };
+            const openSoon = () => { clearTimeout(closeTimer); if (!desktop() || html.hasAttribute('data-sb-open')) return; openTimer = setTimeout(() => setOpen(true), 80); };
+            const closeSoon = () => { clearTimeout(openTimer); if (pinned) return; closeTimer = setTimeout(() => setOpen(false), 250); };
+            appSidebar.addEventListener('mouseenter', openSoon);
+            appSidebar.addEventListener('mouseleave', closeSoon);
+            appSidebar.addEventListener('focusin', () => { if (desktop()) { clearTimeout(closeTimer); setOpen(true); } });
+            appSidebar.addEventListener('focusout', (e) => { if (!appSidebar.contains(e.relatedTarget)) closeSoon(); });
+            appSidebar.addEventListener('click', () => { if (!desktop()) return; pinned = true; clearTimeout(closeTimer); setOpen(true); });
+            document.addEventListener('click', (e) => {
+                if (!pinned && !html.hasAttribute('data-sb-open')) return;
+                if (appSidebar.contains(e.target)) return;
+                pinned = false; clearTimeout(openTimer); setOpen(false);
+            }, true);
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && html.hasAttribute('data-sb-open')) { pinned = false; setOpen(false); }
             });
-            // Replié : un clic n'importe où sur la barre (hors liens et boutons) la rouvre.
-            appSidebar.addEventListener('click', function (e) {
-                if (document.documentElement.getAttribute('data-sidebar') !== 'collapsed') return;
-                if (window.innerWidth < 768 || e.target.closest('a, button')) return;
-                setSidebarCollapsed(false);
-            });
-            appSidebar.classList.add('sb-collapsible');
+            window.addEventListener('resize', () => { if (!desktop()) { pinned = false; setOpen(false); } });
         }
 
         // --- PANNEAU PROFIL (overlay glissant depuis la droite) ---
